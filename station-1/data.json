@@ -1,0 +1,24 @@
+{
+  "team": "Acme Growth Squad",
+  "updated": "2026-05-19",
+  "summary": {
+    "revenue": 284500,
+    "active_users": 12847,
+    "support_tickets": 43
+  },
+  "weekly_trends": [
+    { "week": "Apr 14", "revenue": 38200, "users": 11200, "tickets": 62 },
+    { "week": "Apr 21", "revenue": 41500, "users": 11580, "tickets": 55 },
+    { "week": "Apr 28", "revenue": 39800, "users": 11900, "tickets": 48 },
+    { "week": "May 5",  "revenue": 44100, "users": 12340, "tickets": 51 },
+    { "week": "May 12", "revenue": 47200, "users": 12610, "tickets": 45 },
+    { "week": "May 19", "revenue": 49700, "users": 12847, "tickets": 43 }
+  ],
+  "top_channels": [
+    { "name": "Organic Search", "value": 4820 },
+    { "name": "Paid Ads", "value": 3210 },
+    { "name": "Referrals", "value": 2640 },
+    { "name": "Social", "value": 1380 },
+    { "name": "Direct", "value": 797 }
+  ]
+}

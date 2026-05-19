@@ -1,0 +1,15 @@
+Subject: Scheduling a technical validation call — 45 min with your infosec team
+
+Hi Jordan,
+
+We're at the point where the next step is getting your security and IT team comfortable with our architecture. You mentioned that's the gate before anything goes to procurement.
+
+Here's what I'd suggest: a 45-minute technical validation call with our head of security engineering. We'll cover your SSO requirements, data handling policies, and the penetration test results your team asked about.
+
+I've done this call with companies in regulated industries dozens of times — happy to send a pre-read doc so your team can come in with specific questions rather than starting from scratch.
+
+Can you loop in whoever leads that review? I'll send a calendar invite with the pre-read attached once I know who should be on it.
+
+Ideal timing would be this week or early next — that way we stay on track for the implementation timeline you outlined.
+
+Sarah Chen

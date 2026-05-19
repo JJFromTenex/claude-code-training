@@ -1,0 +1,17 @@
+Subject: Following up on the demo — answers to your security questions
+
+Hi Kenji,
+
+Thanks for bringing your security lead into the demo yesterday. Good questions all around — here's what I owe you.
+
+SOC 2 Type II report: attached. We completed our latest audit in March. Your team can also access our security portal directly at trust.ourproduct.com for real-time compliance status.
+
+The data residency question: yes, we support EU-only data storage on our Growth plan and above. No data touches US servers if you configure it that way. I included the architecture diagram showing the isolation model.
+
+On SSO — we support SAML 2.0 and OIDC. Your Okta setup would work out of the box. Typical config takes about 20 minutes.
+
+I'd suggest we get a technical validation session on the calendar with your infosec team. We've done dozens of these — usually takes one 45-minute call to clear their review.
+
+How's next Tuesday or Wednesday afternoon?
+
+Sarah Chen

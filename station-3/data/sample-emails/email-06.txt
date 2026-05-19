@@ -1,0 +1,15 @@
+Subject: Your team's feedback from the pilot — and what's next
+
+Hi Anika,
+
+Just pulled the usage data from your two-week pilot. Wanted to share the highlights before our review call.
+
+Your team ran 847 automated workflows during the trial — that's in the top 10% of pilots we've seen at your company size. The ops team particularly leaned in; they built 14 custom templates on their own without any help from us.
+
+The time savings tracked to about 23 hours per week across the team. Annualized, that's roughly $180K in recovered capacity — and that's before you factor in the error reduction.
+
+Three people on your team left feedback in the survey. I'm sending those comments separately so you can share them with leadership if helpful.
+
+For next steps, I'd like to get a proposal in front of you and your VP by Friday so we can keep the momentum from the pilot. Can we block 30 minutes Thursday to walk through pricing and implementation timeline?
+
+Sarah Chen

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo">Acme</div>
+    <ul class="nav-links">
+      <li class="active">Dashboard</li>
+      <li>Analytics</li>
+      <li>Reports</li>
+      <li>Settings</li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <header class="page-header">
+      <h1>Team Dashboard</h1>
+      <p class="subtitle">Acme Growth Squad &mdash; Weekly Overview</p>
+    </header>
+
+    <section class="stats-grid" id="stats-grid">
+      <!-- Stat cards rendered by app.js -->
+    </section>
+
+    <section class="chart-section">
+      <h2>Weekly Revenue</h2>
+      <div class="chart" id="revenue-chart">
+        <!-- Bar chart rendered by app.js -->
+      </div>
+    </section>
+
+    <section class="channels-section">
+      <h2>Top Channels</h2>
+      <div class="channels-list" id="channels-list">
+        <!-- Channel bars rendered by app.js -->
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

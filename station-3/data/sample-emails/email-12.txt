@@ -1,0 +1,15 @@
+Subject: Locking in time for a working session — bringing your Salesforce admin
+
+Hi Rachel,
+
+You mentioned on our last call that the biggest unknown is how our platform handles your custom Salesforce objects. Fair concern — your setup is more complex than a standard instance.
+
+I want to do a working session instead of another slide deck. Here's what I'm thinking:
+
+We get 60 minutes with you, your Salesforce admin, and our integration specialist. We'll screen-share your actual Salesforce environment and map out exactly how the sync would work with your custom objects, validation rules, and workflow triggers.
+
+You'll walk away with a documented integration plan — not a generic architecture diagram, but a specific map of your fields, objects, and data flows.
+
+I have two slots this week: Wednesday at 1pm ET or Friday at 11am ET. Which works better for your team?
+
+Sarah Chen

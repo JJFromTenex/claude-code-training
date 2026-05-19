@@ -1,0 +1,17 @@
+Subject: Quick question about your evaluation timeline
+
+Hi Derek,
+
+It's been about three weeks since we did the technical deep-dive with your engineering team. I know you mentioned needing to align internally before moving forward.
+
+Wanted to check in on where things landed. Specifically:
+
+Did your team get a chance to review the integration architecture doc I sent? There were a couple of open questions about webhook reliability that I want to make sure got answered.
+
+I ask because we're heading into our Q3 pricing update on July 1st. Any deal signed before then locks in current rates — which for your usage tier would save about $14K annually.
+
+Not trying to create false urgency. But if there's a blocker I can help remove, I'd rather know now than find out in August.
+
+What's the best way to move this forward on your end?
+
+Sarah Chen

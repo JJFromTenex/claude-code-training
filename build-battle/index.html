@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Leaderboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="page-header">
+    <div class="header-left">
+      <h1>Sales Leaderboard</h1>
+      <p class="team-name" id="team-name"></p>
+    </div>
+    <div class="header-right">
+      <input type="text" id="search" placeholder="Search reps..." class="search-input">
+    </div>
+  </header>
+
+  <section class="stats-row" id="stats-row">
+    <!-- Stat cards rendered by app.js -->
+  </section>
+
+  <section class="leaderboard">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Rep</th>
+          <th>Revenue</th>
+          <th>Deals Closed</th>
+          <th>Win Rate</th>
+          <th>Joined</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <!-- Rows rendered by app.js -->
+      </tbody>
+    </table>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

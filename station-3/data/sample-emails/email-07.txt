@@ -1,0 +1,15 @@
+Subject: Noticed Meridian just raised a Series C — this might matter now
+
+Hi Lauren,
+
+Congrats on the $45M round — saw the TechCrunch piece this morning.
+
+We talked back in January and the timing wasn't right. You were heads-down on your enterprise launch and didn't have bandwidth to evaluate new tools. Totally made sense.
+
+Here's why I'm reaching back out: the #1 thing we hear from companies post-raise is that their existing workflows start breaking at scale. The manual processes that worked with 50 customers don't survive 500.
+
+The operations bottleneck you described in January — your team spending half their time on manual data entry between systems — is going to get a lot more painful as you scale into the enterprise accounts that funding is meant to unlock.
+
+Would it make sense to revisit the conversation? Even a 15-minute check-in to see if the problem has gotten worse would be useful.
+
+Sarah Chen

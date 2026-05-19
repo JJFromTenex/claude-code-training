@@ -1,0 +1,107 @@
+{
+  "metadata": {
+    "source": "Workshop sample data (fictional)",
+    "tickers": ["NOVA", "APEX", "DRIFT", "PULSE", "VEGA", "CREST"],
+    "period": "2026-04-20 to 2026-05-19",
+    "trading_days": 22
+  },
+  "data": [
+    { "date": "2026-04-20", "ticker": "NOVA",  "open": 142.50, "close": 143.80, "high": 144.20, "low": 141.90, "volume": 2840000 },
+    { "date": "2026-04-20", "ticker": "APEX",  "open": 89.20,  "close": 88.10,  "high": 89.50,  "low": 87.60,  "volume": 1560000 },
+    { "date": "2026-04-20", "ticker": "DRIFT", "open": 67.30,  "close": 68.90,  "high": 69.40,  "low": 66.80,  "volume": 980000 },
+    { "date": "2026-04-20", "ticker": "PULSE", "open": 215.00, "close": 213.50, "high": 216.80, "low": 212.00, "volume": 3210000 },
+    { "date": "2026-04-20", "ticker": "VEGA",  "open": 34.10,  "close": 35.20,  "high": 35.80,  "low": 33.90,  "volume": 4520000 },
+    { "date": "2026-04-20", "ticker": "CREST", "open": 178.40, "close": 177.90, "high": 179.10, "low": 176.50, "volume": 1890000 },
+
+    { "date": "2026-04-21", "ticker": "NOVA",  "open": 143.80, "close": 145.20, "high": 146.00, "low": 143.10, "volume": 3010000 },
+    { "date": "2026-04-21", "ticker": "APEX",  "open": 88.10,  "close": 86.70,  "high": 88.30,  "low": 86.20,  "volume": 1720000 },
+    { "date": "2026-04-21", "ticker": "DRIFT", "open": 68.90,  "close": 69.50,  "high": 70.80,  "low": 68.40,  "volume": 1120000 },
+    { "date": "2026-04-21", "ticker": "PULSE", "open": 213.50, "close": 210.80, "high": 214.20, "low": 209.50, "volume": 3540000 },
+    { "date": "2026-04-21", "ticker": "VEGA",  "open": 35.20,  "close": 36.10,  "high": 36.90,  "low": 34.80,  "volume": 4890000 },
+    { "date": "2026-04-21", "ticker": "CREST", "open": 177.90, "close": 178.30, "high": 179.50, "low": 176.80, "volume": 1950000 },
+
+    { "date": "2026-04-23", "ticker": "NOVA",  "open": 145.20, "close": 147.10, "high": 148.00, "low": 144.80, "volume": 2950000 },
+    { "date": "2026-04-23", "ticker": "APEX",  "open": 86.70,  "close": 85.30,  "high": 87.10,  "low": 84.90,  "volume": 1880000 },
+    { "date": "2026-04-23", "ticker": "DRIFT", "open": 69.50,  "close": 71.20,  "high": 72.00,  "low": 69.10,  "volume": 1340000 },
+    { "date": "2026-04-23", "ticker": "PULSE", "open": 210.80, "close": 208.40, "high": 211.50, "low": 207.20, "volume": 3680000 },
+    { "date": "2026-04-23", "ticker": "VEGA",  "open": 36.10,  "close": 37.40,  "high": 38.20,  "low": 35.90,  "volume": 5210000 },
+    { "date": "2026-04-23", "ticker": "CREST", "open": 178.30, "close": 176.80, "high": 178.90, "low": 175.60, "volume": 2010000 },
+
+    { "date": "2026-04-25", "ticker": "NOVA",  "open": 147.10, "close": 149.60, "high": 150.20, "low": 146.50, "volume": 3180000 },
+    { "date": "2026-04-25", "ticker": "APEX",  "open": 85.30,  "close": 83.80,  "high": 85.90,  "low": 83.10,  "volume": 2040000 },
+    { "date": "2026-04-25", "ticker": "DRIFT", "open": 71.20,  "close": 70.40,  "high": 72.30,  "low": 69.80,  "volume": 1280000 },
+    { "date": "2026-04-25", "ticker": "PULSE", "open": 208.40, "close": 211.20, "high": 212.50, "low": 207.80, "volume": 3420000 },
+    { "date": "2026-04-25", "ticker": "VEGA",  "open": 37.40,  "close": 38.80,  "high": 39.50,  "low": 37.10,  "volume": 5640000 },
+    { "date": "2026-04-25", "ticker": "CREST", "open": 176.80, "close": 175.20, "high": 177.40, "low": 174.30, "volume": 2180000 },
+
+    { "date": "2026-04-28", "ticker": "NOVA",  "open": 149.60, "close": 151.30, "high": 152.80, "low": 149.00, "volume": 3350000 },
+    { "date": "2026-04-28", "ticker": "APEX",  "open": 83.80,  "close": 82.10,  "high": 84.20,  "low": 81.50,  "volume": 2280000 },
+    { "date": "2026-04-28", "ticker": "DRIFT", "open": 70.40,  "close": 72.80,  "high": 73.60,  "low": 70.00,  "volume": 1510000 },
+    { "date": "2026-04-28", "ticker": "PULSE", "open": 211.20, "close": 209.00, "high": 212.80, "low": 208.10, "volume": 3580000 },
+    { "date": "2026-04-28", "ticker": "VEGA",  "open": 38.80,  "close": 40.50,  "high": 41.20,  "low": 38.40,  "volume": 6020000 },
+    { "date": "2026-04-28", "ticker": "CREST", "open": 175.20, "close": 176.10, "high": 177.80, "low": 174.50, "volume": 1870000 },
+
+    { "date": "2026-04-30", "ticker": "NOVA",  "open": 151.30, "close": 153.90, "high": 154.50, "low": 150.80, "volume": 3520000 },
+    { "date": "2026-04-30", "ticker": "APEX",  "open": 82.10,  "close": 80.40,  "high": 82.80,  "low": 79.90,  "volume": 2460000 },
+    { "date": "2026-04-30", "ticker": "DRIFT", "open": 72.80,  "close": 74.10,  "high": 75.20,  "low": 72.30,  "volume": 1680000 },
+    { "date": "2026-04-30", "ticker": "PULSE", "open": 209.00, "close": 206.50, "high": 210.20, "low": 205.80, "volume": 3790000 },
+    { "date": "2026-04-30", "ticker": "VEGA",  "open": 40.50,  "close": 42.30,  "high": 43.10,  "low": 40.10,  "volume": 6380000 },
+    { "date": "2026-04-30", "ticker": "CREST", "open": 176.10, "close": 174.60, "high": 176.90, "low": 173.80, "volume": 2050000 },
+
+    { "date": "2026-05-02", "ticker": "NOVA",  "open": 153.90, "close": 155.80, "high": 156.40, "low": 153.20, "volume": 3410000 },
+    { "date": "2026-05-02", "ticker": "APEX",  "open": 80.40,  "close": 78.90,  "high": 81.00,  "low": 78.30,  "volume": 2590000 },
+    { "date": "2026-05-02", "ticker": "DRIFT", "open": 74.10,  "close": 72.60,  "high": 74.80,  "low": 71.90,  "volume": 1820000 },
+    { "date": "2026-05-02", "ticker": "PULSE", "open": 206.50, "close": 208.90, "high": 210.40, "low": 205.50, "volume": 3620000 },
+    { "date": "2026-05-02", "ticker": "VEGA",  "open": 42.30,  "close": 43.80,  "high": 44.60,  "low": 42.00,  "volume": 6710000 },
+    { "date": "2026-05-02", "ticker": "CREST", "open": 174.60, "close": 173.20, "high": 175.30, "low": 172.40, "volume": 2210000 },
+
+    { "date": "2026-05-05", "ticker": "NOVA",  "open": 155.80, "close": 158.40, "high": 159.20, "low": 155.10, "volume": 3680000 },
+    { "date": "2026-05-05", "ticker": "APEX",  "open": 78.90,  "close": 77.20,  "high": 79.40,  "low": 76.80,  "volume": 2780000 },
+    { "date": "2026-05-05", "ticker": "DRIFT", "open": 72.60,  "close": 74.90,  "high": 75.80,  "low": 72.10,  "volume": 1960000 },
+    { "date": "2026-05-05", "ticker": "PULSE", "open": 208.90, "close": 205.30, "high": 209.80, "low": 204.50, "volume": 3950000 },
+    { "date": "2026-05-05", "ticker": "VEGA",  "open": 43.80,  "close": 45.60,  "high": 46.40,  "low": 43.50,  "volume": 7120000 },
+    { "date": "2026-05-05", "ticker": "CREST", "open": 173.20, "close": 171.80, "high": 173.90, "low": 170.90, "volume": 2340000 },
+
+    { "date": "2026-05-07", "ticker": "NOVA",  "open": 158.40, "close": 160.10, "high": 161.50, "low": 157.80, "volume": 3540000 },
+    { "date": "2026-05-07", "ticker": "APEX",  "open": 77.20,  "close": 75.60,  "high": 77.80,  "low": 75.10,  "volume": 2920000 },
+    { "date": "2026-05-07", "ticker": "DRIFT", "open": 74.90,  "close": 76.30,  "high": 77.50,  "low": 74.40,  "volume": 2080000 },
+    { "date": "2026-05-07", "ticker": "PULSE", "open": 205.30, "close": 207.80, "high": 209.10, "low": 204.60, "volume": 3810000 },
+    { "date": "2026-05-07", "ticker": "VEGA",  "open": 45.60,  "close": 44.20,  "high": 46.10,  "low": 43.80,  "volume": 7450000 },
+    { "date": "2026-05-07", "ticker": "CREST", "open": 171.80, "close": 170.30, "high": 172.50, "low": 169.50, "volume": 2460000 },
+
+    { "date": "2026-05-09", "ticker": "NOVA",  "open": 160.10, "close": 162.70, "high": 163.40, "low": 159.50, "volume": 3720000 },
+    { "date": "2026-05-09", "ticker": "APEX",  "open": 75.60,  "close": 74.10,  "high": 76.20,  "low": 73.50,  "volume": 3080000 },
+    { "date": "2026-05-09", "ticker": "DRIFT", "open": 76.30,  "close": 78.50,  "high": 79.20,  "low": 75.80,  "volume": 2240000 },
+    { "date": "2026-05-09", "ticker": "PULSE", "open": 207.80, "close": 204.10, "high": 208.50, "low": 203.20, "volume": 4120000 },
+    { "date": "2026-05-09", "ticker": "VEGA",  "open": 44.20,  "close": 46.90,  "high": 47.80,  "low": 43.90,  "volume": 7830000 },
+    { "date": "2026-05-09", "ticker": "CREST", "open": 170.30, "close": 169.10, "high": 171.20, "low": 168.20, "volume": 2580000 },
+
+    { "date": "2026-05-12", "ticker": "NOVA",  "open": 162.70, "close": 164.50, "high": 165.80, "low": 162.10, "volume": 3890000 },
+    { "date": "2026-05-12", "ticker": "APEX",  "open": 74.10,  "close": 72.80,  "high": 74.60,  "low": 72.20,  "volume": 3210000 },
+    { "date": "2026-05-12", "ticker": "DRIFT", "open": 78.50,  "close": 77.10,  "high": 79.40,  "low": 76.50,  "volume": 2160000 },
+    { "date": "2026-05-12", "ticker": "PULSE", "open": 204.10, "close": 202.40, "high": 205.30, "low": 201.10, "volume": 4280000 },
+    { "date": "2026-05-12", "ticker": "VEGA",  "open": 46.90,  "close": 48.30,  "high": 49.10,  "low": 46.50,  "volume": 8150000 },
+    { "date": "2026-05-12", "ticker": "CREST", "open": 169.10, "close": 168.40, "high": 170.00, "low": 167.30, "volume": 2690000 },
+
+    { "date": "2026-05-14", "ticker": "NOVA",  "open": 164.50, "close": 166.80, "high": 167.90, "low": 164.00, "volume": 4020000 },
+    { "date": "2026-05-14", "ticker": "APEX",  "open": 72.80,  "close": 71.50,  "high": 73.30,  "low": 71.00,  "volume": 3380000 },
+    { "date": "2026-05-14", "ticker": "DRIFT", "open": 77.10,  "close": 79.80,  "high": 80.60,  "low": 76.80,  "volume": 2420000 },
+    { "date": "2026-05-14", "ticker": "PULSE", "open": 202.40, "close": 200.10, "high": 203.50, "low": 199.20, "volume": 4450000 },
+    { "date": "2026-05-14", "ticker": "VEGA",  "open": 48.30,  "close": 49.90,  "high": 50.80,  "low": 48.00,  "volume": 8480000 },
+    { "date": "2026-05-14", "ticker": "CREST", "open": 168.40, "close": 167.20, "high": 169.10, "low": 166.40, "volume": 2810000 },
+
+    { "date": "2026-05-16", "ticker": "NOVA",  "open": 166.80, "close": 168.50, "high": 169.80, "low": 166.20, "volume": 4180000 },
+    { "date": "2026-05-16", "ticker": "APEX",  "open": 71.50,  "close": 70.20,  "high": 72.00,  "low": 69.70,  "volume": 3520000 },
+    { "date": "2026-05-16", "ticker": "DRIFT", "open": 79.80,  "close": 81.40,  "high": 82.30,  "low": 79.30,  "volume": 2580000 },
+    { "date": "2026-05-16", "ticker": "PULSE", "open": 200.10, "close": 198.30, "high": 201.40, "low": 197.50, "volume": 4610000 },
+    { "date": "2026-05-16", "ticker": "VEGA",  "open": 49.90,  "close": 51.60,  "high": 52.40,  "low": 49.50,  "volume": 8820000 },
+    { "date": "2026-05-16", "ticker": "CREST", "open": 167.20, "close": 166.50, "high": 168.00, "low": 165.60, "volume": 2930000 },
+
+    { "date": "2026-05-19", "ticker": "NOVA",  "open": 168.50, "close": 170.20, "high": 171.40, "low": 168.00, "volume": 4350000 },
+    { "date": "2026-05-19", "ticker": "APEX",  "open": 70.20,  "close": 69.10,  "high": 70.80,  "low": 68.50,  "volume": 3680000 },
+    { "date": "2026-05-19", "ticker": "DRIFT", "open": 81.40,  "close": 83.10,  "high": 84.00,  "low": 81.00,  "volume": 2740000 },
+    { "date": "2026-05-19", "ticker": "PULSE", "open": 198.30, "close": 196.80, "high": 199.50, "low": 195.90, "volume": 4780000 },
+    { "date": "2026-05-19", "ticker": "VEGA",  "open": 51.60,  "close": 53.20,  "high": 54.10,  "low": 51.20,  "volume": 9150000 },
+    { "date": "2026-05-19", "ticker": "CREST", "open": 166.50, "close": 165.80, "high": 167.30, "low": 164.90, "volume": 3050000 }
+  ]
+}

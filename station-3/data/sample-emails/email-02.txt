@@ -1,0 +1,13 @@
+Subject: Your engineering team's Datadog bill is probably 3x what it needs to be
+
+Hi Priya,
+
+I noticed Strata just crossed 200 engineers — congrats on the growth. That usually means your observability costs are starting to feel painful.
+
+We help engineering orgs at your stage cut monitoring spend by 40-60% without losing visibility. Did it for Webflow's team last quarter — they went from $380K/year to $165K with better coverage than before.
+
+Not trying to rip and replace Datadog. We sit alongside it and route the right data to the right tier — so you stop paying premium rates for logs nobody reads.
+
+I put together a 5-minute cost analysis based on your public job postings and tech stack. Want me to send it over?
+
+Sarah Chen

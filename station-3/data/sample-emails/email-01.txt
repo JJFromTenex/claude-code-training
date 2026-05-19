@@ -1,0 +1,14 @@
+Subject: Saw your talk at SaaStr — quick thought on your onboarding flow
+
+Hey Marcus,
+
+Caught your panel at SaaStr last week on reducing time-to-value. Your point about the 72-hour activation window really stuck with me.
+
+We've been working with a few PLG companies in your space — Lattice and Guru specifically — on cutting that window in half. The pattern we keep seeing is that teams lose new users in the gap between signup and first integration.
+
+Built something that closes that gap automatically. Takes about 15 minutes to see how it'd work with your current flow.
+
+Worth a quick look? I can do Thursday at 2pm or Friday morning.
+
+Best,
+Sarah Chen

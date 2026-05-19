@@ -1,0 +1,17 @@
+Subject: Recap from our call + the ROI model you asked about
+
+Hi Tomas,
+
+Great conversation today. A few things I want to make sure don't get lost.
+
+You mentioned your team spends roughly 12 hours per week manually reconciling data between Salesforce and your billing system. That's the exact workflow our connector automates — and based on your volume, we'd estimate you'd get that down to under 30 minutes of spot-checking.
+
+Attached is the ROI model we walked through, customized with the numbers you shared. The 6-month payback estimate is conservative — most teams in your range see it closer to 4.
+
+Two things I'd need from your side to move forward:
+1. A 30-minute technical call with whoever manages your Salesforce instance
+2. A read-only API key so we can run the integration diagnostic
+
+Can you get both of those lined up by end of next week?
+
+Sarah Chen

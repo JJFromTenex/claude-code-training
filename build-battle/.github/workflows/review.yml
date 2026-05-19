@@ -1,0 +1,55 @@
+# Build Battle — Automated PR Reviewer
+#
+# This GitHub Action triggers on every PR open/update and runs a Claude
+# sub-agent that scores the submission against the bug list and feature spec.
+#
+# HOW IT WORKS:
+# 1. PR is opened or updated
+# 2. Action checks out the PR branch
+# 3. Runs a Claude sub-agent with the scoring rubric
+# 4. Posts a score (0.00–1.00) as a PR comment with line-by-line feedback
+#
+# SCORING RUBRIC:
+# - Feature (40%): Does the time-period filter work correctly?
+# - Bugs Fixed (30%): How many of the 6 planted bugs were found and fixed?
+# - Code Quality (20%): Clean code, proper formatting, no new issues
+# - PR Description (10%): Clear explanation of changes
+#
+# NOTE: This workflow template needs the ANTHROPIC_API_KEY secret configured
+# on the repository. The workshop organizers will set this up on the actual
+# GitHub repo — attendees just push and it runs.
+
+name: Build Battle Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git diff origin/main...HEAD > /tmp/pr-diff.txt
+          echo "diff_size=$(wc -l < /tmp/pr-diff.txt)" >> $GITHUB_OUTPUT
+
+      # TODO: Replace this placeholder with the actual Claude sub-agent scorer
+      # The scorer should:
+      # 1. Read the diff
+      # 2. Check against the known bug list (6 bugs)
+      # 3. Verify the time-period filter feature works
+      # 4. Evaluate code quality
+      # 5. Read the PR description
+      # 6. Output a score between 0.00 and 1.00 with line-by-line feedback
+      - name: Score PR
+        run: |
+          echo "Build Battle Reviewer — placeholder"
+          echo "Configure ANTHROPIC_API_KEY to enable automated scoring"
+          echo "PR diff is ${{ steps.diff.outputs.diff_size }} lines"

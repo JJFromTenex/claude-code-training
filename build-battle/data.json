@@ -1,0 +1,17 @@
+{
+  "team": "Acme Sales — Q2 2026",
+  "reps": [
+    { "name": "Sarah Chen",      "revenue": 482000, "deals_closed": 18, "deals_open": 7,  "win_rate": 0.72, "join_date": "2024-03-15", "trend": "up",   "period_revenue": { "week": 38000, "month": 124000, "quarter": 482000 } },
+    { "name": "Marcus Webb",     "revenue": 467000, "deals_closed": 22, "deals_open": 5,  "win_rate": 0.68, "join_date": "2023-11-01", "trend": "up",   "period_revenue": { "week": 41000, "month": 118000, "quarter": 467000 } },
+    { "name": "Priya Sharma",    "revenue": 445000, "deals_closed": 15, "deals_open": 9,  "win_rate": 0.75, "join_date": "2024-06-20", "trend": "up",   "period_revenue": { "week": 52000, "month": 145000, "quarter": 445000 } },
+    { "name": "Jake Thompson",   "revenue": 398000, "deals_closed": 20, "deals_open": 4,  "win_rate": 0.65, "join_date": "2023-08-10", "trend": "flat", "period_revenue": { "week": 28000, "month": 95000,  "quarter": 398000 } },
+    { "name": "Amanda Torres",   "revenue": 371000, "deals_closed": 14, "deals_open": 8,  "win_rate": 0.70, "join_date": "2024-01-08", "trend": "down", "period_revenue": { "week": 15000, "month": 78000,  "quarter": 371000 } },
+    { "name": "David Okafor",    "revenue": 356000, "deals_closed": 19, "deals_open": 6,  "win_rate": 0.63, "join_date": "2023-05-22", "trend": "up",   "period_revenue": { "week": 44000, "month": 132000, "quarter": 356000 } },
+    { "name": "Rachel Kim",      "revenue": 334000, "deals_closed": 12, "deals_open": 10, "win_rate": 0.71, "join_date": "2024-09-15", "trend": "up",   "period_revenue": { "week": 36000, "month": 110000, "quarter": 334000 } },
+    { "name": "Carlos Diaz",     "revenue": 312000, "deals_closed": 16, "deals_open": 3,  "win_rate": 0.67, "join_date": "2024-02-28", "trend": "flat", "period_revenue": { "week": 22000, "month": 88000,  "quarter": 312000 } },
+    { "name": "Nina Patel",      "revenue": 298000, "deals_closed": 11, "deals_open": 7,  "win_rate": 0.73, "join_date": "2025-14-01", "trend": "down", "period_revenue": { "week": 12000, "month": 65000,  "quarter": 298000 } },
+    { "name": "Kevin O'Brien",   "revenue": 287000, "deals_closed": 17, "deals_open": 5,  "win_rate": 0.64, "join_date": "2023-12-05", "trend": "flat", "period_revenue": { "week": 19000, "month": 82000,  "quarter": 287000 } },
+    { "name": "Sophie Martin",   "revenue": 265000, "deals_closed": 13, "deals_open": 6,  "win_rate": 0.69, "join_date": "2024-07-11", "trend": "up",   "period_revenue": { "week": 33000, "month": 98000,  "quarter": 265000 } },
+    { "name": "Tom Rodriguez",   "revenue": 241000, "deals_closed": 10, "deals_open": 8,  "win_rate": 0.62, "join_date": "2025-04-01", "trend": "up",   "period_revenue": { "week": 29000, "month": 105000, "quarter": 241000 } }
+  ]
+}
