@@ -1,23 +1,9 @@
-# Build Battle — Automated PR Reviewer
+# Build Battle — Automated PR Scorer
 #
-# This GitHub Action triggers on every PR open/update and runs a Claude
-# sub-agent that scores the submission against the bug list and feature spec.
+# Triggers on every PR open/update against main. Sends the diff + PR body
+# to Claude with the grading rubric, then posts the score as a PR comment.
 #
-# HOW IT WORKS:
-# 1. PR is opened or updated
-# 2. Action checks out the PR branch
-# 3. Runs a Claude sub-agent with the scoring rubric
-# 4. Posts a score (0.00–1.00) as a PR comment with line-by-line feedback
-#
-# SCORING RUBRIC:
-# - Feature (40%): Does the time-period filter work correctly?
-# - Bugs Fixed (30%): How many of the 6 planted bugs were found and fixed?
-# - Code Quality (20%): Clean code, proper formatting, no new issues
-# - PR Description (10%): Clear explanation of changes
-#
-# NOTE: This workflow template needs the ANTHROPIC_API_KEY secret configured
-# on the repository. The workshop organizers will set this up on the actual
-# GitHub repo — attendees just push and it runs.
+# REQUIRED SECRET: ANTHROPIC_API_KEY on the repository.
 
 name: Build Battle Reviewer
 
@@ -25,8 +11,12 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
-  review:
+  score:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR
@@ -39,17 +29,120 @@ jobs:
         run: |
           git diff origin/main...HEAD > /tmp/pr-diff.txt
           echo "diff_size=$(wc -l < /tmp/pr-diff.txt)" >> $GITHUB_OUTPUT
+          # Truncate if massive (Claude context limit safety)
+          head -c 80000 /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
 
-      # TODO: Replace this placeholder with the actual Claude sub-agent scorer
-      # The scorer should:
-      # 1. Read the diff
-      # 2. Check against the known bug list (6 bugs)
-      # 3. Verify the time-period filter feature works
-      # 4. Evaluate code quality
-      # 5. Read the PR description
-      # 6. Output a score between 0.00 and 1.00 with line-by-line feedback
-      - name: Score PR
+      - name: Get PR description
+        id: pr
         run: |
-          echo "Build Battle Reviewer — placeholder"
-          echo "Configure ANTHROPIC_API_KEY to enable automated scoring"
-          echo "PR diff is ${{ steps.diff.outputs.diff_size }} lines"
+          echo '${{ github.event.pull_request.body }}' > /tmp/pr-body.txt
+
+      - name: Read grading prompt
+        id: prompt
+        run: |
+          cat .github/prompts/grade-pr.md > /tmp/system-prompt.txt
+
+      - name: Score PR with Claude
+        id: score
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          DIFF=$(cat /tmp/pr-diff-truncated.txt)
+          PR_BODY=$(cat /tmp/pr-body.txt)
+          SYSTEM=$(cat /tmp/system-prompt.txt)
+
+          # Build the user message with diff + PR description
+          USER_MSG=$(cat <<'ENDMSG'
+          Score this Build Battle PR submission.
+
+          ## PR Description
+          ENDMSG
+          )
+          USER_MSG="$USER_MSG
+          $PR_BODY
+
+          ## PR Diff
+          \`\`\`diff
+          $DIFF
+          \`\`\`
+
+          Score this submission using the rubric. Be fair but thorough."
+
+          # Escape for JSON
+          SYSTEM_ESCAPED=$(echo "$SYSTEM" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+          USER_ESCAPED=$(echo "$USER_MSG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "content-type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d "{
+              \"model\": \"claude-sonnet-4-20250514\",
+              \"max_tokens\": 2000,
+              \"system\": $SYSTEM_ESCAPED,
+              \"messages\": [{\"role\": \"user\", \"content\": $USER_ESCAPED}]
+            }")
+
+          # Extract the text content from the response
+          REVIEW=$(echo "$RESPONSE" | python3 -c "
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              if 'content' in data and len(data['content']) > 0:
+                  print(data['content'][0]['text'])
+              elif 'error' in data:
+                  print(f\"API Error: {data['error']['message']}\")
+              else:
+                  print('Unexpected response format')
+          except Exception as e:
+              print(f'Failed to parse response: {e}')
+          ")
+
+          # Save for the comment step
+          echo "$REVIEW" > /tmp/review.txt
+
+          # Extract the score for the summary
+          SCORE=$(echo "$REVIEW" | grep -oP 'Build Battle Score: \K[0-9.]+' || echo "N/A")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+
+      - name: Post review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('/tmp/review.txt', 'utf8');
+            const diffSize = '${{ steps.diff.outputs.diff_size }}';
+
+            const body = `🤖 **Build Battle — Automated Review**\n\n${review}\n\n---\n<sub>Scored by Claude · PR diff: ${diffSize} lines · [Scoring rubric](.github/prompts/grade-pr.md)</sub>`;
+
+            // Find and update existing bot comment, or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Build Battle — Automated Review')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Summary
+        run: |
+          echo "### 🏆 Build Battle Score: ${{ steps.score.outputs.score }} / 1.00" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/review.txt >> $GITHUB_STEP_SUMMARY
