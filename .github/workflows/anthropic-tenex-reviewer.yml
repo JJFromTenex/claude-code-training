@@ -1,0 +1,33 @@
+name: Anthropic Tenex PR Grader
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  grade:
+    if: ${{ !github.event.pull_request.draft || github.event.action == 'ready_for_review' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send pull request event to grader
+        env:
+          REVIEWER_WEBHOOK_SECRET: ${{ secrets.REVIEWER_WEBHOOK_SECRET }}
+          REVIEWER_WEBHOOK_URL: https://anthropic-tenex-reviewer.vercel.app/webhook/github
+        run: |
+          set -euo pipefail
+
+          test -n "$REVIEWER_WEBHOOK_SECRET"
+
+          signature="sha256=$(openssl dgst -sha256 -hmac "$REVIEWER_WEBHOOK_SECRET" -binary "$GITHUB_EVENT_PATH" | xxd -p -c 256)"
+
+          curl --fail-with-body --show-error --silent \
+            -X POST "$REVIEWER_WEBHOOK_URL" \
+            -H "content-type: application/json" \
+            -H "x-github-event: pull_request" \
+            -H "x-github-delivery: ${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            -H "x-hub-signature-256: $signature" \
+            --data-binary "@$GITHUB_EVENT_PATH"
