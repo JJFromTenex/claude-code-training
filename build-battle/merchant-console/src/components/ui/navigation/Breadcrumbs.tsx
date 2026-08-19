@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   payments: "Payments",
   disputes: "Disputes",
   payouts: "Payouts",
+  cards: "Cards",
 }
 
 export function Breadcrumbs() {
