@@ -100,3 +100,5 @@ No hooks are preinstalled. Adding one is a good use of your time if you finish e
 | **Sub-Agents** | Independent Claude instances with their own context and permissions | `bug-investigator` on NWP-102 |
 | **Hooks** | Shell commands that fire before or after Claude acts | Yours to add |
 | **MCP Connectors** | Connect Claude to external tools | Driving the browser to verify your work |
+
+<!-- attendee PR path test, opened from a fork -->
