@@ -102,3 +102,4 @@ No hooks are preinstalled. Adding one is a good use of your time if you finish e
 | **MCP Connectors** | Connect Claude to external tools | Driving the browser to verify your work |
 
 <!-- grader smoke test: pipeline check, close without merging -->
+<!-- second push: upsert check -->
