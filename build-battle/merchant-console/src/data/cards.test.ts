@@ -61,7 +61,11 @@ describe("canTransition", () => {
 
 describe("applyTransition", () => {
   it("records the new status and when it happened", () => {
-    const frozen = applyTransition(card("active"), "frozen", "2026-08-14T00:00:00.000Z")
+    const frozen = applyTransition(
+      card("active"),
+      "frozen",
+      "2026-08-14T00:00:00.000Z",
+    )
 
     expect(frozen?.status).toBe("frozen")
     expect(frozen?.statusHistory).toEqual([
@@ -72,7 +76,11 @@ describe("applyTransition", () => {
 
   it("returns null and changes nothing on an illegal transition", () => {
     const original = card("cancelled")
-    const result = applyTransition(original, "active", "2026-08-14T00:00:00.000Z")
+    const result = applyTransition(
+      original,
+      "active",
+      "2026-08-14T00:00:00.000Z",
+    )
 
     expect(result).toBeNull()
     expect(original.status).toBe("cancelled")
