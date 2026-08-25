@@ -11,6 +11,18 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/** What the card is allowed to be used for. Chosen once, at issue. */
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "shipping"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +81,32 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /**
+   * The last four digits of the generated number. The full number is returned
+   * once, in the creation response, and is never stored on this record.
+   */
+  last4: string
+  /** Opaque handle for the generated number. Not the number, not derived from it. */
+  numberRef: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  /** Integer minor units. Never a float. */
+  spent: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** The client's issue token. A replay of it returns the same card. */
+  requestId: string
+  /** Every status this card has held, oldest first. ISO 8601, always UTC. */
+  statusHistory: { status: CardStatus; at: string }[]
 }
 
 export interface PaymentFilters {

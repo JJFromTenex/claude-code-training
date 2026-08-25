@@ -1,6 +1,6 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Card, Dispute, Payment, Payout, Refund } from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +19,8 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  /** Issued virtual cards. Empty at boot: cards only exist once ops issues one. */
+  cards: Card[]
 }
 
 declare global {
@@ -28,10 +30,13 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  return { merchants, payments, refunds, disputes, payouts, cards: [] }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
+
+// A store held over from a dev-server reload predating cards has no array here.
+store.cards ??= []
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__northwindStore = store
