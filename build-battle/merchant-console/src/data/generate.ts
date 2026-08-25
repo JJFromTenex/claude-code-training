@@ -1,7 +1,9 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
@@ -148,7 +150,10 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  // Cards draw last so adding them leaves every payment, refund, dispute and
+  // payout above byte-identical to what the room had before NWP-201.
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +195,107 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+/**
+ * Cards ops has already issued by hand, so the list, the badges and the spend
+ * bar have something to show on a cold start.
+ *
+ * These carry `last4` and a reference and nothing else. There is no full number
+ * here to leak, which is the point: `src/lib/cards.ts` generates one on issue
+ * and only the creation response ever sees it.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantId: string
+    spendLimit: number
+    spent: number
+    currency: Currency
+    status: Card["status"]
+    category: MerchantCategory | null
+    daysAgo: number
+  }[] = [
+    {
+      nickname: "Google Ads — Q3",
+      merchantId: "mch_01",
+      spendLimit: 250_000,
+      spent: 214_300,
+      currency: "USD",
+      status: "active",
+      category: "advertising",
+      daysAgo: 46,
+    },
+    {
+      nickname: "Figma seats",
+      merchantId: "mch_02",
+      spendLimit: 90_000,
+      spent: 27_000,
+      currency: "USD",
+      status: "active",
+      category: "software",
+      daysAgo: 31,
+    },
+    {
+      nickname: "Contractor — Bex",
+      merchantId: "mch_04",
+      spendLimit: 400_000,
+      spent: 0,
+      currency: "GBP",
+      status: "frozen",
+      category: "contractors",
+      daysAgo: 18,
+    },
+    {
+      nickname: "Berlin travel",
+      merchantId: "mch_05",
+      spendLimit: 120_000,
+      spent: 118_450,
+      currency: "EUR",
+      status: "active",
+      category: "travel",
+      daysAgo: 12,
+    },
+    {
+      nickname: "Old AWS card",
+      merchantId: "mch_03",
+      spendLimit: 500_000,
+      spent: 331_200,
+      currency: "USD",
+      status: "cancelled",
+      category: "utilities",
+      daysAgo: 74,
+    },
+    {
+      nickname: "Warehouse supplies",
+      merchantId: "mch_10",
+      spendLimit: 75_000,
+      spent: 4_990,
+      currency: "USD",
+      status: "active",
+      category: null,
+      daysAgo: 3,
+    },
+  ]
+
+  return seeds.map((seed, index) => {
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(8, 18), between(0, 59), 0, 0)
+
+    return {
+      id: `crd_${pad(index + 1, 2)}`,
+      nickname: seed.nickname,
+      merchantId: seed.merchantId,
+      spendLimit: seed.spendLimit,
+      spent: seed.spent,
+      currency: seed.currency,
+      status: seed.status,
+      category: seed.category,
+      brand: "visa",
+      last4: String(between(1000, 9999)),
+      reference: `cref_${pad(index + 1, 8)}`,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }

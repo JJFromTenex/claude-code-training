@@ -18,7 +18,9 @@ Read the narrowest one that applies before you write code.
 - `docs/tickets/` — the tickets engineers work, written as they arrive on a sprint board
 - `docs/epics/` — where plans go before code does, and the template they follow
 - `docs/ORG-STANDARDS.md` — the org-wide engineering standards every service is measured against
-- `.claude/` — the skills (`/epic`, `/pr`, `/ship-ready`) and the `bug-investigator` subagent. Open Claude Code at this root and they are available everywhere
+- `.claude/skills/` — `/epic` (ticket → plan), `/lanes` (plan → parallel lanes), `/ship-ready` (pre-push check), `/pr` (description)
+- `.claude/agents/` — `bug-investigator` (read-only diagnosis) and the three Sonnet builders `/lanes` dispatches: `route-builder`, `ui-builder`, `test-writer`
+- Open Claude Code at this root and both are available everywhere
 - `build-battle/` — the exercise brief and the scoring rubric
 - `build-battle/merchant-console/` — Northwind Payments, the application itself
 - `.github/` — pull request template and the grading workflow
@@ -27,6 +29,7 @@ Read the narrowest one that applies before you write code.
 
 - Plan before you build. `/epic` turns a ticket into a written plan that cites real files; it is scored.
 - Read before you edit. A second implementation of an existing helper is a defect, not a shortcut.
+- Parallelise with a contract, never without one. `/lanes` freezes the shared signatures and gives every file one owner before any subagent starts; two agents editing one file is a lost write.
 - Never edit seed data to make a failing case disappear.
 - Nothing in this repository may resemble real payment data. Generated card numbers use the `4242` test BIN.
 

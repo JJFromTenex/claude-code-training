@@ -82,3 +82,48 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+/**
+ * A virtual card issued from the console.
+ *
+ * The full number is never here. It exists in the creation response and
+ * nowhere else; the record carries the last four and an issuer reference.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  category: MerchantCategory | null
+  brand: "visa"
+  /** Last four digits only. */
+  last4: string
+  /** Issuer reference for the generated number. Not the number. */
+  reference: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+/** A validated issue request. Everything here has already passed the allowlist. */
+export interface CardInput {
+  nickname: string
+  merchantId: string
+  /** Integer minor units, already converted from client input. */
+  spendLimit: number
+  currency: Currency
+  category: MerchantCategory | null
+}
