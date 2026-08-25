@@ -6,6 +6,7 @@ export const siteConfig = {
     overview: "/overview",
     payments: "/payments",
     disputes: "/disputes",
+    cards: "/cards",
     payouts: "/payouts",
   },
 }
