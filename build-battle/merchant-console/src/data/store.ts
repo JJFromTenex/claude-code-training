@@ -21,6 +21,13 @@ interface Store {
   payouts: Payout[]
   /** No seed data — every card starts empty until ops issues one. */
   cards: Card[]
+  /**
+   * Idempotency-Key -> the response already sent for it. A retried
+   * POST /api/cards with the same key gets back exactly what the first
+   * request got, including the one-time number, instead of issuing a
+   * second card.
+   */
+  cardIssuance: Map<string, { card: Card; number: string }>
 }
 
 declare global {
@@ -30,7 +37,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards: [] }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardIssuance: new Map(),
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

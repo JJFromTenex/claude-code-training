@@ -44,6 +44,15 @@ export function StatusControl({
     }
   }
 
+  const requestCancel = () => {
+    // Cancelled is terminal — nothing comes back from it — so this is the
+    // one transition that gets a confirmation step rather than firing on
+    // a single click.
+    if (window.confirm("Cancel this card? This can't be undone.")) {
+      setStatus("cancelled")
+    }
+  }
+
   if (status === "cancelled") {
     return <span className="text-sm text-gray-500">Cancelled</span>
   }
@@ -73,7 +82,7 @@ export function StatusControl({
         variant="ghost"
         className="py-1 text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-950/40"
         disabled={pending}
-        onClick={() => setStatus("cancelled")}
+        onClick={requestCancel}
       >
         Cancel
       </Button>

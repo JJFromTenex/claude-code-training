@@ -27,8 +27,6 @@ import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
-
 type Merchant = { id: string; name: string; currency: Currency }
 
 const emptyForm = {
@@ -46,11 +44,17 @@ export function IssueCardDialog({ merchants }: { merchants: Merchant[] }) {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ number: string; last4: string } | null>(null)
+  // Identifies one issue attempt so a retried request — a timeout, a
+  // double-click the disabled button didn't catch in time — lands on the
+  // same card server-side instead of minting a second one. Fresh per
+  // attempt: regenerated whenever the form resets.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const reset = () => {
     setForm(emptyForm)
     setError(null)
     setResult(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -96,16 +100,15 @@ export function IssueCardDialog({ merchants }: { merchants: Merchant[] }) {
       setError("Spend limit cannot exceed 50,000.00.")
       return
     }
-    if (!form.currency) {
-      setError("Choose a currency.")
-      return
-    }
 
     setSubmitting(true)
     try {
       const res = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
         body: JSON.stringify({
           nickname: form.nickname.trim(),
           merchantId: form.merchantId,
@@ -233,25 +236,20 @@ export function IssueCardDialog({ merchants }: { merchants: Merchant[] }) {
 
                 <label className="flex w-28 flex-col gap-1.5 text-sm">
                   <span className="font-medium text-gray-900 dark:text-gray-50">Currency</span>
-                  <Select
+                  <Input
                     value={form.currency}
-                    onValueChange={(currency) =>
-                      setForm((p) => ({ ...p, currency: currency as Currency }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((currency) => (
-                        <SelectItem key={currency} value={currency}>
-                          {currency}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    disabled
+                    readOnly
+                    placeholder="—"
+                    title="Matches the merchant's own currency"
+                  />
                 </label>
               </div>
+              {form.merchantId && (
+                <p className="-mt-2 text-xs text-gray-500">
+                  Currency is set by the merchant and can&rsquo;t be changed here.
+                </p>
+              )}
 
               {error && (
                 <p role="alert" className="text-sm text-red-600 dark:text-red-500">

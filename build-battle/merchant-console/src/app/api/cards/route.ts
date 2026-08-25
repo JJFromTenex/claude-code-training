@@ -17,11 +17,25 @@ export function GET() {
 
 /**
  * Issues a card. Nothing here is trusted from the client: merchant, limit,
- * and currency are all checked before a number is generated or a record is
- * stored. The full number is generated here and returned exactly once in
- * this response — it is never written to the store.
+ * currency, and category are all checked before a number is generated or a
+ * record is stored. The full number is generated here and returned exactly
+ * once in this response — it is never written to the store.
+ *
+ * An `Idempotency-Key` header makes a retried request (a client timeout,
+ * a double-click that got past the button's own disabled state, a proxy
+ * replay) return the original response — including the original number —
+ * rather than issuing a second card. Without a database, "already
+ * processed" just means "already in this map."
  */
 export async function POST(request: NextRequest) {
+  const idempotencyKey = request.headers.get("idempotency-key")
+  if (idempotencyKey) {
+    const already = store.cardIssuance.get(idempotencyKey)
+    if (already) {
+      return NextResponse.json(already, { status: 201 })
+    }
+  }
+
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
@@ -36,7 +50,8 @@ export async function POST(request: NextRequest) {
   if (!nickname) {
     return NextResponse.json({ error: "Nickname is required." }, { status: 400 })
   }
-  if (!merchantId || !merchantById(merchantId)) {
+  const merchant = merchantId ? merchantById(merchantId) : undefined
+  if (!merchant) {
     return NextResponse.json({ error: "A valid merchant is required." }, { status: 400 })
   }
   if (!Number.isInteger(limit) || limit <= 0) {
@@ -57,11 +72,18 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     )
   }
+  if (currency !== merchant.currency) {
+    return NextResponse.json(
+      { error: `Currency must match the merchant's own currency (${merchant.currency}).` },
+      { status: 400 },
+    )
+  }
   if (!MERCHANT_CATEGORIES.includes(category)) {
     return NextResponse.json({ error: "A valid merchant category is required." }, { status: 400 })
   }
 
   const number = generateCardNumber()
+  const createdAt = new Date().toISOString()
   const card: Card = {
     id: `card_${String(store.cards.length + 1).padStart(6, "0")}`,
     nickname,
@@ -72,10 +94,14 @@ export async function POST(request: NextRequest) {
     currency,
     status: "active",
     last4: last4FromNumber(number),
-    createdAt: new Date().toISOString(),
+    createdAt,
+    history: [{ status: "active", at: createdAt }],
   }
 
   store.cards.push(card)
 
-  return NextResponse.json({ card, number }, { status: 201 })
+  const response = { card, number }
+  if (idempotencyKey) store.cardIssuance.set(idempotencyKey, response)
+
+  return NextResponse.json(response, { status: 201 })
 }

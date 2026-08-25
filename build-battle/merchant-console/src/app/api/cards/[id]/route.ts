@@ -48,5 +48,6 @@ export async function PATCH(
   }
 
   card.status = status
+  card.history.push({ status, at: new Date().toISOString() })
   return NextResponse.json({ card })
 }

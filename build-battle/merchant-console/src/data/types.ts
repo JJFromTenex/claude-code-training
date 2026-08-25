@@ -81,6 +81,12 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export interface CardEvent {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
 export interface Card {
   id: string
   nickname: string
@@ -90,12 +96,15 @@ export interface Card {
   limit: number
   /** Integer minor units. Always 0 at issue — nothing has been spent on a brand new card. */
   spent: number
+  /** Always the issuing merchant's own currency — checked server-side at issue. */
   currency: Currency
   status: CardStatus
   /** The full number is never stored. Only its last four survive creation. */
   last4: string
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Every status change, oldest first, including the initial issue. */
+  history: CardEvent[]
 }
 
 export interface PaymentFilters {

@@ -2,6 +2,7 @@ import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import { cardById } from "@/data/queries"
+import { CardStatus } from "@/data/types"
 import { maskedNumber, MERCHANT_CATEGORY_LABELS } from "@/lib/cards"
 import { formatInZone, formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -104,8 +105,40 @@ export default async function CardDetail({
         Issued {formatDate(card.createdAt)}. Nothing has posted to this card yet — spend updates
         once transactions are wired up.
       </p>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">History</h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((event, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {eventLabel(event.status, index)}
+              </p>
+              <p className="text-sm text-gray-500">{formatInZone(event.at, merchant.timezone)}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   )
+}
+
+function eventLabel(status: CardStatus, index: number): string {
+  if (index === 0) return "Card issued"
+  switch (status) {
+    case "active":
+      return "Unfrozen"
+    case "frozen":
+      return "Frozen"
+    case "cancelled":
+      return "Cancelled"
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
