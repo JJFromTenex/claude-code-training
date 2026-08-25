@@ -9,6 +9,7 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "@/components/Drawer"
 import { CardStatus } from "@/data/types"
 import { maskCardNumber } from "@/lib/cards"
@@ -81,13 +82,52 @@ export function CardActions({
         >
           {status === "frozen" ? "Unfreeze" : "Freeze"}
         </Button>
-        <Button
-          variant="ghost"
-          className="py-1 text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-400/10"
-          onClick={() => setConfirmingCancel(true)}
-        >
-          Cancel
-        </Button>
+        <Drawer open={confirmingCancel} onOpenChange={setConfirmingCancel}>
+          <DrawerTrigger asChild>
+            <Button
+              variant="ghost"
+              className="py-1 text-red-600 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-400/10"
+            >
+              Cancel
+            </Button>
+          </DrawerTrigger>
+
+          <DrawerContent className="sm:max-w-md">
+            <DrawerHeader>
+              <DrawerTitle>Cancel {nickname}?</DrawerTitle>
+              <DrawerDescription>
+                Cancelling is permanent. {maskCardNumber(last4)} will stop
+                authorising immediately and cannot be brought back.
+              </DrawerDescription>
+            </DrawerHeader>
+
+            <DrawerBody>
+              <p className="text-sm text-gray-500">
+                If the card only needs to stop for now, freeze it instead. A
+                frozen card can be unfrozen.
+              </p>
+            </DrawerBody>
+
+            <DrawerFooter className="gap-2">
+              <Button
+                variant="secondary"
+                className="w-full sm:w-fit"
+                onClick={() => setConfirmingCancel(false)}
+              >
+                Keep the card
+              </Button>
+              <Button
+                variant="destructive"
+                className="w-full sm:w-fit"
+                isLoading={pending === "cancelled"}
+                loadingText="Cancelling"
+                onClick={() => move("cancelled")}
+              >
+                Cancel this card
+              </Button>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       </div>
 
       {error && (
@@ -96,43 +136,6 @@ export function CardActions({
         </p>
       )}
 
-      <Drawer open={confirmingCancel} onOpenChange={setConfirmingCancel}>
-        <DrawerContent className="sm:max-w-md">
-          <DrawerHeader>
-            <DrawerTitle>Cancel {nickname}?</DrawerTitle>
-            <DrawerDescription>
-              Cancelling is permanent. {maskCardNumber(last4)} will stop
-              authorising immediately and cannot be brought back.
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <DrawerBody>
-            <p className="text-sm text-gray-500">
-              If the card only needs to stop for now, freeze it instead. A
-              frozen card can be unfrozen.
-            </p>
-          </DrawerBody>
-
-          <DrawerFooter className="gap-2">
-            <Button
-              variant="secondary"
-              className="w-full sm:w-fit"
-              onClick={() => setConfirmingCancel(false)}
-            >
-              Keep the card
-            </Button>
-            <Button
-              variant="destructive"
-              className="w-full sm:w-fit"
-              isLoading={pending === "cancelled"}
-              loadingText="Cancelling"
-              onClick={() => move("cancelled")}
-            >
-              Cancel this card
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
     </div>
   )
 }

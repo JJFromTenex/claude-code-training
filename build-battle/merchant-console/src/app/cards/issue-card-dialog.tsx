@@ -78,6 +78,10 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   const errorFor = (field: string) =>
     errors.find((error) => error.field === field)?.message
 
+  /** A field stops being wrong the moment the operator starts fixing it. */
+  const clearError = (field: string) =>
+    setErrors((current) => current.filter((error) => error.field !== field))
+
   const reset = () => {
     setNickname("")
     setMerchantId("")
@@ -224,7 +228,10 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                   id="card-nickname"
                   name="nickname"
                   value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
+                  onChange={(event) => {
+                    setNickname(event.target.value)
+                    clearError("nickname")
+                  }}
                   placeholder="Google Ads, contractor retainer, ..."
                   hasError={Boolean(errorFor("nickname"))}
                   aria-describedby={
@@ -244,7 +251,14 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                 >
                   Merchant
                 </label>
-                <Select value={merchantId} onValueChange={setMerchantId}>
+                <Select
+                  value={merchantId}
+                  onValueChange={(value) => {
+                    setMerchantId(value)
+                    clearError("merchantId")
+                    clearError("currency")
+                  }}
+                >
                   <SelectTrigger id="card-merchant" className="mt-2 w-full">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
@@ -277,7 +291,10 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                   name="spendLimit"
                   inputMode="decimal"
                   value={limitInput}
-                  onChange={(event) => setLimitInput(event.target.value)}
+                  onChange={(event) => {
+                    setLimitInput(event.target.value)
+                    clearError("spendLimit")
+                  }}
                   placeholder="2500.00"
                   hasError={Boolean(errorFor("spendLimit"))}
                   aria-describedby="card-limit-help"
