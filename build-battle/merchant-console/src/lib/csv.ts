@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns and the scope (NWP-101). The card last four is
+ * excluded unless explicitly requested, because these files get sent to
+ * merchants.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,35 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** What an export contains when no columns are chosen: everything but last4. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * Parse the client's `columns` param against the allowlist. Order is
+ * preserved, duplicates are dropped. Absent means the default set; an empty
+ * or unknown selection is `null`, and the route rejects it.
+ */
+export function parseExportColumns(
+  param: string | null,
+): readonly ExportColumn[] | null {
+  if (param === null) return DEFAULT_EXPORT_COLUMNS
+
+  const requested = param
+    .split(",")
+    .map((column) => column.trim())
+    .filter(Boolean)
+  if (requested.length === 0) return null
+
+  const columns: ExportColumn[] = []
+  for (const column of requested) {
+    if (!EXPORT_COLUMNS.includes(column as ExportColumn)) return null
+    if (!columns.includes(column as ExportColumn))
+      columns.push(column as ExportColumn)
+  }
+  return columns
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +95,13 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `payments-disputed-2026-08-13.csv`. The label reflects the scope and only
+ * ever comes from allowlisted values, never raw client input.
+ */
+export function exportFilename(date = new Date(), scopeLabel?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  return scopeLabel
+    ? `payments-${scopeLabel}-${day}.csv`
+    : `payments-${day}.csv`
 }
