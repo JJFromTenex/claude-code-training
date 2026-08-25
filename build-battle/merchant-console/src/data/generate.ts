@@ -1,5 +1,8 @@
+import { generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardCategory,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,73 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_SEEDS: readonly {
+  nickname: string
+  merchantIndex: number
+  spendLimit: number
+  /** Spend as a fraction of the limit; one is past 80% on purpose. */
+  spentRatio: number
+  status: Card["status"]
+  categoryLock: CardCategory | null
+}[] = [
+  {
+    nickname: "Ad spend — Meta",
+    merchantIndex: 0,
+    spendLimit: 500_000,
+    spentRatio: 0.86,
+    status: "active",
+    categoryLock: "advertising",
+  },
+  {
+    nickname: "Figma seats",
+    merchantIndex: 1,
+    spendLimit: 120_000,
+    spentRatio: 0.35,
+    status: "active",
+    categoryLock: "software",
+  },
+  {
+    nickname: "Trade show travel",
+    merchantIndex: 3,
+    spendLimit: 250_000,
+    spentRatio: 0.12,
+    status: "frozen",
+    categoryLock: "travel",
+  },
+  {
+    nickname: "Old contractor card",
+    merchantIndex: 2,
+    spendLimit: 80_000,
+    spentRatio: 1,
+    status: "cancelled",
+    categoryLock: null,
+  },
+]
+
+function generateCards(): Card[] {
+  return CARD_SEEDS.map((seed, i) => {
+    const merchant = merchants[seed.merchantIndex]
+    const number = generateCardNumber(rand)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(5, 60))
+    return {
+      id: `card_${pad(i + 1, 4)}`,
+      merchantId: merchant.id,
+      nickname: seed.nickname,
+      last4: number.slice(-4),
+      numberRef: `cardnum_${pad(i + 1, 4)}`,
+      spendLimit: seed.spendLimit,
+      spent: Math.round(seed.spendLimit * seed.spentRatio),
+      currency: merchant.currency,
+      status: seed.status,
+      categoryLock: seed.categoryLock,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
