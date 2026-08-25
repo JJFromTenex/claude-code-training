@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { CardCategory, Currency } from "@/data/types"
-import { parseAmountToMinorUnits } from "@/lib/money"
+import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -241,7 +241,7 @@ export function IssueCardDrawer({
                     required
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Up to {(MAX_SPEND_LIMIT / 100).toLocaleString()} per card.
+                    Up to {formatMoney(MAX_SPEND_LIMIT, currency)} per card.
                   </p>
                 </div>
 
