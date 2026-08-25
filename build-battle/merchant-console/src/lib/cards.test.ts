@@ -101,6 +101,20 @@ describe("validateCreateCardInput", () => {
     expect(result).toEqual({ ok: false, error: "Currency must be USD, EUR, or GBP." })
   })
 
+  it("rejects a currency that doesn't match the merchant's own currency", () => {
+    // mch_04 (Halcyon Studio) is GBP — see src/data/merchants.ts
+    const result = validateCreateCardInput({ ...valid, merchantId: "mch_04", currency: "USD" })
+    expect(result).toEqual({
+      ok: false,
+      error: "Currency must match the merchant's currency (GBP).",
+    })
+  })
+
+  it("accepts a currency that matches the merchant's own currency", () => {
+    const result = validateCreateCardInput({ ...valid, merchantId: "mch_04", currency: "GBP" })
+    expect(result.ok).toBe(true)
+  })
+
   it("rejects an unknown category", () => {
     const result = validateCreateCardInput({ ...valid, category: "not-a-category" })
     expect(result).toEqual({ ok: false, error: "Unknown category." })

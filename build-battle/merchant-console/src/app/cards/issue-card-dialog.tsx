@@ -25,8 +25,6 @@ import { parseAmountToMinorUnits } from "@/lib/money"
 import { useRouter } from "next/navigation"
 import { useId, useState } from "react"
 
-const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
-
 const CATEGORY_LABELS: Record<CardCategory, string> = {
   retail: "Retail",
   travel: "Travel",
@@ -41,14 +39,13 @@ const EMPTY_FORM = {
   nickname: "",
   merchantId: "",
   limitInput: "",
-  currency: "USD" as Currency,
   category: "none" as CardCategory | "none",
 }
 
 export function IssueCardDialog({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: { id: string; name: string; currency: Currency }[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -62,6 +59,12 @@ export function IssueCardDialog({
   const limitId = useId()
   const currencyFieldId = useId()
   const categoryFieldId = useId()
+
+  // Currency is the merchant's own — every payment in this app already
+  // derives currency from the merchant rather than asking (src/data/generate.ts),
+  // and a card in a currency its merchant doesn't operate in would be a real bug.
+  const selectedMerchant = merchants.find((m) => m.id === form.merchantId)
+  const currency = selectedMerchant?.currency ?? null
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
@@ -78,7 +81,7 @@ export function IssueCardDialog({
     event.preventDefault()
     setError(null)
 
-    if (!form.merchantId) {
+    if (!form.merchantId || !currency) {
       setError("Select a merchant.")
       return
     }
@@ -97,7 +100,7 @@ export function IssueCardDialog({
           nickname: form.nickname,
           merchantId: form.merchantId,
           spendLimit,
-          currency: form.currency,
+          currency,
           category: form.category === "none" ? null : form.category,
         }),
       })
@@ -215,23 +218,17 @@ export function IssueCardDialog({
                 >
                   Currency
                 </label>
-                <Select
-                  value={form.currency}
-                  onValueChange={(currency) =>
-                    setForm((f) => ({ ...f, currency: currency as Currency }))
-                  }
-                >
-                  <SelectTrigger id={currencyFieldId} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((currency) => (
-                      <SelectItem key={currency} value={currency}>
-                        {currency}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id={currencyFieldId}
+                  value={currency ?? ""}
+                  placeholder="Set by the selected merchant"
+                  readOnly
+                  disabled
+                />
+                <p className="text-xs text-gray-500">
+                  Follows the merchant — a card can&apos;t be issued in a currency its merchant
+                  doesn&apos;t operate in.
+                </p>
               </div>
 
               <div className="flex flex-col gap-1.5">

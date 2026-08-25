@@ -17,7 +17,7 @@ import { IssueCardDialog } from "./issue-card-dialog"
 
 export default function CardsPage() {
   const cards = listCards()
-  const merchantOptions = merchants.map((m) => ({ id: m.id, name: m.name }))
+  const merchantOptions = merchants.map((m) => ({ id: m.id, name: m.name, currency: m.currency }))
 
   return (
     <section aria-label="Cards">

@@ -86,7 +86,8 @@ export function validateCreateCardInput(body: unknown): ValidationResult<CreateC
   if (!nickname) return { ok: false, error: "Nickname is required." }
 
   const merchantId = typeof b.merchantId === "string" ? b.merchantId : ""
-  if (!merchantId || !merchantById(merchantId)) {
+  const merchant = merchantId ? merchantById(merchantId) : undefined
+  if (!merchant) {
     return { ok: false, error: "Select a valid merchant." }
   }
 
@@ -103,6 +104,12 @@ export function validateCreateCardInput(body: unknown): ValidationResult<CreateC
 
   if (typeof b.currency !== "string" || !CURRENCIES.includes(b.currency as Currency)) {
     return { ok: false, error: "Currency must be USD, EUR, or GBP." }
+  }
+  if (b.currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `Currency must match the merchant's currency (${merchant.currency}).`,
+    }
   }
 
   let category: CardCategory | null = null
