@@ -42,7 +42,16 @@ describe("toCsv", () => {
 
   it("quotes cells containing a comma, so amounts do not split", () => {
     const large = { ...payment, amount: 123456789 }
-    expect(toCsv([large], ["amount"])).toBe(['amount', '"$1,234,567.89"'].join("\n"))
+    expect(toCsv([large], ["amount"])).toBe(
+      ["amount", '"$1,234,567.89"'].join("\n"),
+    )
+  })
+
+  it("quotes a description containing a comma", () => {
+    const commaDescription = { ...payment, description: "Order 1180, rush" }
+    expect(toCsv([commaDescription], ["description"])).toBe(
+      ["description", '"Order 1180, rush"'].join("\n"),
+    )
   })
 
   it("doubles embedded quotes rather than dropping them", () => {
@@ -116,7 +125,9 @@ describe("parseExportColumns", () => {
     expect(parseExportColumns("")).toEqual([])
   })
 
-  it("falls back to every column when no selection was sent at all", () => {
-    expect(parseExportColumns(null)).toEqual([...EXPORT_COLUMNS])
+  it("falls back to every column except last4 when no selection was sent at all", () => {
+    expect(parseExportColumns(null)).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
   })
 })

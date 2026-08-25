@@ -11,7 +11,7 @@ import {
 import { ExportDialog } from "@/components/ui/payments/ExportDialog"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
+import { filterPayments, queryPayments } from "@/data/queries"
 import { PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -43,6 +43,7 @@ export default async function PaymentsPage({
   }
 
   const { rows, total, page, pageCount } = queryPayments(filters)
+  const allCount = filterPayments({}).length
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
@@ -65,7 +66,11 @@ export default async function PaymentsPage({
             search: filters.search ?? "",
           }}
         />
-        <ExportDialog queryParams={query.toString()} />
+        <ExportDialog
+          queryParams={query.toString()}
+          filteredCount={total}
+          allCount={allCount}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">

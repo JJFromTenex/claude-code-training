@@ -14,7 +14,7 @@ import {
 } from "@/components/Drawer"
 import { EXPORT_COLUMNS, EXPORT_COLUMN_LABELS, ExportColumn } from "@/lib/csv"
 import { Download } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 const DEFAULT_COLUMNS = EXPORT_COLUMNS.filter((column) => column !== "last4")
 
@@ -23,34 +23,21 @@ type Scope = "filtered" | "all"
 /**
  * Options dialog behind the payments Export button. Column choice and scope
  * are picked here; the export route (NWP-101) validates both server-side
- * regardless of what this sends.
+ * regardless of what this sends. Row counts are computed server-side by
+ * page.tsx and passed in, rather than fetched again from the client.
  */
-export function ExportDialog({ queryParams }: { queryParams: string }) {
+export function ExportDialog({
+  queryParams,
+  filteredCount,
+  allCount,
+}: {
+  queryParams: string
+  filteredCount: number
+  allCount: number
+}) {
   const [open, setOpen] = useState(false)
   const [columns, setColumns] = useState<ExportColumn[]>(DEFAULT_COLUMNS)
   const [scope, setScope] = useState<Scope>("filtered")
-  const [counts, setCounts] = useState<{
-    filtered: number | null
-    all: number | null
-  }>({ filtered: null, all: null })
-
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    setCounts({ filtered: null, all: null })
-
-    Promise.all([
-      fetch(`/api/payments?${queryParams}`).then((res) => res.json()),
-      fetch("/api/payments").then((res) => res.json()),
-    ]).then(([filtered, all]) => {
-      if (cancelled) return
-      setCounts({ filtered: filtered.total, all: all.total })
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [open, queryParams])
 
   const toggleColumn = (column: ExportColumn) => {
     setColumns((prev) => {
@@ -66,8 +53,7 @@ export function ExportDialog({ queryParams }: { queryParams: string }) {
   exportParams.set("scope", scope)
   const exportHref = `/api/payments/export?${exportParams.toString()}`
 
-  const countLabel = (count: number | null) =>
-    count === null ? "…" : `${count.toLocaleString()} payments`
+  const countLabel = (count: number) => `${count.toLocaleString()} payments`
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -123,7 +109,7 @@ export function ExportDialog({ queryParams }: { queryParams: string }) {
                   checked={scope === "filtered"}
                   onChange={() => setScope("filtered")}
                 />
-                Current filter ({countLabel(counts.filtered)})
+                Current filter ({countLabel(filteredCount)})
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
@@ -133,7 +119,7 @@ export function ExportDialog({ queryParams }: { queryParams: string }) {
                   checked={scope === "all"}
                   onChange={() => setScope("all")}
                 />
-                All payments ({countLabel(counts.all)})
+                All payments ({countLabel(allCount)})
               </label>
             </div>
           </fieldset>

@@ -5,9 +5,8 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses which columns and what scope go into the file (NWP-101).
+ * Card last-four is excluded unless explicitly requested.
  */
 
 export const EXPORT_COLUMNS = [
@@ -44,12 +43,15 @@ export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
  * columns are dropped rather than rejected outright; an empty result after
  * filtering is the caller's problem to reject.
  *
- * No `columns` param at all (`null`) means an older link with no opinion on
- * columns, so it gets every column. An explicitly empty selection (`""`)
- * means the caller deselected everything, so it gets none.
+ * No `columns` param at all (`null`) means a caller with no opinion on
+ * columns — an older link, a script, anything other than the dialog — so it
+ * gets the same safe default the dialog itself opens with: every column
+ * except `last4`. An explicitly empty selection (`""`) means the caller
+ * deselected everything, so it gets none.
  */
 export function parseExportColumns(param: string | null): ExportColumn[] {
-  if (param === null) return [...EXPORT_COLUMNS]
+  if (param === null)
+    return EXPORT_COLUMNS.filter((column) => column !== "last4")
   if (param === "") return []
   const requested = param.split(",").map((c) => c.trim())
   return requested.filter((c): c is ExportColumn =>
