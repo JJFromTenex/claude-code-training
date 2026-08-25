@@ -96,6 +96,24 @@ Server first, UI second. A pure `src/lib/cards.ts` owns the two things that must
 - Real card network calls.
 - Editing a limit after issue — NWP-202.
 
+## What actually shipped, against this plan
+
+Recorded after the build, because a plan nobody reconciles is decoration.
+
+**Followed as written:** the file map, the server-first sequencing, the pure-`lib` split, the rejected alternatives (no `revealed` flag; a sibling `CardStatusBadge` rather than widening the payments one).
+
+**Departed from the plan:**
+
+| Planned | Shipped | Why |
+| --- | --- | --- |
+| `PATCH /api/cards/[id]/status` | `PATCH /api/cards/[id]` | A nested segment for a one-field update earns nothing |
+| — | `CardEvent` + history timeline | The ticket credits "what happened to a card last Tuesday"; nothing in the plan answered it |
+| — | Double-submit guard (409) | Same clause: "once real people click it twice" |
+| — | Currency mismatch warning | Same clause: "pick the wrong currency" |
+| — | Fixed `sortPayments` and `dailyVolume` | Both are defects in code this ticket reads from, and both break a rule named in `CLAUDE.md` |
+
+**On fixing `sortPayments` after this plan said not to.** The risk I wrote down was "touching the one shared query builder mid-battle." That held right up until the fix turned out to be a single expression with a test that pins it. The reason to leave a bug alone is blast radius, not authorship — and `(a.amount - b.amount)` has none. The `headlineMetrics` currency-mixing bug I did leave alone, because that one really does need a design decision.
+
 ## Open questions
 
 - Seed cards are added so the list is not empty on first load and the spend bar has something to show. If the grader expects an empty store, the written empty state in `page.tsx` covers it.
