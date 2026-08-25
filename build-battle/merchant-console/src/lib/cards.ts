@@ -68,6 +68,8 @@ export interface CreateCardInput {
   spendLimit: number
   currency: Currency
   category: CardCategory | null
+  /** Client-generated, one per issue attempt. Guards against issuing twice. */
+  requestId: string
 }
 
 type ValidationResult<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -120,6 +122,10 @@ export function validateCreateCardInput(body: unknown): ValidationResult<CreateC
     category = b.category as CardCategory
   }
 
+  if (typeof b.requestId !== "string" || !b.requestId.trim()) {
+    return { ok: false, error: "Request id is required." }
+  }
+
   return {
     ok: true,
     data: {
@@ -128,6 +134,7 @@ export function validateCreateCardInput(body: unknown): ValidationResult<CreateC
       spendLimit: b.spendLimit,
       currency: b.currency as Currency,
       category,
+      requestId: b.requestId,
     },
   }
 }
