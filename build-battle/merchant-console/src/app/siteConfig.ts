@@ -5,6 +5,7 @@ export const siteConfig = {
   baseLinks: {
     overview: "/overview",
     payments: "/payments",
+    cards: "/cards",
     disputes: "/disputes",
     payouts: "/payouts",
   },

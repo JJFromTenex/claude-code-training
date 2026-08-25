@@ -1,7 +1,11 @@
-import { merchants } from "./merchants"
+import { generateCardNumber, lastFour } from "@/lib/cards"
+import { merchantById, merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
@@ -148,7 +152,84 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * Seed cards so the list is not empty on first load and the spend bar has
+ * something to show. Numbers go through the same 4242 generator the route
+ * uses, and only the last four survive here — the full number is discarded
+ * immediately, exactly as it is on a real issue.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantId: string
+    spendLimit: number
+    spend: number
+    status: CardStatus
+    category: MerchantCategory | null
+    daysAgo: number
+  }[] = [
+    {
+      nickname: "Google Ads — Q3",
+      merchantId: "mch_01",
+      spendLimit: 500_000,
+      spend: 431_200,
+      status: "active",
+      category: "advertising",
+      daysAgo: 34,
+    },
+    {
+      nickname: "Figma team seats",
+      merchantId: "mch_02",
+      spendLimit: 90_000,
+      spend: 14_400,
+      status: "active",
+      category: "software",
+      daysAgo: 21,
+    },
+    {
+      nickname: "Contractor — S. Okafor",
+      merchantId: "mch_04",
+      spendLimit: 250_000,
+      spend: 0,
+      status: "frozen",
+      category: "contractors",
+      daysAgo: 12,
+    },
+    {
+      nickname: "Old travel card",
+      merchantId: "mch_03",
+      spendLimit: 120_000,
+      spend: 96_500,
+      status: "cancelled",
+      category: "travel",
+      daysAgo: 61,
+    },
+  ]
+
+  return seeds.map((seed, index) => {
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    const pan = generateCardNumber(rand)
+    const merchant = merchantById(seed.merchantId)
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      nickname: seed.nickname,
+      merchantId: seed.merchantId,
+      spendLimit: seed.spendLimit,
+      spend: seed.spend,
+      currency: (merchant?.currency ?? "USD") as Currency,
+      status: seed.status,
+      last4: lastFour(pan),
+      reference: `cref_${pad(index + 1, 4)}`,
+      category: seed.category,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

@@ -71,6 +71,41 @@ export interface Payout {
   paymentIds: string[]
 }
 
+/** `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/** Categories a card can be locked to. Allowlisted on the server. */
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "office"
+
+export interface Card {
+  id: string
+  /** What ops calls it. Shown everywhere the card is listed. */
+  nickname: string
+  merchantId: string
+  /**
+   * Integer minor units. Never a float.
+   * The full number is never stored — only these last four and `reference`.
+   */
+  spendLimit: number
+  /** Integer minor units, same currency as the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** Last four of the generated number. The full PAN is never persisted. */
+  last4: string
+  /** Opaque handle for the generated number. Not the number itself. */
+  reference: string
+  /** Optional category lock, chosen at issue time. */
+  category: MerchantCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
