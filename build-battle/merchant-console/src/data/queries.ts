@@ -35,6 +35,22 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   }
 }
 
+export const EXPORT_SCOPES = ["filtered", "all"] as const
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
+
+/** Client-supplied scope, checked against an allowlist like every other filter input. */
+export function parseScope(raw: string | null): ExportScope {
+  return EXPORT_SCOPES.includes(raw as ExportScope) ? (raw as ExportScope) : "filtered"
+}
+
+/** "all" ignores every filter; "filtered" runs the normal, filtered path. */
+export function scopedFilters(
+  filters: PaymentFilters,
+  scope: ExportScope,
+): PaymentFilters {
+  return scope === "all" ? {} : filters
+}
+
 /**
  * The one payment query builder. Every list, export, and metric goes through
  * it. A second implementation is a defect, not a shortcut.

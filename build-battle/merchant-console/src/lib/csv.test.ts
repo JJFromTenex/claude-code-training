@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { EXPORT_COLUMNS, exportFilename, parseColumns, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -73,6 +73,22 @@ describe("toCsv", () => {
 
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
+  })
+})
+
+describe("parseColumns", () => {
+  it("keeps a requested subset in the order given, dropping anything unknown", () => {
+    expect(parseColumns("amount,bogus,id")).toEqual(["amount", "id"])
+  })
+
+  it("excludes card last-four when no columns param is given at all", () => {
+    const columns = parseColumns(null)
+    expect(columns).not.toContain("last4")
+    expect(columns).toEqual(EXPORT_COLUMNS.filter((column) => column !== "last4"))
+  })
+
+  it("treats an explicit empty string as a deliberate empty selection", () => {
+    expect(parseColumns("")).toEqual([])
   })
 })
 

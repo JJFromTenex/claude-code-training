@@ -1,7 +1,9 @@
-import { parseFilters, queryPayments } from "@/data/queries"
+import { parseFilters, parseScope, queryPayments, scopedFilters } from "@/data/queries"
 import { NextRequest, NextResponse } from "next/server"
 
 export function GET(request: NextRequest) {
-  const filters = parseFilters(request.nextUrl.searchParams)
-  return NextResponse.json(queryPayments(filters))
+  const params = request.nextUrl.searchParams
+  const filters = parseFilters(params)
+  const scope = parseScope(params.get("scope"))
+  return NextResponse.json(queryPayments(scopedFilters(filters, scope)))
 }

@@ -25,6 +25,32 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/** Card last-four off by default — ops opts in by naming it explicitly. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+/**
+ * Column names arrive from the client as a comma-separated list. Anything not
+ * in EXPORT_COLUMNS is dropped rather than reaching toCsv or a query — never
+ * trust a column name enough to interpolate it anywhere.
+ *
+ * No `columns` param at all keeps the safe default (last-four excluded). An
+ * explicit empty string is a deliberate empty selection, not "give me
+ * everything" — it returns no columns.
+ */
+export function parseColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const seen = new Set<ExportColumn>()
+  for (const name of raw.split(",").map((c) => c.trim())) {
+    if ((EXPORT_COLUMNS as readonly string[]).includes(name)) {
+      seen.add(name as ExportColumn)
+    }
+  }
+  return [...seen]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +92,8 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/** `label` is the scope segment — a status like "disputed", or "all". Omit for the plain filename. */
+export function exportFilename(date = new Date(), label?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  return label ? `payments-${label}-${day}.csv` : `payments-${day}.csv`
 }
