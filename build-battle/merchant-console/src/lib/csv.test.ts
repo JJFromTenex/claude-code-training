@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,42 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+})
+
+/**
+ * Column selection is the NWP-101 half: ops picks what ships, and the picks
+ * arrive from the client, so what survives the allowlist is the contract
+ * worth pinning.
+ */
+describe("parseExportColumns", () => {
+  it("writes a chosen subset in the order it was requested", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+    expect(toCsv([payment], parseExportColumns("amount,id"))).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+    // A name that is not on the allowlist is dropped, not echoed into a file.
+    expect(parseExportColumns("id,merchant_secret,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("leaves the card last four out of the default column set", () => {
+    expect(EXPORT_COLUMNS).toContain("last4")
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+
+    // No parameter means no preference expressed, so the defaults apply.
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+
+    const header = toCsv([payment], parseExportColumns(null)).split("\n")[0]
+    expect(header).not.toContain("last4")
+    expect(header).toContain("card_brand")
+  })
+
+  it("returns nothing for an empty or wholly unrecognised selection", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns(" , ")).toEqual([])
+    expect(parseExportColumns("nope")).toEqual([])
   })
 })
