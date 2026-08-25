@@ -13,6 +13,18 @@ npm run dev
 
 No database, no seed step, no Docker.
 
+## Commands
+
+```bash
+npm test                            # vitest run — the whole suite, well under a second
+npx vitest run src/lib/csv.test.ts  # a single file, by path
+npm test -- csv                     # a single file, by name filter
+npm run test:watch                  # watch mode
+npm run lint                        # next lint
+```
+
+`vitest.config.ts` collects only `src/**/*.test.ts`, in a `node` environment with no DOM. A `.tsx` test file is silently not run at all — write the logic worth testing as a pure function in `src/lib/` or `src/data/`, not inside a component.
+
 ## Data lives in memory
 
 Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.
@@ -38,8 +50,10 @@ These four explain most of the code, and breaking them is how bugs get in here.
 
 1. **Money is integer minor units.** `$250.00` is `25000`. No floats, no strings with currency symbols. Format once, at the edge, next to its currency code.
 2. **Storage and bucketing are UTC.** Display converts to the merchant's timezone. Nothing else does.
-3. **One query builder.** Payment filtering goes through the builder behind `GET /api/payments`. A second implementation is a bug, not a shortcut.
-4. **Validate on the server.** Anything from the client — column names, currencies, limits, statuses — is checked against an allowlist before it reaches a query, a filename, or the store.
+3. **One query builder.** Payment filtering goes through the builder behind `GET /api/payments` — `parseFilters`, `filterPayments`, `sortPayments`, `paginate`, and `queryPayments` in `src/data/queries.ts`. A second implementation is a bug, not a shortcut.
+4. **Validate on the server.** Anything from the client — column names, currencies, limits, statuses — is checked against an allowlist before it reaches a query, a filename, or the store. `parseFilters` is the chokepoint: a module-level allowlist array, a membership check, and a fallback to a safe default — never a throw. Follow that shape for any new client input.
+
+`src/app/payments/filter-bar.tsx` is the only `"use client"` component in the app, and its shape — server page passes props down, the client component calls `useRouter` and rebuilds the URL, no `useSearchParams`/`usePathname` — is the house pattern for adding interactivity elsewhere.
 
 ## Card rules
 
