@@ -94,7 +94,11 @@ export default function CardsPage() {
                   <CardStatusBadge status={card.status} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <CardActions cardId={card.id} status={card.status} />
+                  <CardActions
+                    cardId={card.id}
+                    nickname={card.nickname}
+                    status={card.status}
+                  />
                 </TableCell>
               </TableRow>
             ))}
