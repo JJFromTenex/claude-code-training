@@ -30,6 +30,15 @@ export const CARD_CATEGORIES = [
   "utilities",
 ] as const
 
+/** Display names for the category lock. One copy, used by form and detail. */
+export const CATEGORY_LABELS: Record<CardCategory, string> = {
+  advertising: "Advertising",
+  software: "Software",
+  travel: "Travel",
+  contractors: "Contractors",
+  utilities: "Utilities",
+}
+
 export const CARD_CURRENCIES = ["USD", "EUR", "GBP"] as const
 
 const NICKNAME_MAX = 60
@@ -156,7 +165,8 @@ export function validateIssueCard(body: unknown): Validated<IssueCardInput> {
   if (typeof merchantId !== "string" || merchantId === "") {
     return { ok: false, error: "Choose a merchant." }
   }
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return { ok: false, error: "That merchant does not exist." }
   }
 
@@ -187,6 +197,15 @@ export function validateIssueCard(body: unknown): Validated<IssueCardInput> {
     !(CARD_CURRENCIES as readonly string[]).includes(currency)
   ) {
     return { ok: false, error: "Currency must be USD, EUR, or GBP." }
+  }
+  // A card is single-merchant, so it settles in that merchant's currency.
+  // Two of the cards this ticket exists to prevent went out with the wrong
+  // values off a Slack thread; a mismatch here is a mistake, not a choice.
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `${merchant.name} settles in ${merchant.currency}. Issue this card in ${merchant.currency}.`,
+    }
   }
 
   const rawCategory = input.categoryLock

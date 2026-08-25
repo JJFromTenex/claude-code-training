@@ -170,9 +170,24 @@ describe("validateIssueCard", () => {
   it("rejects a currency outside the supported three", () => {
     expect(validateIssueCard({ ...valid, currency: "JPY" }).ok).toBe(false)
     expect(validateIssueCard({ ...valid, currency: "" }).ok).toBe(false)
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(validateIssueCard({ ...valid, currency }).ok).toBe(true)
-    }
+  })
+
+  it("accepts each supported currency for a merchant that settles in it", () => {
+    // mch_01 settles USD, mch_04 GBP, mch_05 EUR.
+    expect(validateIssueCard({ ...valid, merchantId: "mch_01", currency: "USD" }).ok).toBe(true)
+    expect(validateIssueCard({ ...valid, merchantId: "mch_04", currency: "GBP" }).ok).toBe(true)
+    expect(validateIssueCard({ ...valid, merchantId: "mch_05", currency: "EUR" }).ok).toBe(true)
+  })
+
+  it("rejects a currency the merchant does not settle in", () => {
+    // The two cards this ticket exists to prevent went out with wrong values.
+    const wrong = validateIssueCard({
+      ...valid,
+      merchantId: "mch_04",
+      currency: "USD",
+    })
+    expect(wrong.ok).toBe(false)
+    expect(wrong.ok === false && wrong.error).toContain("GBP")
   })
 
   it("accepts a known category lock and rejects an invented one", () => {

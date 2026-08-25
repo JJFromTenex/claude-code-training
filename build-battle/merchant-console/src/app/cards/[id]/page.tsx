@@ -1,9 +1,14 @@
 import { Divider } from "@/components/Divider"
+import { Field } from "@/components/Field"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
 import { CardEventType } from "@/data/types"
-import { SPEND_WARNING_RATIO, maskCardNumber } from "@/lib/cards"
+import {
+  CATEGORY_LABELS,
+  SPEND_WARNING_RATIO,
+  maskCardNumber,
+} from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -16,14 +21,6 @@ const EVENT_LABELS: Record<CardEventType, string> = {
   frozen: "Frozen",
   unfrozen: "Unfrozen",
   cancelled: "Cancelled",
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
 }
 
 /**
@@ -184,23 +181,6 @@ export default async function CardDetail({
           </li>
         ))}
       </ol>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-        {children}
-      </dd>
     </div>
   )
 }

@@ -20,10 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
+import { Field } from "@/components/Field"
 import { Card, CardCategory, Currency } from "@/data/types"
 import {
   CARD_CATEGORIES,
   CARD_CURRENCIES,
+  CATEGORY_LABELS,
   formatCardNumber,
   maskCardNumber,
 } from "@/lib/cards"
@@ -31,14 +33,6 @@ import { formatMoney } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-
-const CATEGORY_LABELS: Record<CardCategory, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
-}
 
 interface MerchantOption {
   id: string
@@ -71,8 +65,8 @@ export function IssueCardDialog({
   const [issued, setIssued] = useState<Issued | null>(null)
 
   const merchant = merchants.find((m) => m.id === merchantId)
-  // Ops picks a merchant far more often than a currency, and a card in the
-  // wrong one is a support ticket. Follow the merchant, stay overridable.
+  // A card settles in its merchant's currency. The server rejects a mismatch;
+  // this blocks it here too so ops sees why before waiting on a round trip.
   const currencyMismatch = merchant ? merchant.currency !== currency : false
 
   const reset = () => {
@@ -246,9 +240,12 @@ export function IssueCardDialog({
               </div>
 
               {currencyMismatch && merchant && (
-                <p className="-mt-2 text-sm text-amber-600 dark:text-amber-500">
-                  {merchant.name} settles in {merchant.currency}. Issuing in{" "}
-                  {currency} is allowed, but check it is what you meant.
+                <p
+                  role="alert"
+                  className="-mt-2 text-sm text-red-600 dark:text-red-400"
+                >
+                  {merchant.name} settles in {merchant.currency}. Issue this
+                  card in {merchant.currency}.
                 </p>
               )}
 
@@ -303,6 +300,7 @@ export function IssueCardDialog({
                 type="submit"
                 isLoading={submitting}
                 loadingText="Issuing..."
+                disabled={currencyMismatch}
               >
                 Issue card
               </Button>
@@ -368,22 +366,5 @@ function IssuedCardReveal({
         <Button onClick={onDone}>Done</Button>
       </DrawerFooter>
     </>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-        {children}
-      </dd>
-    </div>
   )
 }
