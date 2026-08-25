@@ -71,6 +71,35 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "software"
+  | "advertising"
+  | "travel"
+  | "office_supplies"
+  | "other"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Sum of spend recorded against this card. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  category: MerchantCategory
+  last4: string
+  /** Opaque reference to the generated number. Never the full number. */
+  numberRef: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** Audit trail of every status change, oldest first. */
+  history: { status: CardStatus; at: string }[]
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
