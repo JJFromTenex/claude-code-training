@@ -1,5 +1,13 @@
+import {
+  CARD_CATEGORIES,
+  generateCardNumber,
+  lastFour,
+  MAX_SPEND_LIMIT,
+  spendForCard,
+} from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +156,91 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards(payments)
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * A handful of already-issued cards, so the list and the detail page have
+ * something to show before anyone issues one.
+ *
+ * Each is minted ending in the last four of a real captured payment, which is
+ * what makes its derived spend a true figure rather than a decorative one.
+ * Utilisation is chosen per card so the progress bar has a low case, a case
+ * over the 80% amber threshold, and a card that has never been spent on.
+ */
+function generateCards(payments: Payment[]): Card[] {
+  const cards: Card[] = []
+  const plan: { merchantId: string; nickname: string; utilisation: number }[] = [
+    { merchantId: "mch_01", nickname: "Ad spend — Q3", utilisation: 0.92 },
+    { merchantId: "mch_04", nickname: "Design tooling", utilisation: 0.34 },
+    { merchantId: "mch_02", nickname: "Contractor onboarding", utilisation: 0 },
+  ]
+
+  for (const [index, entry] of plan.entries()) {
+    const merchant = merchants.find((m) => m.id === entry.merchantId)
+    if (merchant === undefined) continue
+
+    const linkable = payments.filter(
+      (payment) =>
+        payment.merchantId === merchant.id &&
+        payment.status === "captured" &&
+        payment.last4 !== null,
+    )
+    if (!(0 in linkable)) continue
+
+    // A card with no spend is minted on a last four that matches nothing.
+    const last4 =
+      entry.utilisation === 0
+        ? "0000"
+        : lastFour(String(pick(linkable).last4))
+
+    const cardNumber = generateCardNumber(rand, last4)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(20, 90))
+
+    const spent = spendForCard(payments, {
+      merchantId: merchant.id,
+      currency: merchant.currency,
+      last4: lastFour(cardNumber),
+    })
+
+    const spendLimit =
+      entry.utilisation === 0
+        ? between(500, 5_000) * 100
+        : Math.min(
+            MAX_SPEND_LIMIT,
+            Math.max(spent + 1, Math.round(spent / entry.utilisation)),
+          )
+
+    cards.push({
+      id: `card_${pad(index + 1, 4)}`,
+      nickname: entry.nickname,
+      merchantId: merchant.id,
+      last4: lastFour(cardNumber),
+      spendLimit,
+      currency: merchant.currency,
+      status: index === 1 ? "frozen" : "active",
+      categoryLock: index === 2 ? null : pick(CARD_CATEGORIES),
+      createdAt: createdAt.toISOString(),
+      history:
+        index === 1
+          ? [
+              { from: null, to: "active", at: createdAt.toISOString() },
+              {
+                from: "active",
+                to: "frozen",
+                at: new Date(
+                  createdAt.getTime() + between(2, 10) * 86_400_000,
+                ).toISOString(),
+              },
+            ]
+          : [{ from: null, to: "active", at: createdAt.toISOString() }],
+      requestId: null,
+    })
+  }
+
+  return cards
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

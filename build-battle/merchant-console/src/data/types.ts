@@ -11,6 +11,15 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +78,40 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+/** One entry in a card's status history. Written on issue and on every transition. */
+export interface CardStatusEvent {
+  /** Null on the issue event, which has no prior status. */
+  from: CardStatus | null
+  to: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /**
+   * The last four digits, and the only part of the number that is kept.
+   * The full number exists in the creation response and nowhere else.
+   */
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  status: CardStatus
+  categoryLock: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** Oldest first. */
+  history: CardStatusEvent[]
+  /**
+   * The caller's idempotency key, when one was supplied. A repeat of the same
+   * key returns the original card rather than minting a second one.
+   */
+  requestId: string | null
 }
 
 export interface PaymentFilters {
