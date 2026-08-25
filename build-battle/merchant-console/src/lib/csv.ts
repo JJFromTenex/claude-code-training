@@ -5,9 +5,10 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns per export (NWP-101). The card last four is not in
+ * the default set, so a file going to a merchant is safe unless someone asks
+ * for it. Which columns a request may name is enforced server-side, in
+ * `parseExportOptions`.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,13 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What an export contains when the client names no columns. Everything except
+ * the card last four, which is opt-in: most files leave Northwind.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +74,13 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `payments-disputed-2026-08-13.csv`. The segment names the scope so two
+ * exports pulled the same day do not look alike in a downloads folder. It is
+ * built from validated values only — never from a raw query parameter, which
+ * would put client input in a filename.
+ */
+export function exportFilename(date = new Date(), segment?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  return segment ? `payments-${segment}-${day}.csv` : `payments-${day}.csv`
 }

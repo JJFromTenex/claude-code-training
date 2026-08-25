@@ -1,3 +1,4 @@
+import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS, ExportColumn } from "@/lib/csv"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Payment, PaymentFilters, PaymentStatus } from "./types"
@@ -33,6 +34,42 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
     sort: sort === "amount" ? "amount" : "createdAt",
     direction: direction === "asc" ? "asc" : "desc",
   }
+}
+
+export type ExportScope = "filter" | "all"
+
+export interface ExportOptions {
+  columns: ExportColumn[]
+  scope: ExportScope
+}
+
+/**
+ * The allowlist for the export's own parameters, alongside `parseFilters` so
+ * there is one place client input is checked. A column name reaches a header
+ * row and a scope reaches a filename, so neither may be echoed unvalidated.
+ *
+ * Order comes from the client — ops arranges a file for their spreadsheet —
+ * but every value is a literal from `EXPORT_COLUMNS`. Naming no columns is
+ * not the same as naming only invalid ones: the first gets the default set,
+ * the second returns empty for the caller to reject.
+ */
+export function parseExportOptions(params: URLSearchParams): ExportOptions {
+  const requested = params.get("columns")
+  const scope = params.get("scope") === "all" ? "all" : "filter"
+
+  if (requested === null) {
+    return { columns: [...DEFAULT_EXPORT_COLUMNS], scope }
+  }
+
+  const columns: ExportColumn[] = []
+  for (const name of requested.split(",")) {
+    const column = name.trim()
+    if (!EXPORT_COLUMNS.includes(column as ExportColumn)) continue
+    if (columns.includes(column as ExportColumn)) continue
+    columns.push(column as ExportColumn)
+  }
+
+  return { columns, scope }
 }
 
 /**

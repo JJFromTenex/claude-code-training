@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -37,7 +42,9 @@ describe("toCsv", () => {
 
   it("quotes cells containing a comma, so amounts do not split", () => {
     const large = { ...payment, amount: 123456789 }
-    expect(toCsv([large], ["amount"])).toBe(['amount', '"$1,234,567.89"'].join("\n"))
+    expect(toCsv([large], ["amount"])).toBe(
+      ["amount", '"$1,234,567.89"'].join("\n"),
+    )
   })
 
   it("doubles embedded quotes rather than dropping them", () => {
@@ -49,7 +56,10 @@ describe("toCsv", () => {
 
   it("keeps a newline inside a description in one quoted cell", () => {
     const multiline = { ...payment, description: "Order 1180\nsecond line" }
-    const body = toCsv([multiline], ["description"]).split("\n").slice(1).join("\n")
+    const body = toCsv([multiline], ["description"])
+      .split("\n")
+      .slice(1)
+      .join("\n")
     expect(body).toBe('"Order 1180\nsecond line"')
   })
 
@@ -74,12 +84,53 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("follows the order asked for, not the order in EXPORT_COLUMNS", () => {
+    expect(toCsv([payment], ["amount", "id"])).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("writes nothing usable for an empty selection, which is why the route rejects one", () => {
+    // Not a file with no columns — a file with a blank header and a blank
+    // row. `parseExportOptions` returns empty and the export route answers
+    // 400 rather than letting this reach anyone's downloads folder.
+    expect(toCsv([payment], [])).toBe("\n")
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("leaves out the card last four, so a merchant file is safe unticked", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+  })
+
+  it("keeps every other column, in the order EXPORT_COLUMNS declares", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
+
+  it("is what an export contains when no columns are named", () => {
+    const header = toCsv([payment], DEFAULT_EXPORT_COLUMNS).split("\n")[0]
+    expect(header).toBe(
+      "id,created_at,merchant,description,status,method,card_brand,amount,currency",
+    )
+  })
 })
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
+    )
+  })
+
+  it("names the scope, so a filtered pull is not mistaken for the whole book", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T09:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
     )
   })
 })
