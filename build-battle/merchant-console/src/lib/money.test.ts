@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatMoney,
   formatMoneyCompact,
+  formatMoneyPlain,
   parseAmountToMinorUnits,
   sumMinorUnits,
 } from "./money"
@@ -30,6 +31,30 @@ describe("formatMoney", () => {
   it("uses the right symbol per currency", () => {
     expect(formatMoney(1000, "EUR")).toBe("€10.00")
     expect(formatMoney(1000, "GBP")).toBe("£10.00")
+  })
+})
+
+describe("formatMoneyPlain", () => {
+  it("renders minor units with no symbol", () => {
+    expect(formatMoneyPlain(25000)).toBe("250.00")
+    expect(formatMoneyPlain(1)).toBe("0.01")
+    expect(formatMoneyPlain(0)).toBe("0.00")
+  })
+
+  it("does not group thousands, so the cell never needs quoting", () => {
+    expect(formatMoneyPlain(123456789)).toBe("1234567.89")
+    expect(formatMoneyPlain(123456789)).not.toContain(",")
+  })
+
+  it("keeps the sign on refunds", () => {
+    expect(formatMoneyPlain(-4200)).toBe("-42.00")
+    expect(formatMoneyPlain(-1)).toBe("-0.01")
+  })
+
+  it("agrees with formatMoney on everything but the symbol and grouping", () => {
+    // If these two ever disagree about the digits, one of them is wrong.
+    expect(formatMoney(98765, "USD")).toBe("$987.65")
+    expect(formatMoneyPlain(98765)).toBe("987.65")
   })
 })
 

@@ -10,12 +10,12 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
+import { countPayments, queryPayments } from "@/data/queries"
 import { PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
 import Link from "next/link"
+import { ExportDialog } from "./export-dialog"
 import { PaymentsFilterBar } from "./filter-bar"
 
 const STATUSES: (PaymentStatus | "all")[] = [
@@ -43,6 +43,8 @@ export default async function PaymentsPage({
   }
 
   const { rows, total, page, pageCount } = queryPayments(filters)
+  // Every payment, so the dialog can show both counts before ops downloads.
+  const totalCount = countPayments({})
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
@@ -55,7 +57,16 @@ export default async function PaymentsPage({
 
   return (
     <section aria-label="Payments">
-      <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:p-6">
+      <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+        <h1 className="text-lg font-semibold text-gray-900 sm:text-xl dark:text-gray-50">
+          Payments
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Search, filter, and export the payment ledger.
+        </p>
+      </div>
+
+      <div className="flex flex-col justify-between gap-2 px-4 py-4 sm:flex-row sm:items-center sm:px-6 sm:py-4">
         <PaymentsFilterBar
           statuses={STATUSES}
           merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
@@ -65,15 +76,11 @@ export default async function PaymentsPage({
             search: filters.search ?? "",
           }}
         />
-        <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
-          <a href={`/api/payments/export?${query.toString()}`}>
-            <Download
-              className="-ml-0.5 size-4 shrink-0 text-gray-400 dark:text-gray-600"
-              aria-hidden="true"
-            />
-            Export
-          </a>
-        </Button>
+        <ExportDialog
+          query={query.toString()}
+          filteredCount={total}
+          totalCount={totalCount}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
@@ -142,8 +149,17 @@ export default async function PaymentsPage({
           {total.toLocaleString()} payments · page {page} of {pageCount}
         </p>
         <div className="flex gap-2">
-          <Button variant="secondary" className="py-1.5" disabled={page <= 1} asChild={page > 1}>
-            {page > 1 ? <Link href={pageHref(page - 1)}>Previous</Link> : <span>Previous</span>}
+          <Button
+            variant="secondary"
+            className="py-1.5"
+            disabled={page <= 1}
+            asChild={page > 1}
+          >
+            {page > 1 ? (
+              <Link href={pageHref(page - 1)}>Previous</Link>
+            ) : (
+              <span>Previous</span>
+            )}
           </Button>
           <Button
             variant="secondary"
@@ -151,7 +167,11 @@ export default async function PaymentsPage({
             disabled={page >= pageCount}
             asChild={page < pageCount}
           >
-            {page < pageCount ? <Link href={pageHref(page + 1)}>Next</Link> : <span>Next</span>}
+            {page < pageCount ? (
+              <Link href={pageHref(page + 1)}>Next</Link>
+            ) : (
+              <span>Next</span>
+            )}
           </Button>
         </div>
       </div>

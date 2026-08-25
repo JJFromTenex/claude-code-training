@@ -1,13 +1,17 @@
 import { merchantById } from "@/data/merchants"
 import { Payment } from "@/data/types"
-import { formatMoney } from "./money"
+import { formatMoneyPlain } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * `EXPORT_COLUMNS` is the allowlist: every column ops is allowed to ask for.
+ * `DEFAULT_EXPORT_COLUMNS` is what they get when they ask for nothing in
+ * particular, and it deliberately leaves out the card last four — an export
+ * bound for a merchant should not carry it unless someone chose it.
+ *
+ * Column names arrive from the client, so `validateExportColumns` is the only
+ * way a request should reach `toCsv`.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +28,26 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** What an export contains when ops picks no columns. No card last four. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * Narrow client-supplied column names to the allowlist.
+ *
+ * Unknown names are dropped rather than rejected, and the caller's order is
+ * kept so ops gets the column order they asked for. An empty result means
+ * "nothing valid was requested" and is the caller's problem to report — the
+ * route turns it into a 400 rather than writing a headerless file.
+ */
+export function validateExportColumns(
+  requested: readonly string[],
+): ExportColumn[] {
+  return requested.filter((name): name is ExportColumn =>
+    (EXPORT_COLUMNS as readonly string[]).includes(name),
+  )
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -49,7 +73,7 @@ function cell(payment: Payment, column: ExportColumn): string {
     case "last4":
       return payment.last4 ?? ""
     case "amount":
-      return formatMoney(payment.amount, payment.currency)
+      return formatMoneyPlain(payment.amount)
     case "currency":
       return payment.currency
   }
@@ -66,6 +90,15 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `payments-disputed-2026-08-13.csv`.
+ *
+ * The scope segment is slugged here as well as allowlisted upstream: a
+ * filename is one of the three places `.claude/rules/api-routes.md` names, and
+ * this way the guarantee does not depend on every caller remembering it.
+ */
+export function exportFilename(date = new Date(), scope?: string): string {
+  const slug = scope?.toLowerCase().replace(/[^a-z0-9-]/g, "")
+  const segment = slug ? `-${slug}` : ""
+  return `payments${segment}-${date.toISOString().slice(0, 10)}.csv`
 }

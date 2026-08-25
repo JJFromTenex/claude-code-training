@@ -1,15 +1,20 @@
 export type Currency = "USD" | "EUR" | "GBP"
 
 export type PaymentStatus =
-  | "authorized"
-  | "captured"
-  | "refunded"
-  | "failed"
-  | "disputed"
+  "authorized" | "captured" | "refunded" | "failed" | "disputed"
 
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
+
+/**
+ * What an export covers: the filters currently applied, or every payment.
+ *
+ * The column list that goes with it is `ExportColumn` in `src/lib/csv.ts`,
+ * which is kept there rather than here so the allowlist and the serializer
+ * that enforces it stay in one file.
+ */
+export type ExportScope = "filter" | "all"
 
 export interface Merchant {
   id: string

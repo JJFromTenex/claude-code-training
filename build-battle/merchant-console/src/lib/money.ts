@@ -22,6 +22,25 @@ export function formatMoney(minorUnits: number, currency: Currency): string {
   return `${negative ? "-" : ""}${SYMBOLS[currency]}${body}`
 }
 
+/**
+ * Render minor units with no symbol and no thousands separator: `250.00`.
+ *
+ * For files rather than screens. A grouped, symbol-prefixed amount lands in a
+ * spreadsheet as text, and the comma forces the cell to be quoted, so the
+ * export pairs this with a currency column instead. Integer arithmetic
+ * throughout — dividing by 100 first would reintroduce the float this
+ * codebase avoids.
+ *
+ * Assumes a two-decimal currency, which is every member of `Currency`.
+ */
+export function formatMoneyPlain(minorUnits: number): string {
+  const negative = minorUnits < 0
+  const absolute = Math.abs(minorUnits)
+  const whole = Math.trunc(absolute / 100)
+  const cents = absolute % 100
+  return `${negative ? "-" : ""}${whole}.${String(cents).padStart(2, "0")}`
+}
+
 /** Compact form for stat cards: $12.4k. Display only. */
 export function formatMoneyCompact(
   minorUnits: number,

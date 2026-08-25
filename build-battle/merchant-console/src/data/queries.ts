@@ -1,6 +1,11 @@
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  ExportColumn,
+  validateExportColumns,
+} from "@/lib/csv"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import { ExportScope, Payment, PaymentFilters, PaymentStatus } from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -32,6 +37,39 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
     page: Number.isFinite(page) && page > 0 ? page : 1,
     sort: sort === "amount" ? "amount" : "createdAt",
     direction: direction === "asc" ? "asc" : "desc",
+  }
+}
+
+export interface ExportOptions {
+  columns: ExportColumn[]
+  scope: ExportScope
+  /**
+   * Whether the client sent `columns` at all. An empty `columns` with this set
+   * means they asked for nothing valid, which is a 400 — not a cue to fall
+   * back to the default and hand them a file they did not ask for.
+   */
+  columnsRequested: boolean
+}
+
+/**
+ * Export-only params, allowlisted the same way the filters are.
+ *
+ * Lives here rather than in the route handler so that everything arriving from
+ * a client is narrowed in one file.
+ */
+export function parseExportOptions(params: URLSearchParams): ExportOptions {
+  const requested = params
+    .getAll("columns")
+    .flatMap((value) => value.split(",").map((name) => name.trim()))
+  const columnsRequested = params.has("columns")
+  const scope = params.get("scope")
+
+  return {
+    columns: columnsRequested
+      ? validateExportColumns(requested)
+      : [...DEFAULT_EXPORT_COLUMNS],
+    scope: scope === "all" ? "all" : "filter",
+    columnsRequested,
   }
 }
 
@@ -103,6 +141,11 @@ export function queryPayments(filters: PaymentFilters) {
   const filtered = filterPayments(filters)
   const sorted = sortPayments(filtered, filters.sort, filters.direction)
   return paginate(sorted, filters.page, filters.pageSize)
+}
+
+/** How many payments match, without building the page. */
+export function countPayments(filters: PaymentFilters): number {
+  return filterPayments(filters).length
 }
 
 export function paymentById(id: string) {
