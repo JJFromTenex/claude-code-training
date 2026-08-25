@@ -36,6 +36,7 @@ export default async function CardDetailPage({
     )
   }
 
+
   const merchant = merchantById(card.merchantId)
   const ratio = spendRatio(card)
   const percent = Math.round(ratio * 100)
@@ -120,15 +121,13 @@ export default async function CardDetailPage({
       <div className="mt-10 max-w-xl">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">History</h2>
         <ol className="mt-3 space-y-2">
-          {card.events.map((event, i) => (
-            <li key={`${event.at}-${i}`} className="flex justify-between gap-4 text-sm">
+          {card.events.map((e, i) => (
+            <li key={`${e.at}-${i}`} className="flex justify-between gap-4 text-sm">
               <span className="text-gray-900 dark:text-gray-50">
-                {event.from === null
-                  ? "Issued"
-                  : `${event.from} → ${event.to}`}
+                {e.from === null ? "Issued" : `${e.from} → ${e.to}`}
               </span>
               <span className="text-gray-500">
-                {formatInZone(event.at, merchant?.timezone ?? "UTC")}
+                {formatInZone(e.at, merchant?.timezone ?? "UTC")}
               </span>
             </li>
           ))}
