@@ -1,7 +1,12 @@
+import { MAX_SPEND_LIMIT, generateCardNumber } from "@/lib/cards"
+import { sumMinorUnits } from "@/lib/money"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
@@ -148,7 +153,103 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards(payments)
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * Cards already issued before the console could issue them, so `/cards` is not
+ * empty on a fresh boot and spend has somewhere to show up.
+ *
+ * Deliberately on its own PRNG instance: drawing from the shared `rand` above
+ * would shift every payment generated after it and quietly change the seed
+ * data the rest of the suite asserts on.
+ */
+const CARD_SEED = 20260814
+
+const CARD_NICKNAMES = [
+  "Meta Ads",
+  "Google Workspace",
+  "Contractor tools",
+  "Shipping supplies",
+  "Travel — Q3",
+  "Figma seats",
+  "LinkedIn Ads",
+  "Courier account",
+] as const
+
+const CARD_CATEGORIES: (MerchantCategory | null)[] = [
+  "advertising",
+  "software",
+  "travel",
+  "contractors",
+  "shipping",
+  null,
+]
+
+function generateCards(payments: Payment[]): Card[] {
+  const cardRand = mulberry32(CARD_SEED)
+  const cards: Card[] = []
+
+  for (let i = 0; i < CARD_NICKNAMES.length; i++) {
+    const merchant = merchants[Math.floor(cardRand() * merchants.length)]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - Math.floor(cardRand() * 90))
+    const createdIso = createdAt.toISOString()
+
+    /**
+     * Spend is the sum of real captured payments for this merchant since the
+     * card existed, not a number invented to make the bar look interesting.
+     * Every one is in the merchant's own currency, so the sum is meaningful.
+     */
+    const chargeable = payments.filter(
+      (p) =>
+        p.merchantId === merchant.id &&
+        p.status === "captured" &&
+        p.createdAt >= createdIso,
+    )
+    const window = chargeable.slice(
+      0,
+      Math.ceil(chargeable.length * (0.1 + cardRand() * 0.5)),
+    )
+    const spend = sumMinorUnits(window.map((p) => p.amount))
+
+    /**
+     * The limit is the policy number ops would have asked for: a round figure
+     * comfortably above what the card has actually spent. Derived from spend
+     * so the ratios on screen vary, rather than both being made up.
+     */
+    const headroom = 1.02 + cardRand() * 0.85
+    const spendLimit = Math.max(
+      5000,
+      Math.min(MAX_SPEND_LIMIT, Math.ceil((spend * headroom) / 5000) * 5000),
+    )
+
+    const status: CardStatus =
+      i === 5 ? "frozen" : i === 7 ? "cancelled" : "active"
+
+    cards.push({
+      id: `card_${pad(i + 1, 4)}`,
+      nickname: CARD_NICKNAMES[i],
+      merchantId: merchant.id,
+      spendLimit,
+      currency: merchant.currency,
+      status,
+      last4: generateCardNumber(cardRand).slice(-4),
+      reference: `cref_${pad(i + 1, 4)}`,
+      category: CARD_CATEGORIES[Math.floor(cardRand() * CARD_CATEGORIES.length)],
+      spend,
+      events: [
+        { from: null, to: "active" as CardStatus, at: createdIso },
+        ...(status === "active"
+          ? []
+          : [{ from: "active" as CardStatus, to: status, at: createdIso }]),
+      ],
+      createdAt: createdIso,
+    })
+  }
+
+  return cards
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

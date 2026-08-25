@@ -71,6 +71,51 @@ export interface Payout {
   paymentIds: string[]
 }
 
+/** `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/** What a card is allowed to be spent on. `null` is no lock. */
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "shipping"
+
+/** One entry in a card's history. `from` is null for the issue event. */
+export interface CardEvent {
+  from: CardStatus | null
+  to: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
+/**
+ * A virtual card. There is deliberately no field for the full number:
+ * it exists only in the creation response, so no route can leak one.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  status: CardStatus
+  /** Last four of the generated number. The rest is never stored. */
+  last4: string
+  /** Opaque handle for the generated number. Not the number itself. */
+  reference: string
+  /** `null` when the card is not locked to a category. */
+  category: MerchantCategory | null
+  /** Integer minor units spent against the limit, same currency. */
+  spend: number
+  /** Every status this card has held, oldest first. */
+  events: CardEvent[]
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
