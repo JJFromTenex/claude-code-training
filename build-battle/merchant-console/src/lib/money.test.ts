@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  formatMinorUnits,
   formatMoney,
   formatMoneyCompact,
   parseAmountToMinorUnits,
@@ -78,5 +79,34 @@ describe("parseAmountToMinorUnits", () => {
     expect(parseAmountToMinorUnits("-250")).toBeNull()
     expect(parseAmountToMinorUnits("twelve")).toBeNull()
     expect(parseAmountToMinorUnits("")).toBeNull()
+  })
+})
+
+describe("formatMinorUnits", () => {
+  it("renders minor units as a plain decimal, with no symbol", () => {
+    expect(formatMinorUnits(25000)).toBe("250.00")
+    expect(formatMinorUnits(0)).toBe("0.00")
+  })
+
+  it("pads the cents of an amount below a unit", () => {
+    expect(formatMinorUnits(7)).toBe("0.07")
+    expect(formatMinorUnits(70)).toBe("0.70")
+  })
+
+  it("keeps a negative amount negative", () => {
+    expect(formatMinorUnits(-2550)).toBe("-25.50")
+    expect(formatMinorUnits(-7)).toBe("-0.07")
+  })
+
+  it("omits thousands separators, so a file reads back as a number", () => {
+    expect(formatMinorUnits(123456789)).toBe("1234567.89")
+    expect(Number(formatMinorUnits(123456789))).toBe(1234567.89)
+  })
+
+  it("divides in integers, so no cent is lost to a float", () => {
+    for (const minorUnits of [1, 99, 100, 101, 999999999999]) {
+      const [whole, cents] = formatMinorUnits(minorUnits).split(".")
+      expect(Number(whole) * 100 + Number(cents)).toBe(minorUnits)
+    }
   })
 })

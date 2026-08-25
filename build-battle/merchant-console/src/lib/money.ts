@@ -22,6 +22,22 @@ export function formatMoney(minorUnits: number, currency: Currency): string {
   return `${negative ? "-" : ""}${SYMBOLS[currency]}${body}`
 }
 
+/**
+ * Render minor units without a currency symbol or thousands separators, for a
+ * file rather than a screen. The currency travels in its own column beside it,
+ * and a spreadsheet reads the result as a number.
+ */
+export function formatMinorUnits(minorUnits: number): string {
+  const negative = minorUnits < 0
+  const units = Math.abs(minorUnits)
+  const cents = units % 100
+  // `units - cents` is an exact multiple of 100, so this division is exact
+  // rather than a float that happens to round back.
+  const whole = (units - cents) / 100
+  const fraction = String(cents).padStart(2, "0")
+  return `${negative ? "-" : ""}${whole}.${fraction}`
+}
+
 /** Compact form for stat cards: $12.4k. Display only. */
 export function formatMoneyCompact(
   minorUnits: number,
