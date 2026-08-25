@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Alexander Ramirez
-**Status:** building
+**Status:** done
 
 ## Problem
 
@@ -19,35 +19,40 @@ card that exists is the card that was asked for.
 
 Every claim here was read out of the tree, not assumed.
 
-- `src/data/store.ts` — the in-memory store on `globalThis.__northwindStore`,
-  holding `merchants`, `payments`, `refunds`, `disputes`, `payouts`. There is no
-  `cards` slot and nothing in the store references a card.
+- `src/data/store.ts:16-36` — the in-memory store on
+  `globalThis.__northwindStore`, holding `merchants`, `payments`, `refunds`,
+  `disputes`, `payouts`. There was no `cards` slot and nothing in the store
+  references a card.
 - `src/data/types.ts` — the shape of every record, with doc comments carrying
   the domain rules (`/** Integer minor units. Never a float. */`). No `Card`.
 - `src/data/merchants.ts` — six fictional merchants, each with a `currency` and
   an IANA `timezone`. `merchantById(id)` is the existing lookup.
-- `src/lib/money.ts` — `formatMoney`, `parseAmountToMinorUnits`,
-  `sumMinorUnits`. `parseAmountToMinorUnits` already does the one legal
+- `src/lib/money.ts:15,41,46` — `formatMoney`, `sumMinorUnits`, and
+  `parseAmountToMinorUnits`. The last already does the one legal
   string→minor-units conversion, so nothing new parses an amount.
-- `src/lib/dates.ts` — `formatDate` (UTC, for tables) and `formatInZone` (the
-  merchant's timezone, for detail pages).
+- `src/lib/dates.ts:27,35` — `formatInZone` (the merchant's timezone, for
+  detail pages) and `formatDate` (UTC, for tables).
 - `src/app/api/payments/route.ts` and `src/app/api/payments/export/route.ts` —
   the only two route handlers, both `GET`. **There is no POST route anywhere in
   this app yet**, and neither existing route has a 4xx path, so the error shape
   `.claude/rules/api-routes.md` mandates gets its first implementation here.
-- `src/app/payments/page.tsx` — the list-page pattern: an async server
+- `src/app/payments/page.tsx:57-135` — the list-page pattern: an async server
   component reading the store directly, `<section aria-label>`, `TableRoot` /
-  `Table`, a written empty-state row, `StatusBadge`, `formatMoney` at the cell.
-- `src/app/payments/[id]/page.tsx` — the detail pattern: `await params`,
-  `notFound()` on a miss, a local `Field` helper over a `dl`, a timeline `ol`.
+  `Table`, a written empty-state row at `:93-103`, `StatusBadge`, and
+  `formatMoney` called in the cell rather than upstream.
+- `src/app/payments/[id]/page.tsx:19-21,126-140` — the detail pattern:
+  `await params`, `notFound()` on a miss, a local `Field` helper over a `dl`,
+  and a timeline rendered as an `ol`.
 - `src/app/payments/filter-bar.tsx` — the colocated `"use client"` pattern:
   interactive leaf next to the page it serves, `useRouter` for the refresh.
-- `src/components/Drawer.tsx` — the Radix Dialog shell (focus trap, focus
-  return, Escape) exported as `Drawer*`.
-- `src/components/ui/payments/StatusBadge.tsx` — three `Record<AnyStatus, …>`
-  maps. Because they are `Record`s, adding a status to the union without adding
-  its label, dot, and variant is a compile error rather than a blank badge.
-- `vitest.config.ts` — `environment: "node"`, `include: ["src/**/*.test.ts"]`.
+- `src/components/Drawer.tsx:11,126` — the Radix Dialog shell (focus trap,
+  focus return, Escape) exported as `Drawer*`.
+- `src/components/ui/payments/StatusBadge.tsx:10,12,30,48` — a status union and
+  three `Record<AnyStatus, …>` maps. Because they are `Record`s, widening the
+  union without adding a label, dot, and variant is a compile error rather than
+  a blank badge.
+- `vitest.config.ts:13-14` — `environment: "node"`,
+  `include: ["src/**/*.test.ts"]`.
   Component tests are not collected; only pure logic is testable here.
 
 **Where the ticket and the code disagree:** `.claude/rules/components.md` says
@@ -55,11 +60,11 @@ Every claim here was read out of the tree, not assumed.
 no `Dialog` component. `Drawer.tsx` is the Radix Dialog wrapper and is what the
 issue form is built on. Flagged rather than worked around.
 
-**Found on the way in:** `sortPayments` in `src/data/queries.ts` compared
+**Found on the way in:** `sortPayments` in `src/data/queries.ts:72-84` compared
 amounts as text (`String(a.amount).localeCompare(...)`), so `994` sorted after
-`9873`. Fixed with a numeric compare and a regression test in the first commit
-of this branch; it is not part of NWP-201's scope but it is in this branch's
-diff, so it is called out here and in the PR.
+`9873`. Fixed with a numeric compare at `:82` and a regression test in the
+first commit of this branch; it is not part of NWP-201's scope but it is in
+this branch's diff, so it is called out here and in the PR.
 
 ## Domain rules
 
@@ -111,7 +116,10 @@ and the server rejecting the request are two expressions of one rule.
   payment to a card, so any derivation would be invented. `spent` is stored,
   starts at `0`, and is rendered from the stored value.
 - *A percentage in an inline `style` for the spend bar.* Rejected by
-  `components.md`. The bar snaps to 5% steps mapped to static Tailwind widths.
+  `components.md`. The bar snaps to 5% steps mapped to static Tailwind widths,
+  and the two comparisons behind it (`spendBarSteps`, `isNearLimit`) live in
+  `src/lib/cards.ts` so they can be unit-tested: `spent` is always zero in this
+  app, so the amber threshold has no other way to be proven.
 
 ## File map
 
@@ -119,8 +127,8 @@ and the server rejecting the request are two expressions of one rule.
 | --- | --- | --- |
 | `src/data/types.ts` | change | `CardStatus`, `CardCategory`, `Card` — the shape, with the minor-units and UTC rules in doc comments like their neighbors |
 | `src/data/store.ts` | change | `cards: Card[]` slot, plus a `??=` guard for a hot-reloaded store created before this change |
-| `src/lib/cards.ts` | add | `luhnCheckDigit`, `isLuhnValid`, `generateCardNumber`, `maskCardNumber` — pure, no store import |
-| `src/lib/cards.test.ts` | add | 4242 prefix, 16 digits, Luhn validity, mutated digits rejected |
+| `src/lib/cards.ts` | add | `luhnCheckDigit`, `isLuhnValid`, `generateCardNumber`, `maskCardNumber`, and the spend-bar comparisons `spendBarSteps` and `isNearLimit` — all pure, no store import |
+| `src/lib/cards.test.ts` | add | 4242 prefix, 16 digits, Luhn validity, mutated digits rejected, and the eighty-percent boundary |
 | `src/data/cards.ts` | add | Category allowlist, limit ceiling, `TRANSITIONS`/`canTransition`/`applyTransition`, and the store operations `listCards`, `cardById`, `cardByRequestId`, `issueCard` |
 | `src/data/cards.test.ts` | add | The full transition matrix, and that an issued record carries no PAN |
 | `src/app/api/cards/route.ts` | add | `POST` — allowlist validation, idempotent replay, the one full-number response |
@@ -175,7 +183,7 @@ Server first, so every step ends somewhere a command can prove.
 | Reveal once | `grep -rn fullNumber src` reaches only the creation route and the drawer; list, detail, and PATCH responses carry `last4` |
 | Server-side validation | curl for each rejection: missing merchant, zero, negative, over 5,000,000, bad currency |
 | Freeze and unfreeze without a reload | Browser: the badge flips in place |
-| Spend progress amber past 80% | `src/app/cards/spend-progress.tsx` threshold compared in integers |
+| Spend progress amber past 80% | `isNearLimit` in `src/lib/cards.test.ts`, asserting 80% is not past it and 80.01% is, in integers |
 | Category lock | Chosen in the drawer, allowlisted on the server, shown in the list and detail |
 | Tests | `npm test` summary line in the PR |
 | Empty and error states | Browser: empty `/cards`, and a forced 400 in the drawer |
