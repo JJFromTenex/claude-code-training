@@ -6,11 +6,24 @@ import { Card, CardCategory, CardFilters, CardStatus, Currency } from "./types"
 
 /**
  * Cards are the first resource in this store issued at request time rather
- * than seeded at boot, so they get their own id counter — generate.ts's
+ * than seeded at boot, so they get their own id scheme — generate.ts's
  * counters are module-private and not seeded data to begin with.
+ *
+ * The next id is derived from store.cards itself rather than a module-level
+ * counter: a plain `let` counter gets reset by Next's dev-mode module
+ * reloads independently of store.cards (which persists via globalThis),
+ * producing duplicate ids after any hot reload. Deriving from the store
+ * keeps this correct regardless of module lifecycle.
  */
-let cardSeq = 0
 const pad = (n: number, width = 6) => String(n).padStart(width, "0")
+
+function nextCardId(): string {
+  const maxSeq = store.cards.reduce((max, card) => {
+    const seq = Number(card.id.slice("card_".length))
+    return Number.isFinite(seq) && seq > max ? seq : max
+  }, 0)
+  return `card_${pad(maxSeq + 1)}`
+}
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
 const CATEGORIES: readonly CardCategory[] = [
@@ -85,7 +98,7 @@ export function createCard(input: IssueCardInput): { card: Card; number: string 
   const last4 = number.slice(-4)
 
   const card: Card = {
-    id: `card_${pad(++cardSeq)}`,
+    id: nextCardId(),
     nickname: input.nickname,
     merchantId: input.merchantId,
     last4,
