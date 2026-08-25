@@ -1,4 +1,4 @@
-import { canTransition, generateCardNumber } from "@/lib/cards"
+import { CARD_STATUSES, canTransition, generateCardNumber } from "@/lib/cards"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardCategory, CardStatus, Currency } from "./types"
@@ -148,7 +148,7 @@ export type TransitionResult =
 
 /** Apply a status change, guarded by the state machine. */
 export function transitionCard(id: string, to: unknown): TransitionResult {
-  if (!["active", "frozen", "cancelled"].includes(to as CardStatus)) {
+  if (!CARD_STATUSES.includes(to as CardStatus)) {
     return { ok: false, status: 400, error: "Unknown card status." }
   }
   const card = cardById(id)
