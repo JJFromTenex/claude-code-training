@@ -1,5 +1,6 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +149,8 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +192,80 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+/**
+ * Cards ops issued before the console could. Deterministic like everything
+ * else here, so the list, the detail view, and the spend bar have real data
+ * on first load. Spend is spread on purpose: one untouched, one near the
+ * limit, so the amber threshold is visible without issuing anything.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantIndex: number
+    spendLimit: number
+    spend: number
+    category: Card["category"]
+    status: Card["status"]
+    daysAgo: number
+  }[] = [
+    {
+      nickname: "Ad spend — Q3",
+      merchantIndex: 0,
+      spendLimit: 500_000,
+      spend: 437_500,
+      category: "advertising",
+      status: "active",
+      daysAgo: 46,
+    },
+    {
+      nickname: "Design tooling",
+      merchantIndex: 2,
+      spendLimit: 120_000,
+      spend: 64_200,
+      category: "software",
+      status: "active",
+      daysAgo: 24,
+    },
+    {
+      nickname: "Contractor — Rowan",
+      merchantIndex: 4,
+      spendLimit: 250_000,
+      spend: 0,
+      category: "contractors",
+      status: "frozen",
+      daysAgo: 11,
+    },
+    {
+      nickname: "Team travel",
+      merchantIndex: 1,
+      spendLimit: 300_000,
+      spend: 118_900,
+      category: "travel",
+      status: "active",
+      daysAgo: 3,
+    },
+  ]
+
+  return seeds.map((seed, index) => {
+    const merchant = merchants[seed.merchantIndex % merchants.length]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(8, 18), between(0, 59), 0, 0)
+
+    return {
+      id: `card_${pad(index + 1)}`,
+      nickname: seed.nickname,
+      merchantId: merchant.id,
+      last4: String(between(1000, 9999)),
+      reference: `cref_${pad(index + 1, 8)}`,
+      spendLimit: seed.spendLimit,
+      spend: seed.spend,
+      currency: merchant.currency,
+      category: seed.category,
+      status: seed.status,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }

@@ -82,3 +82,36 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "contractors"
+  | "travel"
+  | "other"
+
+/**
+ * A virtual card. The full number is never a field here: it exists only in
+ * the creation response. Everything after that works from `last4` and the
+ * opaque `reference`.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** The only part of the number that is stored. */
+  last4: string
+  /** Opaque handle for the issued number. Not derivable from the number. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spend: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
