@@ -1,20 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { isValidLuhn } from "@/lib/cards"
+import { CURRENCIES, MAX_SPEND_LIMIT, spendRatio } from "./card-catalog"
 import {
-  CURRENCIES,
-  MAX_SPEND_LIMIT,
   cardById,
   cardSpend,
   eventsForCard,
   issueCard,
   issuedForKey,
   listCards,
-  parseCardFilters,
   rememberIdempotencyKey,
   setCardStatus,
-  spendRatio,
   validateIssueInput,
-  withSpend,
 } from "./cards"
 import { store } from "./store"
 
@@ -146,7 +142,6 @@ describe("issueCard", () => {
 
     expect(card.status).toBe("active")
     expect(cardSpend(card.id)).toBe(0)
-    expect(withSpend(card)).toEqual({ card, spent: 0, remaining: 10_000 })
     expect(eventsForCard(card.id).map((event) => event.type)).toEqual(["issued"])
   })
 
@@ -265,54 +260,10 @@ describe("spend", () => {
   })
 })
 
-describe("parseCardFilters", () => {
-  it("allowlists everything arriving from a client", () => {
-    const params = new URLSearchParams({
-      status: "deleted",
-      merchantId: "'; drop table cards",
-      search: "  ads  ",
-    })
-    expect(parseCardFilters(params)).toEqual({
-      status: "all",
-      merchantId: undefined,
-      search: "ads",
-    })
-  })
-
-  it("keeps values that are real", () => {
-    const params = new URLSearchParams({ status: "frozen", merchantId: "mch_04" })
-    expect(parseCardFilters(params)).toEqual({
-      status: "frozen",
-      merchantId: "mch_04",
-      search: undefined,
-    })
-  })
-})
-
 describe("listCards", () => {
-  it("returns newest first", () => {
+  it("returns newest first and never exposes a full number", () => {
     const created = listCards().map((card) => card.createdAt)
     expect([...created].sort().reverse()).toEqual(created)
-  })
-
-  it("narrows by status and by merchant", () => {
-    expect(listCards({ status: "cancelled" }).every((c) => c.status === "cancelled")).toBe(
-      true,
-    )
-    expect(listCards({ merchantId: "mch_04" }).every((c) => c.merchantId === "mch_04")).toBe(
-      true,
-    )
-  })
-
-  it("searches nickname, merchant name, and last four", () => {
-    const seeded = store.cards.find((card) => card.nickname === "Figma seats")!
-    expect(listCards({ search: "figma" }).map((c) => c.id)).toContain(seeded.id)
-    expect(listCards({ search: "kestrel" }).map((c) => c.id)).toContain(seeded.id)
-    expect(listCards({ search: seeded.last4 }).map((c) => c.id)).toContain(seeded.id)
-    expect(listCards({ search: "no such card anywhere" })).toEqual([])
-  })
-
-  it("never exposes a full number on a listed card", () => {
     for (const card of listCards()) {
       expect(Object.keys(card)).not.toContain("number")
       expect(card.last4).toMatch(/^\d{4}$/)

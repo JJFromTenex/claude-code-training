@@ -1,5 +1,10 @@
 import { generateCardNumber, lastFour } from "@/lib/cards"
 import { sumMinorUnits } from "@/lib/money"
+import {
+  CURRENCIES,
+  MAX_SPEND_LIMIT,
+  MERCHANT_CATEGORIES,
+} from "./card-catalog"
 import { canTransition, eventTypeFor, isCardStatus, transitionError } from "./card-status"
 import { merchantById } from "./merchants"
 import { store } from "./store"
@@ -7,8 +12,6 @@ import {
   Card,
   CardAuthorization,
   CardEvent,
-  CardFilters,
-  CardStatus,
   Currency,
   MerchantCategory,
 } from "./types"
@@ -22,30 +25,6 @@ import {
  * The full card number never becomes a field on a `Card`. It exists only as
  * the `number` on an `IssuedCard`, returned once by `issueCard`.
  */
-
-/** The only currencies this console issues in. */
-export const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
-
-export const MERCHANT_CATEGORIES: readonly MerchantCategory[] = [
-  "any",
-  "advertising",
-  "software",
-  "travel",
-  "office_supplies",
-  "contractors",
-]
-
-export const CATEGORY_LABELS: Record<MerchantCategory, string> = {
-  any: "No category lock",
-  advertising: "Advertising",
-  software: "Software and SaaS",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  contractors: "Contractors",
-}
-
-/** Integer minor units. A limit above this is refused. */
-export const MAX_SPEND_LIMIT = 5_000_000
 
 export interface IssueCardInput {
   nickname: string
@@ -269,37 +248,9 @@ function recordEvent(
   return event
 }
 
-/** Allowlists list params the same way `parseFilters` does for payments. */
-export function parseCardFilters(params: URLSearchParams): CardFilters {
-  const status = params.get("status")
-  const merchantId = params.get("merchantId") ?? ""
-
-  return {
-    status: isCardStatus(status) ? status : "all",
-    merchantId: merchantById(merchantId) ? merchantId : undefined,
-    search: params.get("search")?.trim() || undefined,
-  }
-}
-
-/** Every card, newest first, narrowed by validated filters. */
-export function listCards(filters: CardFilters = {}): Card[] {
-  const { status, merchantId, search } = filters
-  const needle = search?.toLowerCase()
-
-  return store.cards
-    .filter((card) => {
-      if (status && status !== "all" && card.status !== status) return false
-      if (merchantId && card.merchantId !== merchantId) return false
-      if (needle) {
-        const merchant = merchantById(card.merchantId)
-        const haystack = [card.id, card.nickname, card.last4, merchant?.name ?? ""]
-          .join(" ")
-          .toLowerCase()
-        if (!haystack.includes(needle)) return false
-      }
-      return true
-    })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+/** Every card, newest first. */
+export function listCards(): Card[] {
+  return [...store.cards].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 export function cardById(id: string): Card | null {
@@ -325,28 +276,3 @@ export function eventsForCard(cardId: string): CardEvent[] {
 export function cardSpend(cardId: string): number {
   return sumMinorUnits(authorizationsForCard(cardId).map((auth) => auth.amount))
 }
-
-/** Spend as a fraction of the limit, clamped so a bar cannot overflow. */
-export function spendRatio(spent: number, spendLimit: number): number {
-  if (spendLimit <= 0) return 0
-  return Math.min(1, spent / spendLimit)
-}
-
-/** Convenience for the list and detail pages: a card with its derived spend. */
-export interface CardWithSpend {
-  card: Card
-  spent: number
-  remaining: number
-}
-
-export function withSpend(card: Card): CardWithSpend {
-  const spent = cardSpend(card.id)
-  return { card, spent, remaining: card.spendLimit - spent }
-}
-
-export const CARD_STATUS_FILTERS: readonly (CardStatus | "all")[] = [
-  "all",
-  "active",
-  "frozen",
-  "cancelled",
-]

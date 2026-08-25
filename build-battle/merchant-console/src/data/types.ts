@@ -145,9 +145,3 @@ export interface CardEvent {
   at: string
   detail: string
 }
-
-export interface CardFilters {
-  status?: CardStatus | "all"
-  merchantId?: string
-  search?: string
-}

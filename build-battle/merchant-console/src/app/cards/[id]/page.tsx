@@ -1,8 +1,8 @@
 import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { SpendProgress } from "@/components/ui/cards/SpendProgress"
+import { CATEGORY_LABELS } from "@/data/card-catalog"
 import {
-  CATEGORY_LABELS,
   authorizationsForCard,
   cardById,
   cardSpend,
@@ -25,10 +25,8 @@ const EVENT_LABELS: Record<CardEventType, string> = {
 }
 
 /**
- * Card detail.
- *
- * Shows the full record and spend against the limit. The number is the masked
- * last four: the full one was returned once, at creation, and is not stored.
+ * Card detail: the full record and spend against the limit. The number shown
+ * is the masked last four; the full one was returned once, at creation.
  */
 export default async function CardDetail({
   params,
@@ -40,9 +38,8 @@ export default async function CardDetail({
   if (!card) notFound()
 
   const merchant = merchantById(card.merchantId)!
-  const spent = cardSpend(card.id)
   const authorizations = authorizationsForCard(card.id)
-  const events = eventsForCard(card.id)
+  const masked = maskCardNumber(card.last4)
 
   return (
     <div className="p-4 sm:p-6">
@@ -61,8 +58,11 @@ export default async function CardDetail({
             </h1>
             <CardStatusBadge status={card.status} />
           </div>
-          <p className="mt-1 font-mono text-sm text-gray-500">
-            {maskCardNumber(card.last4)} · {card.id}
+          <p
+            className="mt-1 font-mono text-sm text-gray-500"
+            aria-label={`Card ending ${card.last4}, ${card.id}`}
+          >
+            {masked} · {card.id}
           </p>
         </div>
         <CardActions
@@ -80,7 +80,7 @@ export default async function CardDetail({
       </h2>
       <div className="mt-4 max-w-xl">
         <SpendProgress
-          spent={spent}
+          spent={cardSpend(card.id)}
           spendLimit={card.spendLimit}
           currency={card.currency}
         />
@@ -101,7 +101,7 @@ export default async function CardDetail({
         </Field>
         <Field label="Category lock">{CATEGORY_LABELS[card.categoryLock]}</Field>
         <Field label="Card number">
-          <span className="font-mono">{maskCardNumber(card.last4)}</span>
+          <span className="font-mono">{masked}</span>
         </Field>
         <Field label="Reference">
           <span className="font-mono text-sm">{card.reference}</span>
@@ -126,21 +126,21 @@ export default async function CardDetail({
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
-          {authorizations.map((authorization) => (
+          {authorizations.map((auth) => (
             <li
-              key={authorization.id}
+              key={auth.id}
               className="flex items-baseline justify-between gap-4 border-b border-gray-200 pb-3 last:border-0 dark:border-gray-800"
             >
               <div>
                 <p className="text-sm text-gray-900 dark:text-gray-50">
-                  {authorization.description}
+                  {auth.description}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {formatInZone(authorization.createdAt, merchant.timezone)}
+                  {formatInZone(auth.createdAt, merchant.timezone)}
                 </p>
               </div>
               <p className="shrink-0 text-sm font-medium tabular-nums text-gray-900 dark:text-gray-50">
-                {formatMoney(authorization.amount, authorization.currency)}
+                {formatMoney(auth.amount, auth.currency)}
               </p>
             </li>
           ))}
@@ -153,7 +153,7 @@ export default async function CardDetail({
         History
       </h2>
       <ol className="mt-4 space-y-4">
-        {events.map((event) => (
+        {eventsForCard(card.id).map((event) => (
           <li key={event.id} className="flex gap-3">
             <span
               className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"

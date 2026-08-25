@@ -2,7 +2,6 @@ import {
   issueCard,
   issuedForKey,
   listCards,
-  parseCardFilters,
   rememberIdempotencyKey,
   validateIssueInput,
 } from "@/data/cards"
@@ -16,9 +15,8 @@ import { NextRequest, NextResponse } from "next/server"
  * last four and never the number (`.claude/rules/api-routes.md`).
  */
 
-export function GET(request: NextRequest) {
-  const filters = parseCardFilters(request.nextUrl.searchParams)
-  const cards = listCards(filters)
+export function GET() {
+  const cards = listCards()
   return NextResponse.json({ cards, total: cards.length })
 }
 

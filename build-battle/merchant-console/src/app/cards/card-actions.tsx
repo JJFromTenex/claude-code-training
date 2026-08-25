@@ -3,7 +3,6 @@
 import { Button } from "@/components/Button"
 import {
   Drawer,
-  DrawerBody,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
@@ -19,11 +18,9 @@ import * as React from "react"
 /**
  * Freeze, unfreeze, and cancel.
  *
- * The status change goes to `PATCH /api/cards/[id]/status`, which is where the
- * state machine is enforced; `router.refresh()` re-renders the server
- * components with the new status without a page load. Disabled buttons here
- * are a convenience, never the guard.
- *
+ * The change goes to `PATCH /api/cards/[id]/status`, where the state machine
+ * is enforced; `router.refresh()` re-renders the server components without a
+ * page load. Disabled buttons here are a convenience, never the guard.
  * Cancelling is terminal, so it asks first.
  */
 export function CardActions({
@@ -40,7 +37,7 @@ export function CardActions({
   const router = useRouter()
   const [pending, setPending] = React.useState<CardStatus | null>(null)
   const [error, setError] = React.useState<string | null>(null)
-  const [confirmingCancel, setConfirmingCancel] = React.useState(false)
+  const [confirming, setConfirming] = React.useState(false)
 
   const move = async (next: CardStatus) => {
     setPending(next)
@@ -51,14 +48,12 @@ export function CardActions({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: next }),
       })
-
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
         setError(payload?.message ?? "That change was refused.")
         return
       }
-
-      setConfirmingCancel(false)
+      setConfirming(false)
       router.refresh()
     } catch {
       setError("The console could not reach the server. Try again.")
@@ -71,18 +66,21 @@ export function CardActions({
     return <span className="text-sm text-gray-500">No actions</span>
   }
 
+  const unfreezing = status === "frozen"
+
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex justify-end gap-2">
         <Button
           variant="secondary"
           className="py-1"
-          isLoading={pending === (status === "frozen" ? "active" : "frozen")}
-          onClick={() => move(status === "frozen" ? "active" : "frozen")}
+          isLoading={pending === (unfreezing ? "active" : "frozen")}
+          onClick={() => move(unfreezing ? "active" : "frozen")}
         >
-          {status === "frozen" ? "Unfreeze" : "Freeze"}
+          {unfreezing ? "Unfreeze" : "Freeze"}
         </Button>
-        <Drawer open={confirmingCancel} onOpenChange={setConfirmingCancel}>
+
+        <Drawer open={confirming} onOpenChange={setConfirming}>
           <DrawerTrigger asChild>
             <Button
               variant="ghost"
@@ -91,28 +89,20 @@ export function CardActions({
               Cancel
             </Button>
           </DrawerTrigger>
-
           <DrawerContent className="sm:max-w-md">
             <DrawerHeader>
               <DrawerTitle>Cancel {nickname}?</DrawerTitle>
               <DrawerDescription>
-                Cancelling is permanent. {maskCardNumber(last4)} will stop
-                authorising immediately and cannot be brought back.
+                Cancelling is permanent. {maskCardNumber(last4)} stops
+                authorising immediately and cannot be brought back. If it only
+                needs to stop for now, freeze it instead.
               </DrawerDescription>
             </DrawerHeader>
-
-            <DrawerBody>
-              <p className="text-sm text-gray-500">
-                If the card only needs to stop for now, freeze it instead. A
-                frozen card can be unfrozen.
-              </p>
-            </DrawerBody>
-
             <DrawerFooter className="gap-2">
               <Button
                 variant="secondary"
                 className="w-full sm:w-fit"
-                onClick={() => setConfirmingCancel(false)}
+                onClick={() => setConfirming(false)}
               >
                 Keep the card
               </Button>
@@ -130,12 +120,15 @@ export function CardActions({
         </Drawer>
       </div>
 
+      {/* Announced, because the only other signal is a badge changing colour. */}
+      <p aria-live="polite" className="sr-only">
+        {pending ? "" : `${nickname} is ${status}`}
+      </p>
       {error && (
         <p role="alert" className="text-right text-sm text-red-600 dark:text-red-500">
           {error}
         </p>
       )}
-
     </div>
   )
 }

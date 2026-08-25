@@ -20,7 +20,7 @@ Everything below was read in this repository, not assumed.
 - `src/data/types.ts` defines `Currency = "USD" | "EUR" | "GBP"`, `Merchant` (with its own `currency`), and `Payment`. There is no `Card` type.
 - `src/lib/money.ts` already has `formatMoney`, `formatMoneyCompact`, `sumMinorUnits`, and `parseAmountToMinorUnits`. A second formatter would be a defect, so the card work uses these.
 - `src/lib/dates.ts` has `formatDate` (UTC, for tables) and `formatInZone` (merchant timezone, for detail pages). No new date helper is needed.
-- `src/data/queries.ts` is the one payment query builder, with `parseFilters` doing allowlist validation of client params. It is payment shaped (`filterPayments` reads `store.payments` directly), so cards get their own reads rather than being forced through it.
+- `src/data/queries.ts` is the one payment query builder, payment shaped throughout (`filterPayments` reads `store.payments` directly), so cards get their own small reader rather than being forced through it.
 - `src/app/payments/page.tsx` is a server component calling `queryPayments` directly rather than fetching `/api/payments`. Card pages follow that pattern.
 - `src/components/ui/payments/StatusBadge.tsx` maps status to a Tremor `Badge` variant plus a dot colour. Card status gets its own badge in the same shape.
 - `src/components/Drawer.tsx` is the Radix dialog wrapper (`Drawer`, `DrawerContent`, `DrawerHeader`, `DrawerTitle`, `DrawerDescription`, `DrawerBody`, `DrawerFooter`, `DrawerClose`). It gives focus trap, focus return, and Escape for free.
@@ -59,6 +59,7 @@ Beyond the listed criteria, four things an ops tool needs the second a real pers
 | `src/data/card-status.ts` | add | The transition table and `canTransition`, kept pure and separate from storage |
 | `src/data/card-status.test.ts` | add | Proves `active ⇄ frozen`, both to `cancelled`, and that `cancelled` is terminal |
 | `src/data/cards.ts` | add | Allowlist validation, store reads, issue and transition writes, spend totals |
+| `src/data/card-catalog.ts` | add | Currencies, categories, and the limit ceiling, free of store imports so the client form can share them |
 | `src/data/cards.test.ts` | add | Proves validation rejects the six bad inputs and that issue is idempotent |
 | `src/data/types.ts` | change | `CardStatus`, `MerchantCategory`, `Card`, `CardAuthorization`, `CardEvent` |
 | `src/data/store.ts` | change | Add `cards`, `cardAuthorizations`, `cardEvents`, and the idempotency map |
@@ -97,7 +98,7 @@ Beyond the listed criteria, four things an ops tool needs the second a real pers
 | Spend bar turns amber past 80% | Browser: the seeded near-limit card renders amber |
 | Category lock chosen at issue and shown | Browser: pick one at issue, read it on the detail page |
 | Tests pass | `npm test` |
-| Empty and error states are written | Browser: `/cards` with an unmatched filter, and a deliberately invalid submit |
+| Empty and error states are written | Browser: the list with no rows, and a deliberately invalid submit |
 
 Whole-suite gates before push: `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`. The last two matter because vitest never compiles a `.tsx` in this repo.
 
@@ -117,5 +118,5 @@ Whole-suite gates before push: `npm test`, `npm run lint`, `npx tsc --noEmit`, `
 
 ## Open questions
 
-- Should a cancelled card stay in the default list view or drop out of it? Assumed it stays, with a status filter, because ops asking "what happened to that card" needs to find it.
+- Should a cancelled card stay in the list or drop out of it? Assumed it stays, because ops asking "what happened to that card" needs to find it. Filtering the list is left until the list is long enough to need it.
 - Is a category lock enforced against anything today? Assumed not: there is no authorisation path in this app, so it is recorded on the card and displayed, and enforcement lands with the issuer integration.

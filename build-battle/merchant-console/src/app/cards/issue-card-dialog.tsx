@@ -19,7 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CATEGORY_LABELS, MERCHANT_CATEGORIES } from "@/data/cards"
+import {
+  CATEGORY_LABELS,
+  MAX_SPEND_LIMIT,
+  MERCHANT_CATEGORIES,
+} from "@/data/card-catalog"
 import { Currency, MerchantCategory } from "@/data/types"
 import { formatCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -28,12 +32,10 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 
 /**
- * The issue form and the one-time reveal.
- *
- * The card number is generated on the server and arrives in the issue
- * response. It is held in local state only long enough to be read off the
- * success screen and is dropped the moment the drawer closes, because the
- * reveal is a single response and not a field that can be re-read.
+ * The issue form and the one-time reveal. The number is generated on the
+ * server and held here only long enough to be read off the success screen; it
+ * is dropped when the drawer closes, because the reveal is a single response
+ * and not a field that can be re-read.
  */
 
 interface MerchantOption {
@@ -42,18 +44,15 @@ interface MerchantOption {
   currency: Currency
 }
 
-interface FieldError {
-  field: string
-  message: string
-}
-
-interface IssuedSummary {
-  nickname: string
+type Issued = {
   merchantName: string
-  spendLimit: number
-  currency: Currency
-  categoryLock: MerchantCategory
   number: string
+  card: {
+    nickname: string
+    spendLimit: number
+    currency: Currency
+    categoryLock: MerchantCategory
+  }
 }
 
 export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
@@ -61,82 +60,60 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   const [open, setOpen] = React.useState(false)
   const [nickname, setNickname] = React.useState("")
   const [merchantId, setMerchantId] = React.useState("")
-  const [limitInput, setLimitInput] = React.useState("")
+  const [limit, setLimit] = React.useState("")
   const [categoryLock, setCategoryLock] = React.useState<MerchantCategory>("any")
-  const [errors, setErrors] = React.useState<FieldError[]>([])
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [formError, setFormError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
-  const [issued, setIssued] = React.useState<IssuedSummary | null>(null)
-  // One key per attempt. A double click reuses it, so the server replays the
-  // first card instead of issuing a second one.
-  const issueKey = React.useRef(newIssueKey())
+  const [issued, setIssued] = React.useState<Issued | null>(null)
+  // One key per attempt, so a double click replays rather than issuing twice.
+  const key = React.useRef(newKey())
 
-  const merchant = merchants.find((option) => option.id === merchantId)
+  const merchant = merchants.find((m) => m.id === merchantId)
   // A card is single-merchant, so it settles in the merchant's currency.
   const currency = merchant?.currency ?? null
 
-  const errorFor = (field: string) =>
-    errors.find((error) => error.field === field)?.message
-
   /** A field stops being wrong the moment the operator starts fixing it. */
-  const clearError = (field: string) =>
-    setErrors((current) => current.filter((error) => error.field !== field))
+  const clear = (...fields: string[]) =>
+    setErrors(({ ...rest }) => {
+      fields.forEach((f) => delete rest[f])
+      return rest
+    })
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
-    setLimitInput("")
+    setLimit("")
     setCategoryLock("any")
-    setErrors([])
+    setErrors({})
     setFormError(null)
     setIssued(null)
   }
 
   const onOpenChange = (next: boolean) => {
     setOpen(next)
-    // Closing drops the revealed number along with everything else.
-    if (!next) reset()
+    if (!next) reset() // Closing drops the revealed number with everything else.
   }
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (submitting) return
-
-    setErrors([])
     setFormError(null)
 
     // Amounts are converted to minor units once, here at the boundary.
-    const spendLimit = parseAmountToMinorUnits(limitInput)
-    const clientErrors: FieldError[] = []
-    if (!nickname.trim()) {
-      clientErrors.push({ field: "nickname", message: "Give the card a nickname." })
-    }
-    if (!merchantId) {
-      clientErrors.push({
-        field: "merchantId",
-        message: "Choose the merchant this card belongs to.",
-      })
-    }
-    if (spendLimit === null) {
-      clientErrors.push({
-        field: "spendLimit",
-        message: "Enter an amount like 250 or 250.00.",
-      })
-    }
-    if (clientErrors.length > 0) {
-      setErrors(clientErrors)
-      return
-    }
+    const spendLimit = parseAmountToMinorUnits(limit)
+    const found: Record<string, string> = {}
+    if (!nickname.trim()) found.nickname = "Give the card a nickname."
+    if (!merchantId) found.merchantId = "Choose the merchant this card belongs to."
+    if (spendLimit === null) found.spendLimit = "Enter an amount like 250 or 250.00."
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
 
     setSubmitting(true)
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          // One key per attempt, so a double click cannot issue two cards.
-          "idempotency-key": issueKey.current,
-        },
+        headers: { "content-type": "application/json", "idempotency-key": key.current },
         body: JSON.stringify({
           nickname: nickname.trim(),
           merchantId,
@@ -145,34 +122,27 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
           categoryLock,
         }),
       })
-
-      const payload = await response.json()
+      const body = await response.json()
 
       if (!response.ok) {
-        setErrors(payload.errors ?? [])
-        setFormError(payload.message ?? "That card could not be issued.")
+        type FieldError = { field: string; message: string }
+        setErrors(
+          Object.fromEntries(
+            (body.errors ?? []).map((e: FieldError) => [e.field, e.message]),
+          ),
+        )
+        setFormError(body.message ?? "That card could not be issued.")
         return
       }
 
-      if (payload.replayed || !payload.number) {
-        // The card exists already; the number was revealed on the first try.
+      if (body.replayed || !body.number) {
         setFormError(
           "This card was already issued. Its number was shown once and cannot be shown again.",
         )
-        router.refresh()
-        return
+      } else {
+        setIssued({ card: body.card, merchantName: merchant?.name ?? "", number: body.number })
+        key.current = newKey()
       }
-
-      setIssued({
-        nickname: payload.card.nickname,
-        merchantName: merchant?.name ?? "",
-        spendLimit: payload.card.spendLimit,
-        currency: payload.card.currency,
-        categoryLock: payload.card.categoryLock,
-        number: payload.number,
-      })
-      // New key, so issuing a second card is a new request.
-      issueKey.current = newIssueKey()
       router.refresh()
     } catch {
       setFormError("The console could not reach the server. Try again.")
@@ -192,169 +162,90 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
 
       <DrawerContent className="sm:max-w-lg">
         {issued ? (
-          <IssuedSuccess
-            issued={issued}
-            onIssueAnother={reset}
-            onDone={() => onOpenChange(false)}
-          />
+          <Success issued={issued} onAnother={reset} onDone={() => onOpenChange(false)} />
         ) : (
           <form onSubmit={submit} className="flex flex-1 flex-col">
             <DrawerHeader>
               <DrawerTitle>Issue a virtual card</DrawerTitle>
               <DrawerDescription>
-                The card is created straight away and its number is shown once,
-                on the next screen.
+                The number is shown once, on the next screen.
               </DrawerDescription>
             </DrawerHeader>
 
             <DrawerBody className="space-y-4">
               {formError && (
-                <p
-                  role="alert"
-                  className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-400/10 dark:text-red-400"
-                >
+                <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-400/10 dark:text-red-400">
                   {formError}
                 </p>
               )}
 
-              <div>
-                <label
-                  htmlFor="card-nickname"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
+              <Field id="card-nickname" label="Nickname" error={errors.nickname} hint="How ops will recognise this card.">
                 <Input
                   id="card-nickname"
-                  name="nickname"
                   value={nickname}
-                  onChange={(event) => {
-                    setNickname(event.target.value)
-                    clearError("nickname")
-                  }}
+                  onChange={(e) => { setNickname(e.target.value); clear("nickname") }}
                   placeholder="Google Ads, contractor retainer, ..."
-                  hasError={Boolean(errorFor("nickname"))}
-                  aria-describedby={
-                    errorFor("nickname") ? "card-nickname-error" : undefined
-                  }
-                  className="mt-2"
+                  hasError={Boolean(errors.nickname)}
+                  aria-invalid={Boolean(errors.nickname)}
+                  aria-describedby="card-nickname-message"
                 />
-                <FieldMessage id="card-nickname-error" message={errorFor("nickname")}>
-                  How ops will recognise this card in the list.
-                </FieldMessage>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-merchant"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
-                <Select
-                  value={merchantId}
-                  onValueChange={(value) => {
-                    setMerchantId(value)
-                    clearError("merchantId")
-                    clearError("currency")
-                  }}
-                >
-                  <SelectTrigger id="card-merchant" className="mt-2 w-full">
+              <Field
+                id="card-merchant"
+                label="Merchant"
+                error={errors.merchantId ?? errors.currency}
+                hint="Cards belong to one merchant and settle in its currency."
+              >
+                <Select value={merchantId} onValueChange={(v) => { setMerchantId(v); clear("merchantId", "currency") }}>
+                  <SelectTrigger id="card-merchant" className="w-full" aria-invalid={Boolean(errors.merchantId)} aria-describedby="card-merchant-message">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
                   <SelectContent>
-                    {merchants.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.name} ({option.currency})
-                      </SelectItem>
+                    {merchants.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name} ({m.currency})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldMessage
-                  id="card-merchant-error"
-                  message={errorFor("merchantId")}
-                >
-                  Cards belong to one merchant and settle in that merchant&rsquo;s
-                  currency.
-                </FieldMessage>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-limit"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Spend limit {currency ? `(${currency})` : ""}
-                </label>
+              <Field
+                id="card-limit"
+                label={`Spend limit${currency ? ` (${currency})` : ""}`}
+                error={errors.spendLimit}
+                hint={currency ? `Up to ${formatMoney(MAX_SPEND_LIMIT, currency)} per card.` : "Choose a merchant to set the currency."}
+              >
                 <Input
                   id="card-limit"
-                  name="spendLimit"
                   inputMode="decimal"
-                  value={limitInput}
-                  onChange={(event) => {
-                    setLimitInput(event.target.value)
-                    clearError("spendLimit")
-                  }}
+                  value={limit}
+                  onChange={(e) => { setLimit(e.target.value); clear("spendLimit") }}
                   placeholder="2500.00"
-                  hasError={Boolean(errorFor("spendLimit"))}
-                  aria-describedby="card-limit-help"
-                  className="mt-2"
+                  hasError={Boolean(errors.spendLimit)}
+                  aria-invalid={Boolean(errors.spendLimit)}
+                  aria-describedby="card-limit-message"
                 />
-                <FieldMessage id="card-limit-help" message={errorFor("spendLimit")}>
-                  {currency
-                    ? `Up to ${formatMoney(5_000_000, currency)} per card.`
-                    : "Choose a merchant to set the currency."}
-                </FieldMessage>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-category"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
-                <Select
-                  value={categoryLock}
-                  onValueChange={(value) =>
-                    setCategoryLock(value as MerchantCategory)
-                  }
-                >
-                  <SelectTrigger id="card-category" className="mt-2 w-full">
-                    <SelectValue placeholder="No category lock" />
+              <Field id="card-category" label="Category lock" error={errors.categoryLock} hint="Recorded on the card and shown to whoever reviews it.">
+                <Select value={categoryLock} onValueChange={(v) => setCategoryLock(v as MerchantCategory)}>
+                  <SelectTrigger id="card-category" className="w-full" aria-describedby="card-category-message">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MERCHANT_CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {CATEGORY_LABELS[category]}
-                      </SelectItem>
+                    {MERCHANT_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldMessage
-                  id="card-category-error"
-                  message={errorFor("categoryLock")}
-                >
-                  Recorded on the card and shown to whoever reviews it.
-                </FieldMessage>
-              </div>
+              </Field>
             </DrawerBody>
 
             <DrawerFooter className="gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full sm:w-fit"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="secondary" className="w-full sm:w-fit" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                className="w-full sm:w-fit"
-                isLoading={submitting}
-                loadingText="Issuing"
-              >
+              <Button type="submit" className="w-full sm:w-fit" isLoading={submitting} loadingText="Issuing">
                 Issue card
               </Button>
             </DrawerFooter>
@@ -365,103 +256,97 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   )
 }
 
-function IssuedSuccess({
+function Success({
   issued,
-  onIssueAnother,
+  onAnother,
   onDone,
 }: {
-  issued: IssuedSummary
-  onIssueAnother: () => void
+  issued: Issued
+  onAnother: () => void
   onDone: () => void
 }) {
+  const { card, number, merchantName } = issued
   return (
     <div className="flex flex-1 flex-col">
       <DrawerHeader>
-        <DrawerTitle>{issued.nickname} is live</DrawerTitle>
+        <DrawerTitle>{card.nickname} is live</DrawerTitle>
         <DrawerDescription>
-          This is the only time the full number is shown. Copy it now; the
-          console keeps the last four and nothing else.
+          The only time the full number is shown. Copy it now; the console keeps
+          the last four and nothing else.
         </DrawerDescription>
       </DrawerHeader>
 
       <DrawerBody className="space-y-4">
         <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-sm text-gray-500">Card number</p>
-          <p className="mt-1 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50">
-            {formatCardNumber(issued.number)}
+          <p id="issued-number-label" className="text-sm text-gray-500">Card number</p>
+          <p aria-labelledby="issued-number-label" className="mt-1 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50">
+            {formatCardNumber(number)}
           </p>
         </div>
 
-        <p
-          role="status"
-          className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-400/10 dark:text-amber-500"
-        >
+        <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-400/10 dark:text-amber-500">
           Closing this drawer discards the number for good.
         </p>
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-          <div>
-            <dt className="text-sm text-gray-500">Merchant</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-              {issued.merchantName}
+        <dl className="text-sm">
+          <div className="flex justify-between border-b border-gray-200 py-2 dark:border-gray-800">
+            <dt className="text-gray-500">Merchant</dt>
+            <dd className="text-gray-900 dark:text-gray-50">{merchantName}</dd>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 py-2 dark:border-gray-800">
+            <dt className="text-gray-500">Spend limit</dt>
+            <dd className="tabular-nums text-gray-900 dark:text-gray-50">
+              {formatMoney(card.spendLimit, card.currency)} {card.currency}
             </dd>
           </div>
-          <div>
-            <dt className="text-sm text-gray-500">Spend limit</dt>
-            <dd className="mt-1 text-sm tabular-nums text-gray-900 dark:text-gray-50">
-              {formatMoney(issued.spendLimit, issued.currency)} {issued.currency}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-gray-500">Category lock</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-              {CATEGORY_LABELS[issued.categoryLock]}
-            </dd>
+          <div className="flex justify-between py-2">
+            <dt className="text-gray-500">Category lock</dt>
+            <dd className="text-gray-900 dark:text-gray-50">{CATEGORY_LABELS[card.categoryLock]}</dd>
           </div>
         </dl>
       </DrawerBody>
 
       <DrawerFooter className="gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full sm:w-fit"
-          onClick={onIssueAnother}
-        >
+        <Button type="button" variant="secondary" className="w-full sm:w-fit" onClick={onAnother}>
           Issue another
         </Button>
-        <Button type="button" className="w-full sm:w-fit" onClick={onDone}>
-          Done
-        </Button>
+        <Button type="button" className="w-full sm:w-fit" onClick={onDone}>Done</Button>
       </DrawerFooter>
     </div>
   )
 }
 
-function FieldMessage({
+/** A labelled control with one message slot, showing its error or its hint. */
+function Field({
   id,
-  message,
+  label,
+  error,
+  hint,
   children,
 }: {
   id: string
-  message?: string
+  label: string
+  error?: string
+  hint: string
   children: React.ReactNode
 }) {
   return (
-    <p
-      id={id}
-      className={
-        message
-          ? "mt-1.5 text-sm text-red-600 dark:text-red-500"
-          : "mt-1.5 text-sm text-gray-500"
-      }
-    >
-      {message ?? children}
-    </p>
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-gray-900 dark:text-gray-50">
+        {label}
+      </label>
+      <div className="mt-2">{children}</div>
+      <p
+        id={`${id}-message`}
+        className={error ? "mt-1.5 text-sm text-red-600 dark:text-red-500" : "mt-1.5 text-sm text-gray-500"}
+      >
+        {error ?? hint}
+      </p>
+    </div>
   )
 }
 
-function newIssueKey(): string {
+function newKey(): string {
   return globalThis.crypto?.randomUUID
     ? globalThis.crypto.randomUUID()
     : `issue_${Date.now()}_${Math.random().toString(36).slice(2)}`

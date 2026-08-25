@@ -1,17 +1,26 @@
-import { spendRatio } from "@/data/cards"
+import { spendRatio } from "@/data/card-catalog"
 import { Currency } from "@/data/types"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
 
 /**
- * Spend against a card's limit.
- *
- * Receives minor units and a currency and formats here, at the edge. The bar
- * turns amber once the card is past 80% of its limit and red once it is at
- * the limit, so a card about to decline is visible before it does.
+ * Spend against a card's limit. Receives minor units and a currency and
+ * formats here, at the edge. Amber past 80%, red at the limit, so a card
+ * about to decline is visible before it does.
  */
 
-const AMBER_THRESHOLD = 0.8
+const AMBER = 0.8
+
+/**
+ * Fixed 5% steps. Tailwind cannot compile a runtime value and `components.md`
+ * forbids an inline style, so the bar quantises. Written as one string because
+ * Tailwind scans source text for class names; the exact figure is in the label
+ * and in `aria-valuenow`.
+ */
+const WIDTHS = (
+  "w-0 w-[5%] w-[10%] w-[15%] w-[20%] w-[25%] w-[30%] w-[35%] w-[40%] w-[45%] " +
+  "w-[50%] w-[55%] w-[60%] w-[65%] w-[70%] w-[75%] w-[80%] w-[85%] w-[90%] w-[95%] w-full"
+).split(" ")
 
 export function SpendProgress({
   spent,
@@ -26,13 +35,6 @@ export function SpendProgress({
   const percent = Math.round(ratio * 100)
   const remaining = spendLimit - spent
 
-  const barColor =
-    ratio >= 1
-      ? "bg-red-500 dark:bg-red-500"
-      : ratio > AMBER_THRESHOLD
-        ? "bg-amber-500 dark:bg-amber-500"
-        : "bg-blue-500 dark:bg-blue-500"
-
   return (
     <div>
       <div className="flex items-baseline justify-between gap-4">
@@ -46,9 +48,7 @@ export function SpendProgress({
         <p
           className={cx(
             "text-sm font-medium tabular-nums",
-            ratio > AMBER_THRESHOLD
-              ? "text-amber-700 dark:text-amber-500"
-              : "text-gray-500",
+            ratio > AMBER ? "text-amber-700 dark:text-amber-500" : "text-gray-500",
           )}
         >
           {percent}%
@@ -61,15 +61,17 @@ export function SpendProgress({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
-        aria-label={`Spend against limit: ${percent} percent`}
+        aria-label="Spend against limit"
       >
         <div
           className={cx(
-            "h-full rounded-full transition-all",
-            barColor,
-            // Tailwind only, so the width comes from a fixed step class rather
-            // than an inline style.
-            WIDTH_STEPS[Math.min(20, Math.round(ratio * 20))],
+            "h-full rounded-full",
+            ratio >= 1
+              ? "bg-red-500"
+              : ratio > AMBER
+                ? "bg-amber-500"
+                : "bg-blue-500",
+            WIDTHS[Math.round(ratio * 20)],
           )}
         />
       </div>
@@ -84,31 +86,3 @@ export function SpendProgress({
     </div>
   )
 }
-
-/**
- * Fixed 5% steps. Tailwind cannot compile an arbitrary runtime value and the
- * components rule forbids an inline style, so the bar quantises instead.
- */
-const WIDTH_STEPS = [
-  "w-0",
-  "w-[5%]",
-  "w-[10%]",
-  "w-[15%]",
-  "w-[20%]",
-  "w-[25%]",
-  "w-[30%]",
-  "w-[35%]",
-  "w-[40%]",
-  "w-[45%]",
-  "w-[50%]",
-  "w-[55%]",
-  "w-[60%]",
-  "w-[65%]",
-  "w-[70%]",
-  "w-[75%]",
-  "w-[80%]",
-  "w-[85%]",
-  "w-[90%]",
-  "w-[95%]",
-  "w-full",
-] as const
