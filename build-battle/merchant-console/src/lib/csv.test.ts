@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportScopeLabel,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,61 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("returns the requested subset, in the order given", () => {
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "amount",
+      "id",
+      "status",
+    ])
+  })
+
+  it("leaves the card last four out of the default set", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).not.toContain("last4")
+    expect(columns).toEqual(EXPORT_COLUMNS.filter((c) => c !== "last4"))
+  })
+
+  it("includes the card last four only when it is asked for by name", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("returns nothing for an empty selection, which an absent param never does", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns(null).length).toBeGreaterThan(0)
+  })
+
+  it("drops names that are not columns rather than echoing them", () => {
+    expect(parseExportColumns("id,'; DROP TABLE payments--,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("ignores surrounding whitespace and repeated names", () => {
+    expect(parseExportColumns(" id , amount , id ")).toEqual(["id", "amount"])
+  })
+})
+
+describe("exportScopeLabel", () => {
+  it("names the status, so the file says what is inside it", () => {
+    expect(exportScopeLabel({ status: "disputed" }, "filter")).toBe("disputed")
+  })
+
+  it("calls any other narrowing filtered", () => {
+    expect(exportScopeLabel({ merchantId: "mch_01" }, "filter")).toBe("filtered")
+  })
+
+  it("is all when nothing narrows, whichever scope was asked for", () => {
+    expect(exportScopeLabel({ status: "all" }, "filter")).toBe("all")
+    expect(exportScopeLabel({ status: "disputed" }, "all")).toBe("all")
+  })
+})
+
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+  it("stamps the scope and the UTC date, so two exports of one scope collide by design", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-03-14.csv")
   })
 })

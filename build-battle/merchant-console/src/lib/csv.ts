@@ -1,13 +1,13 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentFilters } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns. `EXPORT_COLUMNS` is the allowlist a request is
+ * checked against, and the card last four is left out unless it is asked
+ * for by name, because most of these files go to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -66,6 +66,65 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/** Columns sent to a merchant by default. The card last four is opt-in. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * Turn the `columns` query param into a column set.
+ *
+ * Anything not in `EXPORT_COLUMNS` is dropped rather than echoed, so a name
+ * from the client never reaches a header row or a filename. An absent param
+ * means "no preference" and yields the default set; an empty one means the
+ * caller deselected everything, which the route rejects.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const allowed = new Set<string>(EXPORT_COLUMNS)
+  const seen = new Set<string>()
+
+  return raw.split(",").reduce<ExportColumn[]>((columns, value) => {
+    const name = value.trim()
+    if (allowed.has(name) && !seen.has(name)) {
+      seen.add(name)
+      columns.push(name as ExportColumn)
+    }
+    return columns
+  }, [])
+}
+
+/** Either the filters currently on screen, or every payment. */
+export type ExportScope = "filter" | "all"
+
+/** Narrow the `scope` query param. Anything unrecognized falls back to the filters. */
+export function parseExportScope(raw: string | null): ExportScope {
+  return raw === "all" ? "all" : "filter"
+}
+
+/**
+ * The scope segment of the filename, built from validated filters only.
+ *
+ * A status names itself, so `payments-disputed-…` says what is inside. Any
+ * other narrowing is `filtered`, which is vaguer but still distinguishes the
+ * file from a full export — the distinction the near-miss turned on.
+ */
+export function exportScopeLabel(
+  filters: PaymentFilters,
+  scope: ExportScope,
+): string {
+  if (scope === "all") return "all"
+  if (filters.status && filters.status !== "all") return filters.status
+  if (filters.merchantId || filters.search || filters.from || filters.to) {
+    return "filtered"
+  }
+  return "all"
+}
+
+/**
+ * `payments-disputed-2026-08-13.csv`. The scope is resolved server-side from
+ * validated filters, never from a string the client supplied.
+ */
+export function exportFilename(scope: string, date = new Date()): string {
+  return `payments-${scope}-${date.toISOString().slice(0, 10)}.csv`
 }
