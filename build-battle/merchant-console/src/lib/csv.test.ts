@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +88,94 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+})
+
+/**
+ * Column selection (NWP-101). The names arrive from the client, so these pin
+ * what the route is allowed to serve: the subset asked for, in the order asked
+ * for, with the card last four absent unless it is named.
+ */
+describe("parseExportColumns", () => {
+  it("returns the requested subset, in the requested order", () => {
+    expect(parseExportColumns("status,id,amount")).toEqual({
+      columns: ["status", "id", "amount"],
+    })
+  })
+
+  it("serializes that subset in the same order, not the canonical one", () => {
+    const parsed = parseExportColumns("amount,id")
+    if ("error" in parsed) throw new Error(parsed.error)
+    expect(toCsv([payment], parsed.columns)).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("collapses a duplicated column rather than writing it twice", () => {
+    expect(parseExportColumns("id,id,status")).toEqual({
+      columns: ["id", "status"],
+    })
+  })
+
+  it("leaves the card last four out of the default set", () => {
+    const parsed = parseExportColumns(null)
+    if ("error" in parsed) throw new Error(parsed.error)
+    expect(parsed.columns).not.toContain("last4")
+    expect(parsed.columns).toEqual(EXPORT_COLUMNS.filter((c) => c !== "last4"))
+    expect(toCsv([payment], parsed.columns)).not.toContain("4242")
+  })
+
+  it("includes the card last four only when it is asked for by name", () => {
+    expect(parseExportColumns("id,last4")).toEqual({
+      columns: ["id", "last4"],
+    })
+    expect(toCsv([payment], ["id", "last4"])).toContain("4242")
+  })
+
+  it("rejects an empty selection instead of returning an empty file", () => {
+    expect(parseExportColumns("")).toEqual({
+      error: "Select at least one column to export.",
+    })
+    expect(parseExportColumns(" , , ")).toEqual({
+      error: "Select at least one column to export.",
+    })
+  })
+
+  it("rejects a column that is not on the allowlist", () => {
+    expect(parseExportColumns("id,card_number")).toEqual({
+      error: "Unknown export column: card_number",
+    })
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter, and only 'all' widens it", () => {
+    expect(parseExportScope(null)).toBe("filter")
+    expect(parseExportScope("everything")).toBe("filter")
+    expect(parseExportScope("all")).toBe("all")
+  })
+})
+
+describe("exportFilename with a scope", () => {
+  it("names the scope it covers", () => {
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
+    )
+  })
+
+  it("slugs the scope, so it can never shape the filename", () => {
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), '../etc/pw"')).toBe(
+      "payments-etc-pw-2026-08-13.csv",
+    )
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("covers every column except the card last four", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toHaveLength(EXPORT_COLUMNS.length - 1)
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
   })
 })
