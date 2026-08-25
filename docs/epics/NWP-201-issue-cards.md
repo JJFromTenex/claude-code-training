@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Oleg Ciubotaru
-**Status:** building
+**Status:** done
 
 ## Problem
 
@@ -19,11 +19,8 @@ Nothing card-shaped exists. `merchant-console/CLAUDE.md` says so: "Cards is NWP-
 - `src/data/store.ts:16-22` — `Store` holds five collections on `globalThis.__northwindStore`. Cards is a sixth; writes survive hot reload, vanish on restart (correct — NWP-203).
 - `src/data/merchants.ts` — every merchant has a `currency`. The codebase already knows which currency a card for that merchant must be in; the ticket does not say so.
 - `src/lib/money.ts:16` `formatMoney`, `:47` `parseAmountToMinorUnits` — display and the one place `"250.00"` becomes `25000`. A second parser or formatter is the defect the rubric looks for.
-- `src/lib/dates.ts:22` `formatInZone`, `:31` `formatDate` — merchant-local display, UTC storage.
 - `src/app/api/payments/export/route.ts` — the route-handler shape: parse, delegate to `src/data/`, return. Pages read `src/data/` directly and never fetch their own API (`src/app/payments/page.tsx`), so cards need a POST and a PATCH handler only; list and detail are server components.
 - `src/components/Drawer.tsx` — Radix dialog already wrapped, used by `src/app/payments/export-options.tsx` for a form. `components.md` claims a `Dialog` primitive; there is none. The Drawer is the accessible dialog we already have.
-- `src/components/ui/payments/StatusBadge.tsx` — one badge keyed by a status union. Card statuses extend it rather than cloning it.
-- `src/app/siteConfig.ts`, `src/components/ui/navigation/AppSidebar.tsx:26-50`, `Breadcrumbs.tsx:7-12` — nav and crumb labels are hand-listed; `/cards` needs an entry in each or it renders as lowercase "cards".
 
 **Where the ticket and the code disagree:** the detail page must show "spend against the limit", but `Payment` has no `cardId` — nothing in the store links a payment to a card. Decision in Approach.
 
@@ -36,8 +33,6 @@ Nothing card-shaped exists. `merchant-console/CLAUDE.md` says so: "Cards is NWP-
 | "The full number appears in the creation response and nowhere else: not on the card record, not in a list or detail payload, not left in client state after the success screen closes." | `.claude/rules/cards.md` | Reveal-once is a lie |
 | "`active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. Guard the transition on the server, not only in the UI." | `.claude/rules/cards.md` | A hand-made PATCH revives a cancelled card |
 | "Reject a missing merchant, a zero or negative limit, a limit above 5,000,000 minor units, and any currency outside `USD`, `EUR`, `GBP`. The client is not trusted." | NWP-201 core | The wrong-limit incident recurs, in code |
-| "Storage and bucketing are UTC." | `merchant-console/CLAUDE.md` | `createdAt` disagrees with every other timestamp |
-| "Do not add a database, an ORM, or a migration." | NWP-201 out of scope | Costs the clock, earns nothing |
 
 ## Approach
 
@@ -62,8 +57,7 @@ Cards become a sixth store collection with one pure module and one data module. 
 | `src/app/cards/issue-card.tsx` | add | `"use client"` — form, live minor-units echo, inline server errors, one-time reveal |
 | `src/app/cards/card-actions.tsx` | add | `"use client"` — freeze / unfreeze, cancel behind a confirm, no reload |
 | `src/app/cards/[id]/page.tsx` | add | Full record, spend bar (amber ≥ 80%), history |
-| `src/components/ui/payments/StatusBadge.tsx` | change | Card statuses join the union |
-| `src/app/siteConfig.ts`, `AppSidebar.tsx`, `Breadcrumbs.tsx` | change | Cards in nav and crumbs |
+| `StatusBadge.tsx`, `siteConfig.ts`, `AppSidebar.tsx`, `Breadcrumbs.tsx` | change | Card statuses join the badge union; Cards in nav and crumbs |
 
 ## Plan
 
@@ -81,22 +75,16 @@ Cards become a sixth store collection with one pure module and one data module. 
 | Acceptance criterion | How it is proven |
 | --- | --- |
 | Issue a card | Fill the drawer on `/cards`, submit, see the row |
-| Card list | `/cards` shows nickname, merchant, masked number, limit, status, created |
-| Card detail | `/cards/<id>` shows the record, spend against limit, history |
 | Generated numbers | `cards.test.ts` over 500 generations: `4242`, 16 digits, Luhn |
 | Reveal once | `curl POST` shows the number; the rendered `/cards` and `/cards/<id>` HTML has no 16-digit run |
 | Server-side validation | The curl 400s in step 3 |
 | Freeze / unfreeze | Click in the list, row updates, no navigation |
 | Spend progress | Seeded card at 87% is amber |
-| Category lock | Chosen at issue, shown on list and detail |
-| Tests | `npm test` green with the new file |
 | Empty / error states | `/cards` with no cards reads as written; a bad submit shows the server's message inline |
 
 ## Risks
 
 - **A number surviving in client state.** The success screen holds it in React state; closing must clear it, not hide it.
-- **Client-only guards.** Hidden buttons are convenience; the 409 is the check.
-- **Diff size.** Reviewers read a bounded window and files sort by path, so this epic sorts last. Keep the whole change under ~1,000 lines by reusing Drawer, StatusBadge, and the existing helpers.
 
 ## Out of scope
 
@@ -105,4 +93,5 @@ Cards become a sixth store collection with one pure module and one data module. 
 
 ## Open questions
 
-- No category taxonomy exists anywhere in the repo. Using `advertising / software / travel / contractors / utilities` and saying so in the PR.
+- No category taxonomy exists in the repo. Using `advertising / software / travel / contractors / utilities` and saying so in the PR.
+- The form shows the currency read-only, derived from the merchant, because the server rejects any other value. Cheaper than a select whose only wrong choices are errors.

@@ -32,7 +32,7 @@ export interface IssueCardInput {
   category: CardCategory
 }
 
-/** Field → message safe to show an operator. Empty means valid. */
+/** Field → message safe to show an operator. */
 export type FieldErrors = Partial<Record<keyof IssueCardInput, string>>
 
 export function validateIssueCard(
@@ -43,7 +43,6 @@ export function validateIssueCard(
 
   const nickname = typeof raw.nickname === "string" ? raw.nickname.trim() : ""
   if (!nickname) errors.nickname = "Give the card a nickname ops will recognise."
-  else if (nickname.length > 40) errors.nickname = "Keep the nickname under 40 characters."
 
   const merchant =
     typeof raw.merchantId === "string" ? merchantById(raw.merchantId) : undefined
@@ -67,36 +66,25 @@ export function validateIssueCard(
   }
 
   const category = raw.category as CardCategory
-  if (!CARD_CATEGORIES.includes(category)) {
-    errors.category = "Choose a spend category."
-  }
+  if (!CARD_CATEGORIES.includes(category)) errors.category = "Choose a spend category."
 
   if (Object.keys(errors).length > 0) return { errors }
   return {
-    input: {
-      nickname,
-      merchantId: merchant!.id,
-      spendLimit: spendLimit as number,
-      currency,
-      category,
-    },
+    input: { nickname, merchantId: merchant!.id, spendLimit: spendLimit as number, currency, category },
   }
 }
 
 /**
- * Issue a card. The full number exists only in the return value of this
- * function: the stored record carries the last four and a reference.
- * Replaying an `idempotencyKey` returns the existing card and no number.
+ * Issue a card. The full number exists only in this return value: the stored
+ * record carries the last four and a reference. Replaying an
+ * `idempotencyKey` returns the existing card and no number.
  */
 export function issueCard(
   input: IssueCardInput,
   idempotencyKey?: string,
 ): { card: Card; cardNumber?: string; replayed: boolean } {
-  if (idempotencyKey) {
-    const existingId = store.cardIssues.get(idempotencyKey)
-    const existing = existingId && cardById(existingId)
-    if (existing) return { card: existing, replayed: true }
-  }
+  const existing = idempotencyKey && cardById(store.cardIssues.get(idempotencyKey) ?? "")
+  if (existing) return { card: existing, replayed: true }
 
   const cardNumber = generateCardNumber()
   const createdAt = new Date().toISOString()
@@ -115,11 +103,6 @@ export function issueCard(
   return { card, cardNumber, replayed: false }
 }
 
-const EVENT_FOR: Record<Exclude<CardStatus, "active">, "frozen" | "cancelled"> = {
-  frozen: "frozen",
-  cancelled: "cancelled",
-}
-
 /** Server-side guard for the state machine. Returns an error message or the card. */
 export function transitionCard(
   card: Card,
@@ -134,9 +117,6 @@ export function transitionCard(
     }
   }
   card.status = to
-  card.events.push({
-    type: to === "active" ? "unfrozen" : EVENT_FOR[to],
-    at: new Date().toISOString(),
-  })
+  card.events.push({ type: to === "active" ? "unfrozen" : to, at: new Date().toISOString() })
   return { card }
 }

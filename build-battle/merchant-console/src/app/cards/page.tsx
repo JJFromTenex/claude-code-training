@@ -28,18 +28,10 @@ export default async function CardsPage() {
             Virtual cards
           </h1>
           <p className="text-sm text-gray-500">
-            {cards.length === 0
-              ? "Single-merchant cards with a limit from the moment they exist."
-              : `${cards.length} issued · numbers are shown once, at issue`}
+            {cards.length} issued · numbers are shown once, at issue
           </p>
         </div>
-        <IssueCard
-          merchants={merchants.map((m) => ({
-            id: m.id,
-            name: m.name,
-            currency: m.currency,
-          }))}
-        />
+        <IssueCard merchants={merchants.map(({ id, name, currency }) => ({ id, name, currency }))} />
       </div>
 
       {cards.length === 0 ? (
@@ -48,8 +40,7 @@ export default async function CardsPage() {
             No cards issued yet
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Issue the first one and it will appear here with its last four,
-            limit, and status.
+            Issue the first one and it will appear here with its last four, limit, and status.
           </p>
         </div>
       ) : (

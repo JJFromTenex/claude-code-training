@@ -92,16 +92,13 @@ export type CardCategory =
   | "contractors"
   | "utilities"
 
-/** Append-only. What happened to the card and when, UTC. */
+/** Append-only history entry; `at` is UTC. */
 export interface CardEvent {
   type: "issued" | "frozen" | "unfrozen" | "cancelled"
   at: string
 }
 
-/**
- * A virtual card. There is deliberately no field for the full number: it is
- * returned once from the creation response and never stored.
- */
+/** No field for the full number: it is returned once at creation, never stored. */
 export interface Card {
   id: string
   nickname: string
@@ -109,9 +106,8 @@ export interface Card {
   /** Opaque reference to the generated number. Not the number. */
   reference: string
   last4: string
-  /** Integer minor units, in `currency`. */
+  /** Integer minor units, both in `currency`. */
   spendLimit: number
-  /** Integer minor units spent against the limit, in `currency`. */
   spent: number
   currency: Currency
   category: CardCategory

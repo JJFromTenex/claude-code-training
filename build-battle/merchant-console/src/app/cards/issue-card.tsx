@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CARD_CATEGORIES, CARD_CURRENCIES, FieldErrors } from "@/data/cards"
+import { CARD_CATEGORIES, FieldErrors } from "@/data/cards"
 import { Card, CardCategory, Currency } from "@/data/types"
 import { formatCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -30,13 +30,7 @@ import { useState } from "react"
 
 type MerchantOption = { id: string; name: string; currency: Currency }
 
-const EMPTY = {
-  nickname: "",
-  merchantId: "",
-  amount: "",
-  currency: "USD" as Currency,
-  category: "" as CardCategory | "",
-}
+const EMPTY = { nickname: "", merchantId: "", amount: "", category: "" as CardCategory | "" }
 
 /**
  * The issue form and the one-time reveal. The number arrives in the creation
@@ -53,7 +47,11 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
   // One key per attempt: a double-click or a retried request cannot issue twice.
   const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID())
 
+  const merchant = merchants.find((m) => m.id === form.merchantId)
+  // The card settles in the merchant's currency; the server rejects anything else.
+  const currency = merchant?.currency ?? "USD"
   const minorUnits = parseAmountToMinorUnits(form.amount)
+
   const set = (patch: Partial<typeof form>) => {
     setForm((f) => ({ ...f, ...patch }))
     // A corrected field drops its error immediately; the server re-checks on submit.
@@ -88,7 +86,7 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
           nickname: form.nickname,
           merchantId: form.merchantId,
           spendLimit: minorUnits,
-          currency: form.currency,
+          currency,
           category: form.category,
         }),
       })
@@ -122,8 +120,8 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
             <DrawerHeader>
               <DrawerTitle>Card issued</DrawerTitle>
               <DrawerDescription>
-                This is the only time the full number is shown. Copy it now; from
-                here on the console shows the last four only.
+                This is the only time the full number is shown. From here on the
+                console shows the last four only.
               </DrawerDescription>
             </DrawerHeader>
             <DrawerBody className="space-y-4">
@@ -135,12 +133,6 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
                 Limit {formatMoney(issued.card.spendLimit, issued.card.currency)}{" "}
                 {issued.card.currency} · {issued.card.category}
               </p>
-              <Button
-                variant="secondary"
-                onClick={() => navigator.clipboard?.writeText(issued.cardNumber)}
-              >
-                Copy number
-              </Button>
             </DrawerBody>
             <DrawerFooter>
               <DrawerClose asChild>
@@ -153,28 +145,16 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
             <DrawerHeader>
               <DrawerTitle>Issue a virtual card</DrawerTitle>
               <DrawerDescription>
-                Single merchant, always virtual, with a limit from the moment it
-                exists.
+                Single merchant, always virtual, with a limit from the moment it exists.
               </DrawerDescription>
             </DrawerHeader>
             <DrawerBody className="space-y-4">
               <Field label="Nickname" id="card-nickname" error={errors.nickname}>
-                <Input
-                  id="card-nickname"
-                  value={form.nickname}
-                  onChange={(e) => set({ nickname: e.target.value })}
-                  placeholder="Meta ads · Q3"
-                  hasError={Boolean(errors.nickname)}
-                />
+                <Input id="card-nickname" value={form.nickname} placeholder="Meta ads · Q3"
+                  onChange={(e) => set({ nickname: e.target.value })} hasError={Boolean(errors.nickname)} />
               </Field>
               <Field label="Merchant" id="card-merchant" error={errors.merchantId}>
-                <Select
-                  value={form.merchantId}
-                  onValueChange={(merchantId) => {
-                    const merchant = merchants.find((m) => m.id === merchantId)
-                    set({ merchantId, currency: merchant?.currency ?? form.currency })
-                  }}
-                >
+                <Select value={form.merchantId} onValueChange={(merchantId) => set({ merchantId })}>
                   <SelectTrigger id="card-merchant" hasError={Boolean(errors.merchantId)}>
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
@@ -196,47 +176,19 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
                     hint={
                       minorUnits === null
                         ? "An amount like 250 or 250.00"
-                        : `${formatMoney(minorUnits, form.currency)} · ${minorUnits.toLocaleString("en-US")} minor units`
+                        : `${formatMoney(minorUnits, currency)} · ${minorUnits.toLocaleString("en-US")} minor units`
                     }
                   >
-                    <Input
-                      id="card-limit"
-                      inputMode="decimal"
-                      value={form.amount}
-                      onChange={(e) => set({ amount: e.target.value })}
-                      placeholder="250.00"
-                      hasError={Boolean(errors.spendLimit)}
-                    />
+                    <Input id="card-limit" inputMode="decimal" value={form.amount} placeholder="250.00"
+                      onChange={(e) => set({ amount: e.target.value })} hasError={Boolean(errors.spendLimit)} />
                   </Field>
                 </div>
-                <Field label="Currency" id="card-currency" error={errors.currency}>
-                  <Select
-                    value={form.currency}
-                    onValueChange={(currency) => set({ currency: currency as Currency })}
-                  >
-                    <SelectTrigger id="card-currency" hasError={Boolean(errors.currency)}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CARD_CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <Field label="Currency" id="card-currency" error={errors.currency} hint="Set by the merchant">
+                  <Input id="card-currency" value={currency} readOnly />
                 </Field>
               </div>
-              <Field
-                label="Category lock"
-                id="card-category"
-                error={errors.category}
-                hint="The card only works for this kind of spend."
-              >
-                <Select
-                  value={form.category}
-                  onValueChange={(category) => set({ category: category as CardCategory })}
-                >
+              <Field label="Category lock" id="card-category" error={errors.category}>
+                <Select value={form.category} onValueChange={(c) => set({ category: c as CardCategory })}>
                   <SelectTrigger id="card-category" hasError={Boolean(errors.category)}>
                     <SelectValue placeholder="Choose a category" />
                   </SelectTrigger>
@@ -272,18 +224,8 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
   )
 }
 
-function Field({
-  label,
-  id,
-  error,
-  hint,
-  children,
-}: {
-  label: string
-  id: string
-  error?: string
-  hint?: string
-  children: React.ReactNode
+function Field({ label, id, error, hint, children }: {
+  label: string; id: string; error?: string; hint?: string; children: React.ReactNode
 }) {
   return (
     <div>
@@ -292,7 +234,7 @@ function Field({
       </label>
       <div className="mt-1">{children}</div>
       {error ? (
-        <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-600 dark:text-red-500">
+        <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-500">
           {error}
         </p>
       ) : hint ? (

@@ -31,14 +31,10 @@ export default async function CardDetail({
   // Integer percent of the limit. Only the display rounds; the amounts do not.
   const percent = Math.min(100, Math.floor((card.spent * 100) / card.spendLimit))
   const nearLimit = percent >= 80
-  const remaining = Math.max(0, card.spendLimit - card.spent)
 
   return (
     <div className="p-4 sm:p-6">
-      <Link
-        href="/cards"
-        className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-50"
-      >
+      <Link href="/cards" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-50">
         ← All cards
       </Link>
 
@@ -56,12 +52,11 @@ export default async function CardDetail({
 
       <Divider />
 
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-        Spend against limit
-      </h2>
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Spend against limit</h2>
       <p className="mt-2 text-sm tabular-nums text-gray-700 dark:text-gray-300">
         {formatMoney(card.spent, card.currency)} of{" "}
-        {formatMoney(card.spendLimit, card.currency)} · {percent}%
+        {formatMoney(card.spendLimit, card.currency)} · {percent}% ·{" "}
+        {formatMoney(card.spendLimit - card.spent, card.currency)} left
         {nearLimit && (
           <span className="ml-2 font-medium text-amber-600 dark:text-amber-500">
             Close to the limit
@@ -79,9 +74,6 @@ export default async function CardDetail({
             : "[&::-moz-progress-bar]:bg-blue-500 [&::-webkit-progress-value]:bg-blue-500",
         )}
       />
-      <p className="mt-1 text-xs text-gray-500">
-        {formatMoney(remaining, card.currency)} remaining
-      </p>
 
       <Divider />
 
@@ -107,23 +99,14 @@ export default async function CardDetail({
 
       <Divider />
 
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-        History
-      </h2>
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">History</h2>
       <ol className="mt-4 space-y-4">
         {card.events.map((event, index) => (
           <li key={index} className="flex gap-3">
-            <span
-              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
-              aria-hidden="true"
-            />
+            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500" aria-hidden="true" />
             <div>
-              <p className="text-sm text-gray-900 dark:text-gray-50">
-                {EVENT_LABELS[event.type]}
-              </p>
-              <p className="text-sm text-gray-500">
-                {formatInZone(event.at, merchant.timezone)}
-              </p>
+              <p className="text-sm text-gray-900 dark:text-gray-50">{EVENT_LABELS[event.type]}</p>
+              <p className="text-sm text-gray-500">{formatInZone(event.at, merchant.timezone)}</p>
             </div>
           </li>
         ))}

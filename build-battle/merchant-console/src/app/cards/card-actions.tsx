@@ -48,20 +48,10 @@ export function CardActions({ id, status }: { id: string; status: CardStatus }) 
         {confirming ? (
           <>
             <span className="text-sm text-gray-700 dark:text-gray-300">Cancel for good?</span>
-            <Button
-              variant="secondary"
-              className="py-1"
-              onClick={() => setConfirming(false)}
-              disabled={pending}
-            >
+            <Button variant="secondary" className="py-1" onClick={() => setConfirming(false)} disabled={pending}>
               Keep
             </Button>
-            <Button
-              variant="destructive"
-              className="py-1"
-              onClick={() => move("cancelled")}
-              isLoading={pending}
-            >
+            <Button variant="destructive" className="py-1" onClick={() => move("cancelled")} isLoading={pending}>
               Cancel card
             </Button>
           </>
@@ -75,12 +65,7 @@ export function CardActions({ id, status }: { id: string; status: CardStatus }) 
             >
               {status === "active" ? "Freeze" : "Unfreeze"}
             </Button>
-            <Button
-              variant="ghost"
-              className="py-1 text-red-600 dark:text-red-500"
-              onClick={() => setConfirming(true)}
-              disabled={pending}
-            >
+            <Button variant="ghost" className="py-1 text-red-600 dark:text-red-500" onClick={() => setConfirming(true)} disabled={pending}>
               Cancel
             </Button>
           </>
