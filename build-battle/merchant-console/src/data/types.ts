@@ -11,6 +11,16 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "office"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +79,41 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+/**
+ * A virtual card.
+ *
+ * There is deliberately no field that can hold a full card number. The number
+ * exists in exactly one place — the creation response — and is never written
+ * here. `reference` is an opaque handle to the generated number, not the
+ * number itself.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Never a float. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** The last four of the generated number. Everything else is masked. */
+  last4: string
+  /** Opaque handle for the generated number. Not the number. */
+  reference: string
+  category: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+export interface CardFilters {
+  status?: CardStatus | "all"
+  merchantId?: string
+  search?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface PaymentFilters {

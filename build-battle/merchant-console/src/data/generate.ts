@@ -1,5 +1,9 @@
+import { generateCardNumber } from "@/lib/card-number"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardCategory,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +152,64 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * Cards ops has already issued, so the list, the detail view, and the status
+ * actions have something to show before anyone fills in the form.
+ *
+ * Spend is a stored figure rather than a sum of linked payments: nothing in
+ * this codebase links a payment to a card. Cards issued through the console
+ * start at zero. The spread below deliberately includes a card over 80% of
+ * its limit and one at the ceiling, so the progress states are reachable.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantId: string
+    /** Minor units. */
+    spendLimit: number
+    /** Fraction of the limit already spent. */
+    used: number
+    status: CardStatus
+    category: CardCategory
+    daysAgo: number
+  }[] = [
+    { nickname: "Google Ads", merchantId: "mch_01", spendLimit: 500_000, used: 0.42, status: "active", category: "advertising", daysAgo: 96 },
+    { nickname: "Figma seats", merchantId: "mch_02", spendLimit: 60_000, used: 0.87, status: "active", category: "software", daysAgo: 74 },
+    { nickname: "Contractor travel", merchantId: "mch_04", spendLimit: 250_000, used: 0.16, status: "active", category: "travel", daysAgo: 61 },
+    { nickname: "Meta ad spend", merchantId: "mch_05", spendLimit: 1_200_000, used: 0.63, status: "frozen", category: "advertising", daysAgo: 48 },
+    { nickname: "Office supplies", merchantId: "mch_03", spendLimit: 40_000, used: 0.05, status: "active", category: "office", daysAgo: 33 },
+    { nickname: "AWS renewal", merchantId: "mch_07", spendLimit: 5_000_000, used: 1, status: "active", category: "software", daysAgo: 21 },
+    { nickname: "Trade show booth", merchantId: "mch_09", spendLimit: 300_000, used: 0.0, status: "cancelled", category: "travel", daysAgo: 12 },
+    { nickname: "Courier account", merchantId: "mch_10", spendLimit: 80_000, used: 0.31, status: "active", category: "other", daysAgo: 4 },
+  ]
+
+  return seeds.map((seed, index) => {
+    const merchant = merchants.find((m) => m.id === seed.merchantId)!
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(9, 17), between(0, 59), between(0, 59), 0)
+
+    const number = generateCardNumber(rand)
+
+    return {
+      id: `card_${pad(index + 1)}`,
+      nickname: seed.nickname,
+      merchantId: seed.merchantId,
+      spendLimit: seed.spendLimit,
+      // Round to an integer: spend is minor units and never a float.
+      spend: Math.round(seed.spendLimit * seed.used),
+      currency: merchant.currency,
+      status: seed.status,
+      last4: number.slice(-4),
+      reference: `cn_${pad(index + 1, 10)}`,
+      category: seed.category,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
