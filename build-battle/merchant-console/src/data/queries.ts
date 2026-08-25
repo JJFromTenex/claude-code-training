@@ -1,6 +1,19 @@
+import {
+  CardInput,
+  canTransition,
+  generateCardNumber,
+  validateCardInput,
+} from "@/lib/cards"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import {
+  Card,
+  CardFilters,
+  CardStatus,
+  Payment,
+  PaymentFilters,
+  PaymentStatus,
+} from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -115,4 +128,99 @@ export function refundsForPayment(paymentId: string) {
 
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
+}
+
+const CARD_STATUSES: readonly (CardStatus | "all")[] = [
+  "all",
+  "active",
+  "frozen",
+  "cancelled",
+]
+
+/**
+ * Anything from the client is checked against an allowlist before it reaches
+ * a query, the same shape as `parseFilters()` above.
+ */
+export function parseCardFilters(params: URLSearchParams): CardFilters {
+  const status = params.get("status")
+  const page = Number(params.get("page") ?? "1")
+
+  return {
+    status: CARD_STATUSES.includes(status as CardStatus)
+      ? (status as CardStatus)
+      : "all",
+    merchantId: params.get("merchantId") ?? undefined,
+    page: Number.isFinite(page) && page > 0 ? page : 1,
+  }
+}
+
+export function filterCards(filters: CardFilters): Card[] {
+  const { status, merchantId } = filters
+  return store.cards.filter((card) => {
+    if (status && status !== "all" && card.status !== status) return false
+    if (merchantId && card.merchantId !== merchantId) return false
+    return true
+  })
+}
+
+/** Filter and paginate in one call, reusing the same `paginate()` payments use. */
+export function queryCards(filters: CardFilters) {
+  const filtered = filterCards(filters)
+  const sorted = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return paginate(sorted, filters.page, filters.pageSize)
+}
+
+export function cardById(id: string): Card | null {
+  return store.cards.find((c) => c.id === id) ?? null
+}
+
+export type IssueCardResult =
+  | { ok: true; card: Card; number: string }
+  | { ok: false; error: string }
+
+/**
+ * Validates, generates the number server-side on the 4242 BIN, and stores
+ * the card without the number. `number` is returned once, here, and is not
+ * kept anywhere — the one-time reveal (`.claude/rules/cards.md`).
+ */
+export function issueCard(input: Partial<CardInput>): IssueCardResult {
+  const result = validateCardInput(input)
+  if (!result.ok) return { ok: false, error: result.error }
+
+  const number = generateCardNumber()
+  const card: Card = {
+    id: `card_${crypto.randomUUID().slice(0, 8)}`,
+    nickname: result.value.nickname,
+    merchantId: result.value.merchantId,
+    last4: number.slice(-4),
+    reference: `ref_${number.slice(4, 12)}`,
+    spendLimit: result.value.spendLimit,
+    currency: result.value.currency,
+    spent: 0,
+    status: "active",
+    category: result.value.category,
+    createdAt: new Date().toISOString(),
+  }
+  store.cards.push(card)
+  return { ok: true, card, number }
+}
+
+export type SetCardStatusResult =
+  | { ok: true; card: Card }
+  | { ok: false; error: string; notFound?: boolean }
+
+/** Guards the `active ⇄ frozen`/`cancelled` state machine on the server. */
+export function setCardStatus(id: string, next: CardStatus): SetCardStatusResult {
+  const card = cardById(id)
+  if (!card) return { ok: false, error: "Card not found.", notFound: true }
+
+  if (!canTransition(card.status, next)) {
+    return {
+      ok: false,
+      error: `Cannot move a card from ${card.status} to ${next}.`,
+    }
+  }
+
+  card.status = next
+  return { ok: true, card }
 }
