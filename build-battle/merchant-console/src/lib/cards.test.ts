@@ -3,8 +3,10 @@ import {
   TEST_BIN,
   generateCardNumber,
   isLuhnValid,
+  isNearLimit,
   luhnCheckDigit,
   maskCardNumber,
+  spendBarSteps,
 } from "./cards"
 
 /**
@@ -63,5 +65,40 @@ describe("generateCardNumber", () => {
 describe("maskCardNumber", () => {
   it("renders the last four behind dots", () => {
     expect(maskCardNumber("4242")).toBe("•••• 4242")
+  })
+})
+
+describe("isNearLimit", () => {
+  it("turns on strictly past eighty percent", () => {
+    // Exactly eighty percent is not past it, and the boundary is the whole
+    // point of the amber state.
+    expect(isNearLimit(80_000, 100_000)).toBe(false)
+    expect(isNearLimit(80_001, 100_000)).toBe(true)
+    expect(isNearLimit(100_000, 100_000)).toBe(true)
+  })
+
+  it("stays exact on limits that do not divide evenly", () => {
+    // 2667 of 3333 is 80.02%. A float ratio makes this case a coin toss.
+    expect(isNearLimit(2666, 3333)).toBe(false)
+    expect(isNearLimit(2667, 3333)).toBe(true)
+  })
+
+  it("is false for a zero limit rather than dividing by it", () => {
+    expect(isNearLimit(0, 0)).toBe(false)
+    expect(isNearLimit(500, 0)).toBe(false)
+  })
+})
+
+describe("spendBarSteps", () => {
+  it("maps spend onto twentieths of the limit", () => {
+    expect(spendBarSteps(0, 100_000)).toBe(0)
+    expect(spendBarSteps(50_000, 100_000)).toBe(10)
+    expect(spendBarSteps(100_000, 100_000)).toBe(20)
+  })
+
+  it("never runs past either end of the bar", () => {
+    expect(spendBarSteps(250_000, 100_000)).toBe(20)
+    expect(spendBarSteps(-100, 100_000)).toBe(0)
+    expect(spendBarSteps(100, 0)).toBe(0)
   })
 })

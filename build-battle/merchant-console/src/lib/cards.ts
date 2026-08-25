@@ -53,3 +53,19 @@ export function generateCardNumber(): string {
 export function maskCardNumber(last4: string): string {
   return `•••• ${last4}`
 }
+
+/** How many twentieths of the limit a spend bar fills. Zero to twenty. */
+export function spendBarSteps(spent: number, limit: number): number {
+  if (limit <= 0) return 0
+  return Math.max(0, Math.min(20, Math.round((spent * 20) / limit)))
+}
+
+/**
+ * Whether spend has passed eighty percent of the limit.
+ *
+ * Compared as integers: `spent * 5 > limit * 4` asks the same question as
+ * `spent / limit > 0.8` without turning two minor-unit amounts into a float.
+ */
+export function isNearLimit(spent: number, limit: number): boolean {
+  return limit > 0 && spent * 5 > limit * 4
+}
