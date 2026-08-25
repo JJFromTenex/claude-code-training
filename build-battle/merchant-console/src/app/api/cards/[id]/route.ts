@@ -3,11 +3,8 @@ import { CardStatus } from "@/data/types"
 import { NextRequest, NextResponse } from "next/server"
 
 /**
- * Changes a card's status.
- *
- * The state machine is guarded here rather than only in the UI: hiding a
- * button stops a click, not a request. The response carries the updated
- * record, which holds the last four and never the full number.
+ * Changes a card's status. Guarded here rather than only in the UI: hiding a
+ * button stops a click, not a request.
  */
 
 const STATUSES: readonly CardStatus[] = ["active", "frozen", "cancelled"]

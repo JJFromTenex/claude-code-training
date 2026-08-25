@@ -4,13 +4,12 @@ import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
 
 /**
- * Spend against a card's limit.
- *
- * Both amounts arrive as minor units and are formatted here, at the edge. The
- * bar width is a static Tailwind class rather than an inline style, so it
- * snaps to five-percent steps; a bar is read, not measured.
+ * Spend against a card's limit. Amounts arrive as minor units and are
+ * formatted here, at the edge. The width is a static Tailwind class rather
+ * than an inline style, so it snaps to five-percent steps.
  */
 
+// Written out so Tailwind's scanner sees every class it must generate.
 const WIDTHS = [
   "w-0",
   "w-[5%]",

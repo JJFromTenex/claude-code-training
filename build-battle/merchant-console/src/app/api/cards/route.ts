@@ -9,15 +9,10 @@ import { CardCategory, Currency } from "@/data/types"
 import { NextRequest, NextResponse } from "next/server"
 
 /**
- * Issues a virtual card.
- *
- * This is the only response in the application that carries a full card
- * number. The stored record keeps the last four and a reference, so no later
- * read can return it, including the idempotent replay below.
- *
- * Everything on the body is checked against an allowlist first. The drawer
- * performs the same checks, but those are a convenience and this is the
- * enforcement.
+ * Issues a virtual card. The only response that carries a full card number:
+ * the stored record keeps the last four and a reference, so no later read can
+ * return it, including the idempotent replay below. Everything on the body is
+ * allowlisted here, which is the enforcement; the drawer's checks are UX.
  */
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]

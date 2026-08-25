@@ -5,10 +5,9 @@ import { store } from "./store"
 import { Card, CardStatus } from "./types"
 
 /**
- * The state machine is the rule with teeth: a cancelled card that comes back
- * to life is a card someone deliberately killed still spending money. The
- * matrix below asserts every pair, so a new status cannot be added without
- * someone deciding what it may become.
+ * A cancelled card that revives is a card someone deliberately killed, still
+ * spending money. The matrix asserts every pair, so a new status cannot be
+ * added without someone deciding what it may become.
  */
 
 const STATUSES: CardStatus[] = ["active", "frozen", "cancelled"]

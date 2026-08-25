@@ -16,7 +16,6 @@ import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardRowActions } from "./card-row-actions"
 import { IssueCardDrawer } from "./issue-card-drawer"
-import { SpendProgress } from "./spend-progress"
 
 export default async function CardsPage() {
   const cards = listCards()

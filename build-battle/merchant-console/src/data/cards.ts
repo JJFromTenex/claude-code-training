@@ -3,10 +3,8 @@ import { store } from "./store"
 import { Card, CardCategory, CardStatus, Currency } from "./types"
 
 /**
- * Cards: the allowlists, the status state machine, and the store operations.
- *
- * The state machine is pure and has no store import in its path, which is what
- * lets the route handler and the tests ask exactly the same question.
+ * Cards: allowlists, the status state machine, and the store operations. The
+ * state machine is pure, so the route handler and the tests ask one question.
  */
 
 /** Categories a card may be locked to. Anything else is rejected on the server. */
@@ -42,11 +40,7 @@ export function canTransition(from: CardStatus, to: CardStatus): boolean {
   return TRANSITIONS[from].includes(to)
 }
 
-/**
- * The card as it looks after a legal transition, or null if the transition is
- * not one the machine allows. Returns a new record rather than mutating, so a
- * refused transition cannot half-apply.
- */
+/** The card after a legal transition, or null. New record, so a refusal cannot half-apply. */
 export function applyTransition(
   card: Card,
   to: CardStatus,
@@ -84,12 +78,7 @@ export interface IssueCardInput {
   requestId: string
 }
 
-/**
- * Issues a card and returns the full number alongside it.
- *
- * The full number is returned, never stored: the record keeps the last four
- * and an opaque reference, so no later read can reconstruct it.
- */
+/** Returns the full number but never stores it: the record keeps last4 and a reference. */
 export function issueCard(input: IssueCardInput): {
   card: Card
   fullNumber: string

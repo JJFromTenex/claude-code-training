@@ -3,9 +3,8 @@ import { sortPayments } from "./queries"
 import { Payment } from "./types"
 
 /**
- * Sorting is the one place a payment amount is compared rather than formatted,
- * so it is the one place the minor-units rule can be broken without anything
- * looking wrong on screen.
+ * Sorting is the one place an amount is compared rather than formatted, so it
+ * is where the minor-units rule breaks without anything looking wrong.
  */
 
 function payment(id: string, amount: number, createdAt: string): Payment {

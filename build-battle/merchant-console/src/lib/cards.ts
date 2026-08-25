@@ -1,9 +1,7 @@
 /**
- * Card number generation and masking.
- *
- * Every number produced here starts with the 4242 test BIN, so nothing in this
- * repository can resemble a real PAN. Generation is server-side only: a number
- * produced in the browser is a bug, not a shortcut.
+ * Card number generation and masking. Every number starts with the 4242 test
+ * BIN, so nothing here can resemble a real PAN, and generation is server-side
+ * only: a number produced in the browser is a bug.
  */
 
 /** The test BIN. Not optional, not configurable. */
@@ -11,10 +9,7 @@ export const TEST_BIN = "4242"
 
 const CARD_NUMBER_LENGTH = 16
 
-/**
- * The Luhn check digit for a body of digits, using the standard doubling from
- * the right. The body is everything but the check digit itself.
- */
+/** The Luhn check digit for a body of digits, doubling from the right. */
 export function luhnCheckDigit(digits: string): number {
   let sum = 0
   // The rightmost body digit is doubled, then every second one leftward.
@@ -36,10 +31,7 @@ export function isLuhnValid(pan: string): boolean {
   return luhnCheckDigit(body) === Number(pan.slice(-1))
 }
 
-/**
- * A 16-digit test card number: the 4242 BIN, eleven random digits, and the
- * Luhn check digit that makes the whole thing valid.
- */
+/** 16 digits: the 4242 BIN, eleven random digits, and the Luhn check digit. */
 export function generateCardNumber(): string {
   const randomLength = CARD_NUMBER_LENGTH - TEST_BIN.length - 1
   let body = TEST_BIN
@@ -61,10 +53,8 @@ export function spendBarSteps(spent: number, limit: number): number {
 }
 
 /**
- * Whether spend has passed eighty percent of the limit.
- *
- * Compared as integers: `spent * 5 > limit * 4` asks the same question as
- * `spent / limit > 0.8` without turning two minor-unit amounts into a float.
+ * Past eighty percent of the limit. `spent * 5 > limit * 4` asks the same
+ * question as `spent / limit > 0.8` without making two amounts into floats.
  */
 export function isNearLimit(spent: number, limit: number): boolean {
   return limit > 0 && spent * 5 > limit * 4

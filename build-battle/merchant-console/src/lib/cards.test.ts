@@ -10,9 +10,8 @@ import {
 } from "./cards"
 
 /**
- * The check digit is the part that is easy to get subtly wrong: doubling from
- * the wrong end, or forgetting to subtract nine, both produce numbers that
- * look fine and fail every validator. The vectors below are computed by hand.
+ * Doubling from the wrong end, or forgetting to subtract nine, both produce
+ * numbers that look fine and fail every validator. Vectors computed by hand.
  */
 
 describe("luhnCheckDigit", () => {

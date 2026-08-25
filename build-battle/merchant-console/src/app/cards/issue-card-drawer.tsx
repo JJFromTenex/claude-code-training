@@ -26,13 +26,9 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 /**
- * Issues a card and shows its number once.
- *
- * The number never leaves this component: it is held only while the success
- * screen is open and cleared when the drawer closes, so nothing can re-read
- * it. The card number itself is generated on the server; nothing here invents
- * one, and every check below is repeated by the route handler, which is where
- * the enforcement lives.
+ * Issues a card and shows its number once. The number is held only while the
+ * success screen is open and cleared on close, so nothing can re-read it.
+ * Every check here is repeated by the route handler, which is the enforcement.
  */
 
 type MerchantOption = { id: string; name: string; currency: Currency }
