@@ -1,7 +1,10 @@
+import { generateCardNumber, lastFourOf } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
@@ -148,7 +151,67 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * A few cards ops has already issued, so the list and the detail view have
+ * something in them on a cold start. Numbers go through the same generator the
+ * issue route uses, on the same 4242 test BIN.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantIndex: number
+    spendLimit: number
+    status: Card["status"]
+    categoryLock: MerchantCategory
+    daysAgo: number
+  }[] = [
+    {
+      nickname: "Meta Ads — Q3",
+      merchantIndex: 0,
+      spendLimit: 750_000,
+      status: "active",
+      categoryLock: "advertising",
+      daysAgo: 24,
+    },
+    {
+      nickname: "Figma seats",
+      merchantIndex: 2,
+      spendLimit: 350_000,
+      status: "active",
+      categoryLock: "software",
+      daysAgo: 11,
+    },
+    {
+      nickname: "Contractor — Rui",
+      merchantIndex: 1,
+      spendLimit: 250_000,
+      status: "frozen",
+      categoryLock: "contractors",
+      daysAgo: 5,
+    },
+  ]
+
+  return seeds.map((seed, index) => {
+    const merchant = merchants[seed.merchantIndex]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      nickname: seed.nickname,
+      merchantId: merchant.id,
+      last4: lastFourOf(generateCardNumber(rand)),
+      spendLimit: seed.spendLimit,
+      currency: merchant.currency,
+      status: seed.status,
+      categoryLock: seed.categoryLock,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

@@ -11,6 +11,17 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** active ⇄ frozen, either to cancelled, and cancelled is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/** What a card is allowed to be spent on. Chosen at issue time. */
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "any"
+
 export interface Merchant {
   id: string
   name: string
@@ -81,4 +92,23 @@ export interface PaymentFilters {
   pageSize?: number
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
+}
+
+export interface Card {
+  id: string
+  /** What ops calls it, e.g. "Meta Ads — Q3". */
+  nickname: string
+  merchantId: string
+  /**
+   * The last four only. The full number exists in the creation response and
+   * nowhere else, so there is deliberately no field to re-read it from.
+   */
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  status: CardStatus
+  categoryLock: MerchantCategory
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
