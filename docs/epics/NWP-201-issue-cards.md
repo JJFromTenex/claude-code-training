@@ -97,5 +97,18 @@ Add a `Card` record to the in-memory store and drive everything through server r
 
 ## Open questions
 
-- **Where does a card's spend come from?** No payment in the store links to a card, and the ticket does not say. Assumption: a `spent` field in minor units on the `Card`, zero at issue and non-zero on seeded cards, so the detail bar has something real to show. Recording it rather than inventing a payment-to-card join.
-- Whether a card's currency must match its merchant's. The ticket only requires the three-currency allowlist, so that is what is enforced; a merchant-match check is noted as a possible follow-up.
+Both were resolved during the build. Recorded here with what shipped, so the
+plan and the code do not drift apart.
+
+- **Where does a card's spend come from?** No payment in the store links to a
+  card, and the ticket does not say. **Resolved:** `spent` is a minor-units
+  field on the `Card`, zero for anything issued through the console. Seeded
+  cards derive theirs in `src/data/cards-seed.ts` from real captured payments
+  for that merchant and currency in the three days after issue, capped at the
+  limit. The window is a stated modelling choice; the figures are real rows and
+  move when the seed does. A payment-to-card join was not invented.
+- **Must a card's currency match its merchant's?** The ticket requires only the
+  three-currency allowlist. **Resolved: yes, enforced.** `validateIssueRequest`
+  rejects a mismatch by name — "Lumen Coffee Roasters settles in USD" — because
+  a card issued in a currency its merchant does not trade in is one nobody can
+  reconcile. Covered by a test.
