@@ -66,7 +66,9 @@ export default async function CardsPage({
               merchantId: filters.merchantId ?? "",
             }}
           />
-          <IssueCardDialog merchants={merchants.map((m) => ({ id: m.id, name: m.name }))} />
+          <IssueCardDialog
+            merchants={merchants.map((m) => ({ id: m.id, name: m.name, currency: m.currency }))}
+          />
         </div>
       </div>
 

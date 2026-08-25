@@ -124,6 +124,19 @@ describe("validateCardInput", () => {
     expect(validateCardInput({ ...valid, currency: "JPY" }).ok).toBe(false)
   })
 
+  it("rejects a currency that does not match the merchant's own currency", () => {
+    // mch_01 (Lumen Coffee Roasters) is USD; EUR is a valid card currency in
+    // isolation but wrong for this merchant.
+    const result = validateCardInput({ ...valid, merchantId: "mch_01", currency: "EUR" })
+    expect(result.ok).toBe(false)
+  })
+
+  it("accepts a currency that matches a non-USD merchant", () => {
+    // mch_05 (Brandt & Sohn) is EUR.
+    const result = validateCardInput({ ...valid, merchantId: "mch_05", currency: "EUR" })
+    expect(result.ok).toBe(true)
+  })
+
   it("rejects an unknown category", () => {
     expect(validateCardInput({ ...valid, category: "yacht" }).ok).toBe(false)
   })

@@ -109,6 +109,14 @@ export interface Card {
   category: CardCategory
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Every status this card has held, oldest first. Issuance is the first entry. */
+  history: CardHistoryEntry[]
+}
+
+export interface CardHistoryEntry {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
 }
 
 export interface CardFilters {

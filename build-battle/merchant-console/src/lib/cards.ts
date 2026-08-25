@@ -118,7 +118,8 @@ export function validateCardInput(input: Partial<CardInput>): ValidationResult {
     return { ok: false, error: "Nickname is required." }
   }
 
-  if (!input.merchantId || !merchantById(input.merchantId)) {
+  const merchant = input.merchantId ? merchantById(input.merchantId) : null
+  if (!input.merchantId || !merchant) {
     return { ok: false, error: "Choose a valid merchant." }
   }
 
@@ -141,6 +142,15 @@ export function validateCardInput(input: Partial<CardInput>): ValidationResult {
 
   if (!CARD_CURRENCIES.includes(input.currency as Currency)) {
     return { ok: false, error: "Currency must be USD, EUR, or GBP." }
+  }
+
+  // A card spends on the merchant's account, so its currency has to be the
+  // merchant's currency — a USD card against a EUR merchant is meaningless.
+  if (input.currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `Currency must match ${merchant.name}'s currency (${merchant.currency}).`,
+    }
   }
 
   if (!CARD_CATEGORIES.includes(input.category as CardCategory)) {

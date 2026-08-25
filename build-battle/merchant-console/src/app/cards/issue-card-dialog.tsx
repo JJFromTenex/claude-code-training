@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CARD_CATEGORIES, CARD_CURRENCIES, maskLast4 } from "@/lib/cards"
+import { CARD_CATEGORIES, maskLast4 } from "@/lib/cards"
 import { Card, CardCategory, Currency } from "@/data/types"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -34,35 +34,38 @@ const CATEGORY_LABELS: Record<CardCategory, string> = {
   utilities: "Utilities",
 }
 
+type MerchantOption = { id: string; name: string; currency: Currency }
+
 /**
  * Issues a card. Submitting shows a one-time success screen with the full
  * number — the reveal (`.claude/rules/cards.md`). Closing the drawer clears
  * that number out of state; it does not come back.
  */
-export function IssueCardDialog({
-  merchants,
-}: {
-  merchants: { id: string; name: string }[]
-}) {
+export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
-  const [currency, setCurrency] = useState<Currency>("USD")
   const [category, setCategory] = useState<CardCategory>("software")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<{ card: Card; number: string } | null>(null)
+  // One key per open drawer: a double-click or a retried request during that
+  // one submission reuses it, so the server answers with the same card
+  // instead of minting a second one.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
     setLimit("")
-    setCurrency("USD")
     setCategory("software")
     setError(null)
     setIssued(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -72,13 +75,24 @@ export function IssueCardDialog({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!selectedMerchant) {
+      setError("Choose a valid merchant.")
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nickname, merchantId, spendLimit: limit, currency, category }),
+        body: JSON.stringify({
+          nickname,
+          merchantId,
+          spendLimit: limit,
+          currency: selectedMerchant.currency,
+          category,
+          idempotencyKey,
+        }),
       })
       const body = await response.json()
       if (!response.ok) {
@@ -169,39 +183,25 @@ export function IssueCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500">
+                  {selectedMerchant
+                    ? `Issued in ${selectedMerchant.currency} — the merchant's own currency.`
+                    : "The card's currency follows the merchant you pick."}
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="card-limit" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                    Spend limit
-                  </label>
-                  <Input
-                    id="card-limit"
-                    required
-                    inputMode="decimal"
-                    value={limit}
-                    onChange={(e) => setLimit(e.target.value)}
-                    placeholder="250.00"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="card-currency" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                    Currency
-                  </label>
-                  <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-                    <SelectTrigger id="card-currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CARD_CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="card-limit" className="text-sm font-medium text-gray-900 dark:text-gray-50">
+                  Spend limit {selectedMerchant ? `(${selectedMerchant.currency})` : ""}
+                </label>
+                <Input
+                  id="card-limit"
+                  required
+                  inputMode="decimal"
+                  value={limit}
+                  onChange={(e) => setLimit(e.target.value)}
+                  placeholder="250.00"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

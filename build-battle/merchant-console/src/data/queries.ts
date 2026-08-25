@@ -179,15 +179,33 @@ export type IssueCardResult =
   | { ok: false; error: string }
 
 /**
+ * Answers a repeated issue request with the exact result of the first one,
+ * keyed on a client-supplied idempotency key, so a double-click or a retried
+ * request cannot mint two cards for one submission. This cache is separate
+ * from `store.cards` and holds the one-time number only long enough to
+ * answer a retry — the `Card` record itself never gets a number field.
+ */
+const issueIdempotencyCache = new Map<string, IssueCardResult>()
+
+/**
  * Validates, generates the number server-side on the 4242 BIN, and stores
  * the card without the number. `number` is returned once, here, and is not
  * kept anywhere — the one-time reveal (`.claude/rules/cards.md`).
  */
-export function issueCard(input: Partial<CardInput>): IssueCardResult {
+export function issueCard(
+  input: Partial<CardInput>,
+  idempotencyKey?: string,
+): IssueCardResult {
+  if (idempotencyKey) {
+    const cached = issueIdempotencyCache.get(idempotencyKey)
+    if (cached) return cached
+  }
+
   const result = validateCardInput(input)
   if (!result.ok) return { ok: false, error: result.error }
 
   const number = generateCardNumber()
+  const now = new Date().toISOString()
   const card: Card = {
     id: `card_${crypto.randomUUID().slice(0, 8)}`,
     nickname: result.value.nickname,
@@ -199,10 +217,14 @@ export function issueCard(input: Partial<CardInput>): IssueCardResult {
     spent: 0,
     status: "active",
     category: result.value.category,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    history: [{ status: "active", at: now }],
   }
   store.cards.push(card)
-  return { ok: true, card, number }
+
+  const outcome: IssueCardResult = { ok: true, card, number }
+  if (idempotencyKey) issueIdempotencyCache.set(idempotencyKey, outcome)
+  return outcome
 }
 
 export type SetCardStatusResult =
@@ -222,5 +244,6 @@ export function setCardStatus(id: string, next: CardStatus): SetCardStatusResult
   }
 
   card.status = next
+  card.history.push({ status: next, at: new Date().toISOString() })
   return { ok: true, card }
 }
