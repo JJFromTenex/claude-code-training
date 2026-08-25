@@ -1,5 +1,8 @@
+import { CATEGORY_LOCKS, generateCardNumber, lastFour } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,57 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_NICKNAMES = [
+  "Google Ads — brand",
+  "Meta Ads — retargeting",
+  "Figma team seats",
+  "Contractor tools",
+  "Travel — trade shows",
+  "AWS — staging",
+  "Office supplies",
+]
+
+/**
+ * A handful of cards so the list is not empty on a fresh boot.
+ *
+ * Numbers go through the same server-side generator the issue flow uses, and
+ * only the last four is kept — the full number is not stored here either.
+ */
+function generateCards(): Card[] {
+  const cards: Card[] = []
+  let seq = 0
+
+  for (const nickname of CARD_NICKNAMES) {
+    const merchant = pick(merchants)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(1, 90))
+    createdAt.setUTCHours(between(0, 23), between(0, 59), 0, 0)
+
+    const spendLimit = between(10, 500) * 10_000
+    const roll = rand()
+    const status: CardStatus =
+      roll < 0.72 ? "active" : roll < 0.9 ? "frozen" : "cancelled"
+
+    cards.push({
+      id: `card_${pad(++seq, 4)}`,
+      nickname,
+      merchantId: merchant.id,
+      last4: lastFour(generateCardNumber(rand)),
+      spendLimit,
+      // A couple sit past 80% so the warning state has something to show.
+      spent: Math.round(spendLimit * (rand() < 0.3 ? 0.82 + rand() * 0.15 : rand() * 0.6)),
+      currency: merchant.currency,
+      status,
+      createdAt: createdAt.toISOString(),
+      categoryLock: rand() < 0.55 ? pick(CATEGORY_LOCKS) : null,
+    })
+  }
+
+  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
