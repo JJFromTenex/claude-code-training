@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,72 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a subset in the order the client asked for, not the canonical one", () => {
+    expect(parseExportColumns("amount,currency,id")).toEqual([
+      "amount",
+      "currency",
+      "id",
+    ])
+  })
+
+  it("serializes that subset in the same order", () => {
+    const columns = parseExportColumns("amount,currency,id")!
+    expect(toCsv([payment], columns)).toBe(
+      ["amount,currency,id", "$250.00,USD,pay_0001"].join("\n"),
+    )
+  })
+
+  it("leaves the card last four out by default, so merchant files are clean", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+    expect(toCsv([payment], parseExportColumns(null)!)).not.toContain("4242")
+  })
+
+  it("still includes every other column by default", () => {
+    expect(parseExportColumns(null)).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  it("rejects an empty selection rather than writing a header-only file", () => {
+    expect(parseExportColumns("")).toBeNull()
+    expect(parseExportColumns(",,")).toBeNull()
+  })
+
+  it("collapses a repeated column instead of writing it twice", () => {
+    expect(parseExportColumns("amount,amount,amount")).toEqual(["amount"])
+    expect(parseExportColumns("amount,id,amount")).toEqual(["amount", "id"])
+  })
+
+  it("cannot be made to exceed the allowlist, however long the input", () => {
+    const flooded = Array(500).fill("id").join(",")
+    expect(parseExportColumns(flooded)).toEqual(["id"])
+    expect(
+      parseExportColumns([...EXPORT_COLUMNS, ...EXPORT_COLUMNS].join(",")),
+    ).toHaveLength(EXPORT_COLUMNS.length)
+  })
+
+  it("rejects a column name that is not on the allowlist", () => {
+    expect(parseExportColumns("id,cardholder_name")).toBeNull()
+    expect(parseExportColumns("../../etc/passwd")).toBeNull()
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
+    )
+  })
+
+  it("names the scope when there is one", () => {
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+  })
+
+  it("strips anything that would escape the filename", () => {
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), '../x"')).toBe(
+      "payments-x-2026-08-13.csv",
     )
   })
 })
