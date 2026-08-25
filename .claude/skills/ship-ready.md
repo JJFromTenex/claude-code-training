@@ -1,6 +1,5 @@
 ---
 description: Pre-ship quality check — money math, UTC, duplicate logic, unvalidated input
-user_invocable: true
 ---
 
 # /ship-ready

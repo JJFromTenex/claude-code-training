@@ -1,6 +1,5 @@
 ---
 description: Turn a ticket into an epic — a written plan that cites real files
-user_invocable: true
 ---
 
 # /epic
