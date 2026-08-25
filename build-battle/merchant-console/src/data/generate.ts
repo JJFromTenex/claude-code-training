@@ -216,8 +216,28 @@ function generateCards(): Card[] {
       status: seed.status,
       categoryLock: seed.categoryLock,
       createdAt: createdAt.toISOString(),
+      history: cardHistory(seed.status, createdAt),
     }
   })
+}
+
+function cardHistory(status: Card["status"], createdAt: Date): Card["history"] {
+  const history: Card["history"] = [
+    { at: createdAt.toISOString(), event: "issued" },
+  ]
+  if (status === "frozen") {
+    history.push({
+      at: new Date(createdAt.getTime() + between(1, 10) * 86_400_000).toISOString(),
+      event: "frozen",
+    })
+  }
+  if (status === "cancelled") {
+    history.push({
+      at: new Date(createdAt.getTime() + between(1, 10) * 86_400_000).toISOString(),
+      event: "cancelled",
+    })
+  }
+  return history
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

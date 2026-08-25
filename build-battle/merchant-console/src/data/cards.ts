@@ -123,6 +123,7 @@ export function createCard(input: CreateCardInput): {
 } {
   const number = generateCardNumber()
   const seq = nextCardSeq()
+  const now = new Date().toISOString()
   const card: Card = {
     id: `card_${pad(seq)}`,
     merchantId: input.merchantId,
@@ -134,7 +135,8 @@ export function createCard(input: CreateCardInput): {
     currency: input.currency,
     status: "active",
     categoryLock: input.categoryLock,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    history: [{ at: now, event: "issued" }],
   }
   store.cards.push(card)
   return { card, number }
@@ -160,6 +162,12 @@ export function transitionCard(id: string, to: unknown): TransitionResult {
       error: `A ${card.status} card cannot become ${to}.`,
     }
   }
-  card.status = to as CardStatus
+  const next = to as CardStatus
+  card.status = next
+  card.history.push({
+    at: new Date().toISOString(),
+    event:
+      next === "active" ? "unfrozen" : next === "frozen" ? "frozen" : "cancelled",
+  })
   return { ok: true, card }
 }

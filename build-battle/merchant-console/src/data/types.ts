@@ -80,6 +80,12 @@ export type CardCategory =
   | "office_supplies"
   | "professional_services"
 
+export interface CardEvent {
+  /** ISO 8601, always UTC. */
+  at: string
+  event: "issued" | "frozen" | "unfrozen" | "cancelled"
+}
+
 export interface Card {
   id: string
   merchantId: string
@@ -98,6 +104,8 @@ export interface Card {
   categoryLock: CardCategory | null
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** What happened to the card and when, oldest first. */
+  history: CardEvent[]
 }
 
 export interface PaymentFilters {

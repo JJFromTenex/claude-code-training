@@ -11,6 +11,13 @@ import { notFound } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
+const EVENT_LABELS: Record<string, string> = {
+  issued: "Card issued",
+  frozen: "Frozen",
+  unfrozen: "Unfrozen",
+  cancelled: "Cancelled",
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   advertising: "Advertising",
   software: "Software",
@@ -91,6 +98,30 @@ export default async function CardDetail({
           </p>
         )}
       </div>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mb-6 mt-4 space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {EVENT_LABELS[entry.event]}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(entry.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       <Divider />
 
