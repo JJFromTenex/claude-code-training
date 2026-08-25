@@ -1,3 +1,8 @@
+---
+description: Turn a ticket into an epic — a written plan that cites real files
+user_invocable: true
+---
+
 # /epic
 
 Turn a ticket into an epic: a written, reviewable plan that becomes the context for the build.

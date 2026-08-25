@@ -1,3 +1,8 @@
+---
+description: Write the pull request description from your branch, ticket, and epic
+user_invocable: true
+---
+
 # /pr
 
 Write the pull request description for the work in this branch.

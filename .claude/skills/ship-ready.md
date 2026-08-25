@@ -1,3 +1,8 @@
+---
+description: Pre-ship quality check — money math, UTC, duplicate logic, unvalidated input
+user_invocable: true
+---
+
 # /ship-ready
 
 Run a pre-ship quality check on the merchant console before opening a pull request. Scan the TypeScript and TSX files under `merchant-console/src/` and report issues.
