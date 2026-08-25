@@ -1,4 +1,5 @@
 import { Button } from "@/components/Button"
+import { ExportDialog } from "./export-dialog"
 import {
   Table,
   TableBody,
@@ -10,11 +11,10 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
-import { PaymentFilters, PaymentStatus } from "@/data/types"
+import { parseFilters, queryPayments } from "@/data/queries"
+import { PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
 import Link from "next/link"
 import { PaymentsFilterBar } from "./filter-bar"
 
@@ -33,19 +33,18 @@ export default async function PaymentsPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: PaymentFilters = {
-    status: (STATUSES.includes(params.status as PaymentStatus)
-      ? params.status
-      : "all") as PaymentFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
-
-  const { rows, total, page, pageCount } = queryPayments(filters)
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
+
+  // parseFilters is the one allowlist boundary. The export route reads the
+  // same query string through it, so the table and the file this page offers
+  // to download always describe the same set — a second parser here silently
+  // dropped from/to and made the dialog's row count a lie (NWP-101).
+  const filters = parseFilters(query)
+
+  const { rows, total, page, pageCount } = queryPayments(filters)
+  const { total: allTotal } = queryPayments({})
 
   const pageHref = (next: number) => {
     const q = new URLSearchParams(query)
@@ -65,15 +64,11 @@ export default async function PaymentsPage({
             search: filters.search ?? "",
           }}
         />
-        <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
-          <a href={`/api/payments/export?${query.toString()}`}>
-            <Download
-              className="-ml-0.5 size-4 shrink-0 text-gray-400 dark:text-gray-600"
-              aria-hidden="true"
-            />
-            Export
-          </a>
-        </Button>
+        <ExportDialog
+          query={query.toString()}
+          filteredCount={total}
+          allCount={allTotal}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">

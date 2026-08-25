@@ -5,9 +5,10 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns and the scope in the export dialog (NWP-101).
+ * Column names arrive from the client, so parseExportOptions is the
+ * allowlist boundary: nothing outside EXPORT_COLUMNS reaches a cell or
+ * a filename.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,39 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What the dialog opens with: every column except the card last-four.
+ * Files go to merchants, so last4 is opt-in, never opt-out.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+export type ExportScope = "filtered" | "all"
+
+export interface ExportOptions {
+  columns: ExportColumn[] | null
+  scope: ExportScope
+}
+
+/**
+ * Allowlist boundary for export params. Unknown column names are dropped,
+ * duplicates collapse, and the requested order is kept. `columns: null`
+ * means nothing valid survived — the route answers that with a 400 rather
+ * than an empty file. Absent `columns` means the default set.
+ */
+export function parseExportOptions(params: URLSearchParams): ExportOptions {
+  const scope: ExportScope = params.get("scope") === "all" ? "all" : "filtered"
+
+  const raw = params.get("columns")
+  if (raw === null) return { columns: [...DEFAULT_EXPORT_COLUMNS], scope }
+
+  const columns = [...new Set(raw.split(","))].filter(
+    (name): name is ExportColumn =>
+      (EXPORT_COLUMNS as readonly string[]).includes(name),
+  )
+  return { columns: columns.length > 0 ? columns : null, scope }
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +100,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), descriptor?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  return descriptor ? `payments-${descriptor}-${day}.csv` : `payments-${day}.csv`
 }
