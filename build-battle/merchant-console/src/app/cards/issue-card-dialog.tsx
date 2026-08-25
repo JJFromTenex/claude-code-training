@@ -53,7 +53,6 @@ export function IssueCardDialog({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
-  const [requestId, setRequestId] = useState("")
 
   const nicknameId = useId()
   const merchantFieldId = useId()
@@ -69,11 +68,7 @@ export function IssueCardDialog({
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
-    if (next) {
-      // One id per open — a double-submit within this session hits the
-      // same key and is rejected server-side; reopening gets a fresh one.
-      setRequestId(crypto.randomUUID())
-    } else {
+    if (!next) {
       const created = result !== null
       setForm(EMPTY_FORM)
       setError(null)
@@ -107,7 +102,6 @@ export function IssueCardDialog({
           spendLimit,
           currency,
           category: form.category === "none" ? null : form.category,
-          requestId,
         }),
       })
       const body = await res.json()

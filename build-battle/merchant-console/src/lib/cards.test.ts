@@ -55,7 +55,6 @@ describe("validateCreateCardInput", () => {
     merchantId: "mch_01",
     spendLimit: 25000,
     currency: "USD",
-    requestId: "req_test_0001",
   }
 
   it("accepts a fully valid request", () => {
@@ -124,18 +123,6 @@ describe("validateCreateCardInput", () => {
   it("accepts an omitted category as null", () => {
     const result = validateCreateCardInput(valid)
     expect(result.ok && result.data.category).toBe(null)
-  })
-
-  it("rejects a missing request id", () => {
-    const withoutRequestId: Record<string, unknown> = { ...valid }
-    delete withoutRequestId.requestId
-    const result = validateCreateCardInput(withoutRequestId)
-    expect(result).toEqual({ ok: false, error: "Request id is required." })
-  })
-
-  it("rejects a blank request id", () => {
-    const result = validateCreateCardInput({ ...valid, requestId: "   " })
-    expect(result).toEqual({ ok: false, error: "Request id is required." })
   })
 })
 

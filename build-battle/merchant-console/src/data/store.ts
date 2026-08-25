@@ -20,8 +20,6 @@ interface Store {
   disputes: Dispute[]
   payouts: Payout[]
   cards: Card[]
-  /** Request ids already used to issue a card — the idempotency guard's memory. */
-  issuedRequestIds: Set<string>
 }
 
 declare global {
@@ -31,15 +29,7 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return {
-    merchants,
-    payments,
-    refunds,
-    disputes,
-    payouts,
-    cards: [],
-    issuedRequestIds: new Set(),
-  }
+  return { merchants, payments, refunds, disputes, payouts, cards: [] }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

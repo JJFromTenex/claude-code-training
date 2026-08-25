@@ -13,9 +13,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
 
-  const created = createCard(result.data)
-  if (!created.ok) {
-    return NextResponse.json({ error: created.error }, { status: created.status })
-  }
-  return NextResponse.json({ card: created.card, number: created.number }, { status: 201 })
+  const { card, number } = createCard(result.data)
+  return NextResponse.json({ card, number }, { status: 201 })
 }
