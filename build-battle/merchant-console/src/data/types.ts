@@ -11,6 +11,14 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "subscriptions"
+  | "advertising"
+  | "contractor_tools"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +77,27 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four digits only. The full number is never stored. */
+  last4: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  currency: Currency
+  status: CardStatus
+  category?: CardCategory
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+export interface CardFilters {
+  status?: CardStatus | "all"
+  page?: number
+  pageSize?: number
 }
 
 export interface PaymentFilters {
