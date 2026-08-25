@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportScopeLabel,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,12 +82,87 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("writes nothing but empty lines for an empty column selection", () => {
+    // The route rejects an empty selection before it reaches here (400), and
+    // the dialog disables Download. This pins what the serializer does if
+    // both ever fail: produce something obviously useless, not a plausible file.
+    expect(toCsv([payment], [])).toBe("\n")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("returns the requested subset in EXPORT_COLUMNS order, not the order sent", () => {
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "id",
+      "status",
+      "amount",
+    ])
+  })
+
+  it("excludes the card last four by default, when no columns are named", () => {
+    expect(parseExportColumns(null)).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(parseExportColumns(null)).not.toContain("last4")
+  })
+
+  it("includes the card last four only when it is asked for by name", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("returns an empty selection when the param is present but empty", () => {
+    expect(parseExportColumns("")).toEqual([])
+  })
+
+  it("drops column names that are not on the allowlist", () => {
+    expect(parseExportColumns("id,DROP TABLE payments,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("returns an empty selection when nothing requested survives the allowlist", () => {
+    expect(parseExportColumns("nope,also_nope")).toEqual([])
+  })
+
+  it("ignores surrounding whitespace and repeated names", () => {
+    expect(parseExportColumns(" id , amount , id ")).toEqual(["id", "amount"])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter unless all payments are asked for", () => {
+    expect(parseExportScope("all")).toBe("all")
+    expect(parseExportScope("current")).toBe("current")
+    expect(parseExportScope(null)).toBe("current")
+    expect(parseExportScope("everything")).toBe("current")
+  })
+})
+
+describe("exportScopeLabel", () => {
+  it("names the status filter on a filtered export", () => {
+    expect(exportScopeLabel("current", "disputed")).toBe("disputed")
+  })
+
+  it("falls back to 'current' when no status narrows the filter", () => {
+    expect(exportScopeLabel("current", "all")).toBe("current")
+    expect(exportScopeLabel("current", undefined)).toBe("current")
+  })
+
+  it("says 'all' for an all-payments export, whatever the status filter was", () => {
+    expect(exportScopeLabel("all", "disputed")).toBe("all")
+  })
 })
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+    expect(
+      exportFilename("current", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-current-2026-03-14.csv")
+  })
+
+  it("carries the scope, so a disputed export is named as one", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-08-13T09:00:00.000Z")),
+    ).toBe("payments-disputed-2026-08-13.csv")
   })
 })

@@ -1,3 +1,8 @@
+---
+name: pr
+description: Write the pull request description for the current branch's work, filling in .github/pull_request_template.md against the ticket's acceptance criteria and verified test evidence. Use when the ticket work is done and ready to open a PR, invoked as `/pr`.
+---
+
 # /pr
 
 Write the pull request description for the work in this branch.

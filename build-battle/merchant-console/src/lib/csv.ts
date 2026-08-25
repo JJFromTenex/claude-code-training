@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns and the scope (NWP-101). Column names arrive from
+ * the client, so they are checked against EXPORT_COLUMNS before they reach a
+ * file — parseExportColumns is that boundary.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,53 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What ships when the client names no columns. The card last four is
+ * sensitive by default — a file headed to a merchant should not carry it
+ * unless someone deliberately asked for it.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * The allowlist boundary for column names. Anything the client sends that is
+ * not a known column is dropped rather than trusted, and the survivors come
+ * back in EXPORT_COLUMNS order so the header is stable between exports.
+ *
+ * Returns DEFAULT_EXPORT_COLUMNS when the param is absent, and an empty array
+ * when the param is present but nothing in it survives — the caller decides
+ * what an empty selection means.
+ */
+export function parseExportColumns(
+  param: string | null,
+): readonly ExportColumn[] {
+  if (param === null) return DEFAULT_EXPORT_COLUMNS
+
+  const requested = new Set(param.split(",").map((name) => name.trim()))
+  return EXPORT_COLUMNS.filter((column) => requested.has(column))
+}
+
+export type ExportScope = "current" | "all"
+
+/** Whether the client asked for every payment or just the filtered set. */
+export function parseExportScope(param: string | null): ExportScope {
+  return param === "all" ? "all" : "current"
+}
+
+/**
+ * The scope half of the filename. An all-payments export says so; a filtered
+ * one names its status filter when it has one, and falls back to "current"
+ * when the filter is a merchant or a search that no single word describes.
+ */
+export function exportScopeLabel(
+  scope: ExportScope,
+  status?: string | null,
+): string {
+  if (scope === "all") return "all"
+  if (status && status !== "all") return status
+  return "current"
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +113,6 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(scopeLabel: string, date = new Date()): string {
+  return `payments-${scopeLabel}-${date.toISOString().slice(0, 10)}.csv`
 }
