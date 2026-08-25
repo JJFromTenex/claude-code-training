@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses which columns ship and the scope (current filter vs. all
+ * payments) via the export route; this module only serializes and
+ * validates the requested column set. See NWP-101.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,29 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** Card last-four is opt-in, not opt-out — see NWP-101. */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+function isExportColumn(value: string): value is ExportColumn {
+  return (EXPORT_COLUMNS as readonly string[]).includes(value)
+}
+
+/**
+ * Validates a client-supplied `columns` query value against the column
+ * allowlist. Unknown names are dropped, never trusted. `null` (the param
+ * was not sent at all) falls back to the default column set; an empty
+ * string is a deliberate empty selection and returns no columns.
+ */
+export function parseExportColumns(param: string | null): ExportColumn[] {
+  if (param === null) return [...DEFAULT_EXPORT_COLUMNS]
+  return param
+    .split(",")
+    .map((column) => column.trim())
+    .filter(isExportColumn)
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +89,6 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(scopeLabel: string, date = new Date()): string {
+  return `payments-${scopeLabel}-${date.toISOString().slice(0, 10)}.csv`
 }

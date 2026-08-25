@@ -84,6 +84,11 @@ export function sortPayments(
   })
 }
 
+/** Every payment, ignoring all filters — the "all payments" export scope. */
+export function allPaymentsCount(): number {
+  return filterPayments({ status: "all" }).length
+}
+
 export function paginate<T>(rows: T[], page = 1, pageSize = PAGE_SIZE) {
   const total = rows.length
   const pageCount = Math.max(1, Math.ceil(total / pageSize))

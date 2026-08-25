@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,36 @@ describe("toCsv", () => {
   })
 })
 
-describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+describe("parseExportColumns", () => {
+  it("keeps a requested subset of columns, in the order given", () => {
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "amount",
+      "id",
+      "status",
+    ])
+  })
+
+  it("excludes card last four unless it is explicitly requested", () => {
+    expect(parseExportColumns(null)).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(parseExportColumns(null)).not.toContain("last4")
+    expect(parseExportColumns("last4,id")).toEqual(["last4", "id"])
+  })
+
+  it("returns no columns for an empty selection, rather than falling back to the defaults", () => {
+    expect(parseExportColumns("")).toEqual([])
+  })
+
+  it("drops column names that are not on the allowlist", () => {
+    expect(parseExportColumns("id,'; DROP TABLE payments;--,amount")).toEqual(
+      ["id", "amount"],
     )
+  })
+})
+
+describe("exportFilename", () => {
+  it("stamps the scope and the UTC date, so two exports on the same day collide by design", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-03-14.csv")
   })
 })
