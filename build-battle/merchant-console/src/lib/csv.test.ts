@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,6 +74,21 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("writes columns in the order given, not canonical order", () => {
+    expect(toCsv([payment], ["amount", "id"])).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("excludes card last-four from the default column set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(toCsv([payment], DEFAULT_EXPORT_COLUMNS)).not.toContain("4242")
+  })
+
+  it("degrades to an empty header and empty rows when no columns are selected", () => {
+    expect(toCsv([payment], [])).toBe("\n")
+  })
 })
 
 describe("exportFilename", () => {
@@ -81,5 +96,32 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("tags the filename with status when one is active", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), {
+        status: "disputed",
+        scope: "filtered",
+      }),
+    ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("stays bare when status is all", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), {
+        status: "all",
+        scope: "filtered",
+      }),
+    ).toBe("payments-2026-03-14.csv")
+  })
+
+  it("tags the filename 'all' when scope is all-payments, even with a status set", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), {
+        status: "disputed",
+        scope: "all",
+      }),
+    ).toBe("payments-all-2026-03-14.csv")
   })
 })
