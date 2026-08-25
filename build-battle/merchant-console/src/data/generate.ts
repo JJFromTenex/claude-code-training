@@ -1,6 +1,7 @@
 import { merchants } from "./merchants"
 import {
   Card,
+  CardEvent,
   Currency,
   Dispute,
   MerchantCategory,
@@ -153,7 +154,8 @@ export function generate() {
   // Cards draw last so adding them leaves every payment, refund, dispute and
   // payout above byte-identical to what the room had before NWP-201.
   const cards = generateCards()
-  return { payments, refunds, disputes, payouts, cards }
+  const cardEvents = generateCardEvents(cards)
+  return { payments, refunds, disputes, payouts, cards, cardEvents }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -298,4 +300,39 @@ function generateCards(): Card[] {
       createdAt: createdAt.toISOString(),
     }
   })
+}
+
+/**
+ * History for the seeded cards. Every card gets its issue event; the ones that
+ * are no longer active get the change that got them there, so the timeline on
+ * a frozen or cancelled card is not empty on a cold start.
+ */
+function generateCardEvents(cards: Card[]): CardEvent[] {
+  const events: CardEvent[] = []
+  let seq = 0
+
+  for (const card of cards) {
+    events.push({
+      id: `cev_${pad(++seq, 4)}`,
+      cardId: card.id,
+      from: null,
+      to: "active",
+      at: card.createdAt,
+    })
+
+    if (card.status === "active") continue
+
+    // Frozen and cancelled cards moved some days after they were issued.
+    const changedAt = new Date(card.createdAt)
+    changedAt.setUTCDate(changedAt.getUTCDate() + between(1, 9))
+    events.push({
+      id: `cev_${pad(++seq, 4)}`,
+      cardId: card.id,
+      from: "active",
+      to: card.status,
+      at: changedAt.toISOString(),
+    })
+  }
+
+  return events
 }

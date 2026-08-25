@@ -8,7 +8,7 @@ import {
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Card, CardInput, CardStatus, MerchantCategory } from "./types"
+import { Card, CardEvent, CardInput, CardStatus, MerchantCategory } from "./types"
 
 const CATEGORIES: readonly MerchantCategory[] = [
   "advertising",
@@ -83,6 +83,17 @@ export function parseCardInput(
     return { ok: false, message: "Currency must be USD, EUR, or GBP." }
   }
 
+  // Merchant match is checked after the allowlist so an unknown currency like
+  // "JPY" still gets its own message; only a currency that IS on the
+  // allowlist but doesn't match this merchant gets the more specific one.
+  const merchant = merchantById(merchantId)
+  if (merchant && currency !== merchant.currency) {
+    return {
+      ok: false,
+      message: `${merchant.name} settles in ${merchant.currency}; this card must use ${merchant.currency}.`,
+    }
+  }
+
   let category: MerchantCategory | null = null
   if (b.category !== undefined && b.category !== null) {
     if (
@@ -107,12 +118,51 @@ export function parseCardInput(
 }
 
 let cardSequence = store.cards.length
+let cardEventSequence = store.cardEvents.length
+
+function appendCardEvent(cardId: string, from: CardStatus | null, to: CardStatus): void {
+  cardEventSequence += 1
+  store.cardEvents.push({
+    id: `cev_${String(cardEventSequence).padStart(4, "0")}`,
+    cardId,
+    from,
+    to,
+    at: new Date().toISOString(),
+  })
+}
+
+/** A card's history, oldest first. What the detail page renders. */
+export function cardEventsFor(cardId: string): CardEvent[] {
+  return store.cardEvents
+    .filter((e) => e.cardId === cardId)
+    .sort((a, b) => a.at.localeCompare(b.at))
+}
 
 /**
  * Generates the number, stores last4 + reference, returns the full number to
  * the caller exactly once. `fullNumber` is never written to the store.
+ *
+ * `idempotencyKey` guards a double-clicked issue form: replaying a key that
+ * has already issued a card returns that card again (`replay: true`) instead
+ * of creating a second one. Because reveal-once means the full number exists
+ * in exactly one response ever, a replay never carries `fullNumber` — the
+ * route returns 200 with the existing card on replay, 201 with the number on
+ * first issue.
  */
-export function createCard(input: CardInput): { card: Card; fullNumber: string } {
+export function createCard(
+  input: CardInput,
+  idempotencyKey?: string,
+): { card: Card; fullNumber?: string; replay: boolean } {
+  if (idempotencyKey) {
+    const existingId = store.issueKeys[idempotencyKey]
+    if (existingId) {
+      const existing = cardById(existingId)
+      if (existing) {
+        return { card: existing, replay: true }
+      }
+    }
+  }
+
   const fullNumber = generateCardNumber()
   const last4 = fullNumber.slice(-4)
 
@@ -136,8 +186,13 @@ export function createCard(input: CardInput): { card: Card; fullNumber: string }
   }
 
   store.cards.push(card)
+  appendCardEvent(card.id, null, "active")
 
-  return { card, fullNumber }
+  if (idempotencyKey) {
+    store.issueKeys[idempotencyKey] = card.id
+  }
+
+  return { card, fullNumber, replay: false }
 }
 
 export function setCardStatus(
@@ -157,6 +212,8 @@ export function setCardStatus(
     return { ok: false, status: 409, message }
   }
 
+  const from = card.status
   card.status = next
+  appendCardEvent(card.id, from, next)
   return { ok: true, card }
 }

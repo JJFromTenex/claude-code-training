@@ -127,3 +127,17 @@ export interface CardInput {
   currency: Currency
   category: MerchantCategory | null
 }
+
+/**
+ * One entry in a card's history. Ops asks "what happened to this card last
+ * Tuesday" and this is what answers it, so every status change appends one.
+ */
+export interface CardEvent {
+  id: string
+  cardId: string
+  /** null when the card was issued; otherwise the status it moved from. */
+  from: CardStatus | null
+  to: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}

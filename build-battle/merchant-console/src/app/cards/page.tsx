@@ -27,7 +27,11 @@ export default async function CardsPage() {
           Cards
         </h1>
         <IssueCardForm
-          merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
+          merchants={merchants.map((m) => ({
+            id: m.id,
+            name: m.name,
+            currency: m.currency,
+          }))}
         />
       </div>
 

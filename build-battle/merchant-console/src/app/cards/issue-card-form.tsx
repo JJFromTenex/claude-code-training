@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/Button"
@@ -25,8 +25,6 @@ import {
 } from "@/components/Select"
 import type { Card, Currency, MerchantCategory } from "@/data/types"
 
-const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
-
 const CATEGORIES: { value: MerchantCategory; label: string }[] = [
   { value: "advertising", label: "Advertising" },
   { value: "software", label: "Software" },
@@ -41,7 +39,6 @@ type FormState = {
   nickname: string
   merchantId: string
   spendLimit: string
-  currency: Currency
   category: string
 }
 
@@ -49,7 +46,6 @@ const EMPTY_FORM: FormState = {
   nickname: "",
   merchantId: "",
   spendLimit: "",
-  currency: "USD",
   category: NO_CATEGORY,
 }
 
@@ -58,7 +54,7 @@ type IssueResult = { card: Card; fullNumber: string }
 export function IssueCardForm({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: { id: string; name: string; currency: Currency }[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -67,11 +63,24 @@ export function IssueCardForm({
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<IssueResult | null>(null)
 
+  // One idempotency key per issue *attempt*. It is created lazily on the
+  // first submit (a ref, not state, so re-renders never regenerate it) and
+  // reused across retries of that same attempt — e.g. the user fixes a
+  // validation error and hits "Issue card" again — so a duplicate network
+  // request never becomes a duplicate card. A fresh key is drawn once the
+  // attempt succeeds or the drawer is closed and reopened for a new one.
+  const idempotencyKeyRef = useRef<string | null>(null)
+
   const nicknameId = useId()
   const merchantIdFieldId = useId()
   const spendLimitId = useId()
   const currencyId = useId()
   const categoryId = useId()
+
+  const selectedMerchant = merchants.find(
+    (merchant) => merchant.id === form.merchantId,
+  )
+  const currency = selectedMerchant?.currency
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -81,6 +90,7 @@ export function IssueCardForm({
       setError(null)
       setResult(null)
       setSubmitting(false)
+      idempotencyKeyRef.current = null
     }
     setOpen(next)
   }
@@ -88,17 +98,32 @@ export function IssueCardForm({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
+
+    if (!currency) {
+      setError("Choose a merchant.")
+      return
+    }
+
     setSubmitting(true)
+
+    if (idempotencyKeyRef.current === null) {
+      idempotencyKeyRef.current = crypto.randomUUID()
+    }
 
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          // Transport metadata, not part of the card: the key rides on the
+          // header so a double-clicked submit replays instead of issuing twice.
+          "idempotency-key": idempotencyKeyRef.current,
+        },
         body: JSON.stringify({
           nickname: form.nickname,
           merchantId: form.merchantId,
           spendLimit: form.spendLimit,
-          currency: form.currency,
+          currency,
           category: form.category === NO_CATEGORY ? null : form.category,
         }),
       })
@@ -113,6 +138,9 @@ export function IssueCardForm({
       const body = (await response.json()) as IssueResult
       setResult(body)
       setSubmitting(false)
+      // The attempt succeeded — a later issue from this same drawer session
+      // is a new attempt and gets its own key.
+      idempotencyKeyRef.current = null
       router.refresh()
     } catch {
       setError("Something went wrong issuing the card. Try again.")
@@ -265,26 +293,24 @@ export function IssueCardForm({
                 >
                   Currency
                 </label>
-                <Select
-                  value={form.currency}
-                  onValueChange={(currency) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      currency: currency as Currency,
-                    }))
-                  }
+                {/* Derived from the merchant, not chosen — a merchant only
+                    ever bills in its own currency, so letting ops pick a
+                    different one just invites a 400 from the server. */}
+                <Input
+                  id={currencyId}
+                  name="currency"
+                  value={currency ?? ""}
+                  readOnly
+                  placeholder="Choose a merchant to set the currency"
+                  aria-describedby={`${currencyId}-hint`}
+                  inputClassName="cursor-not-allowed bg-gray-50 dark:bg-gray-900"
+                />
+                <p
+                  id={`${currencyId}-hint`}
+                  className="text-xs text-gray-500 dark:text-gray-500"
                 >
-                  <SelectTrigger id={currencyId}>
-                    <SelectValue placeholder="Currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((currency) => (
-                      <SelectItem key={currency} value={currency}>
-                        {currency}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Set by the merchant&apos;s billing currency.
+                </p>
               </div>
 
               <div className="flex flex-col gap-1.5">

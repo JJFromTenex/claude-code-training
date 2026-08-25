@@ -1,13 +1,22 @@
 import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
-import { cardById } from "@/data/cards"
+import { cardById, cardEventsFor } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CardEvent } from "@/data/types"
 import { maskLast4 } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+
+function eventLabel(event: CardEvent): string {
+  if (event.from === null) return "Card issued"
+  if (event.to === "frozen") return "Frozen"
+  if (event.to === "cancelled") return "Cancelled"
+  if (event.to === "active" && event.from === "frozen") return "Unfrozen"
+  return `Changed to ${event.to}`
+}
 
 export default async function CardDetail({
   params,
@@ -19,6 +28,7 @@ export default async function CardDetail({
   if (!card) notFound()
 
   const merchant = merchantById(card.merchantId)!
+  const events = cardEventsFor(card.id)
   const spentRatio = card.spendLimit > 0 ? card.spent / card.spendLimit : 0
   const spentPercent = Math.min(100, Math.round(spentRatio * 100))
   const isAmber = spentRatio >= 0.8 && card.status !== "cancelled"
@@ -116,6 +126,37 @@ export default async function CardDetail({
             </p>
           )}
         </div>
+      )}
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+
+      {events.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-500">
+          No history is available for this card yet.
+        </p>
+      ) : (
+        <ol className="mt-4 space-y-4">
+          {events.map((event) => (
+            <li key={event.id} className="flex gap-3">
+              <span
+                className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+                aria-hidden="true"
+              />
+              <div>
+                <p className="text-sm text-gray-900 dark:text-gray-50">
+                  {eventLabel(event)}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {formatInZone(event.at, merchant.timezone)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   )
