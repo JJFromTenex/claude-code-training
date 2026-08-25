@@ -82,3 +82,38 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four digits of the generated number. The full number is never stored. */
+  last4: string
+  /** Opaque reference to the one-time generation event. Not a card number. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  /** Integer minor units spent against the limit so far. */
+  spent: number
+  status: CardStatus
+  category: CardCategory
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+export interface CardFilters {
+  status?: CardStatus | "all"
+  merchantId?: string
+  page?: number
+  pageSize?: number
+}
