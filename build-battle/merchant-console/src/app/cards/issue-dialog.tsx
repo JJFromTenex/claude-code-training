@@ -34,12 +34,33 @@ import { useState } from "react"
  */
 
 const CATEGORY_LABELS: Record<string, string> = {
-  "": "No category lock",
   advertising: "Advertising",
   software: "Software",
   travel: "Travel",
   contractors: "Contractors",
   utilities: "Utilities",
+}
+
+/** A labelled row. Every control in this form has a real <label for>. */
+function Field({
+  id,
+  label,
+  children,
+  className,
+}: {
+  id: string
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={className ?? "space-y-1.5"}>
+      <label htmlFor={id} className="text-sm font-medium text-gray-900 dark:text-gray-50">
+        {label}
+      </label>
+      {children}
+    </div>
+  )
 }
 
 /** Display only. Amounts travel to the server as integer minor units. */
@@ -186,10 +207,7 @@ export function IssueCardDialog({
             </DrawerHeader>
 
             <DrawerBody className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="nickname" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Nickname
-                </label>
+              <Field id="nickname" label="Nickname">
                 <Input
                   id="nickname"
                   name="nickname"
@@ -198,12 +216,9 @@ export function IssueCardDialog({
                   placeholder="Ad spend — Q3"
                   required
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <label htmlFor="merchant" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Merchant
-                </label>
+              <Field id="merchant" label="Merchant">
                 <Select value={merchantId} onValueChange={setMerchantId}>
                   <SelectTrigger id="merchant" className="w-full">
                     <SelectValue placeholder="Choose a merchant" />
@@ -211,18 +226,15 @@ export function IssueCardDialog({
                   <SelectContent>
                     {merchants.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.name}
+                        {m.name} · {m.currency}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               <div className="flex gap-3">
-                <div className="flex-1 space-y-1.5">
-                  <label htmlFor="limit" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                    Spend limit
-                  </label>
+                <Field id="limit" label="Spend limit" className="flex-1 space-y-1.5">
                   <Input
                     id="limit"
                     name="limit"
@@ -232,11 +244,8 @@ export function IssueCardDialog({
                     placeholder="2500.00"
                     required
                   />
-                </div>
-                <div className="w-32 space-y-1.5">
-                  <label htmlFor="currency" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                    Currency
-                  </label>
+                </Field>
+                <Field id="currency" label="Currency" className="w-32 space-y-1.5">
                   <Select value={currency} onValueChange={setCurrency}>
                     <SelectTrigger id="currency" className="w-full">
                       <SelectValue />
@@ -249,14 +258,14 @@ export function IssueCardDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="category" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Category lock
-                </label>
-                <Select value={category || "none"} onValueChange={(v) => setCategory(v === "none" ? "" : v)}>
+              <Field id="category" label="Category lock">
+                <Select
+                  value={category || "none"}
+                  onValueChange={(v) => setCategory(v === "none" ? "" : v)}
+                >
                   <SelectTrigger id="category" className="w-full">
                     <SelectValue placeholder="No category lock" />
                   </SelectTrigger>
@@ -269,7 +278,7 @@ export function IssueCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               {error && (
                 <p
