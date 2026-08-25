@@ -1,4 +1,4 @@
-import { listCards, nextCardId } from "@/data/queries"
+import { cardById, listCards, nextCardId } from "@/data/queries"
 import { store } from "@/data/store"
 import { Card } from "@/data/types"
 import {
@@ -26,6 +26,23 @@ export async function POST(request: NextRequest) {
     body = await request.json()
   } catch {
     return NextResponse.json({ message: "Expected a JSON body." }, { status: 400 })
+  }
+
+  // Two clicks on Issue, or a retried request, must not produce two cards.
+  // The key is the client's; the guard is the server's.
+  const idempotencyKey = request.headers.get("idempotency-key")
+  if (idempotencyKey) {
+    const existingId = store.issuedKeys[idempotencyKey]
+    if (existingId) {
+      const existing = cardById(existingId)
+      if (existing) {
+        // No `number` here: the reveal already happened, and it happens once.
+        return NextResponse.json(
+          { card: existing, alreadyIssued: true },
+          { status: 200 },
+        )
+      }
+    }
   }
 
   const parsed = validateIssueRequest(body)
@@ -56,6 +73,7 @@ export async function POST(request: NextRequest) {
   }
 
   store.cards.push(card)
+  if (idempotencyKey) store.issuedKeys[idempotencyKey] = card.id
 
   // `number` is the one-time reveal. No later response carries it.
   return NextResponse.json({ card, number: cardNumber }, { status: 201 })

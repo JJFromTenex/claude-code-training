@@ -166,6 +166,16 @@ export function validateIssueRequest(body: unknown): ValidationResult {
     return { ok: false, message: "Currency must be one of USD, EUR, or GBP." }
   }
 
+  // A card settles against its merchant. Issuing one in a currency the
+  // merchant does not trade in produces a card nobody can reconcile.
+  const merchant = merchantById(merchantId)
+  if (merchant && merchant.currency !== currency) {
+    return {
+      ok: false,
+      message: `${merchant.name} settles in ${merchant.currency}. Issue the card in ${merchant.currency}.`,
+    }
+  }
+
   const rawCategory = input.category
   let category: CardCategory | null = null
   if (rawCategory !== undefined && rawCategory !== null && rawCategory !== "") {

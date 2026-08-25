@@ -69,6 +69,9 @@ export function IssueCardDialog({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<{ number: string; nickname: string } | null>(null)
+  // One key per opened form: a double-submit reuses it and the server returns
+  // the card it already issued instead of issuing a second one.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const reset = () => {
     setNickname("")
@@ -79,6 +82,7 @@ export function IssueCardDialog({
     setError(null)
     setBusy(false)
     setRevealed(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const submit = async (event: React.FormEvent) => {
@@ -95,7 +99,10 @@ export function IssueCardDialog({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -107,6 +114,14 @@ export function IssueCardDialog({
       const payload = await response.json()
       if (!response.ok) {
         setError(payload.message ?? "The card could not be issued.")
+        return
+      }
+      if (payload.alreadyIssued) {
+        // The server recognised the key and did not issue a second card.
+        setError(
+          "That card was already issued. Its number was shown once and cannot be shown again.",
+        )
+        router.refresh()
         return
       }
       setRevealed({ number: payload.number, nickname: payload.card.nickname })

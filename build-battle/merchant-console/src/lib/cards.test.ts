@@ -186,10 +186,20 @@ describe("validateIssueRequest", () => {
     expect(validateIssueRequest({ ...validIssue, currency: "usd" }).ok).toBe(false)
   })
 
-  it("accepts each allowed currency", () => {
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(validateIssueRequest({ ...validIssue, currency }).ok).toBe(true)
-    }
+  it("rejects a currency the merchant does not settle in", () => {
+    // mch_01 settles in USD; mch_04 settles in GBP.
+    const result = validateIssueRequest({ ...validIssue, currency: "EUR" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.message).toContain("USD")
+  })
+
+  it("accepts each merchant in the currency it actually settles in", () => {
+    expect(
+      validateIssueRequest({ ...validIssue, merchantId: "mch_01", currency: "USD" }).ok,
+    ).toBe(true)
+    expect(
+      validateIssueRequest({ ...validIssue, merchantId: "mch_04", currency: "GBP" }).ok,
+    ).toBe(true)
   })
 
   it("treats an absent category as unrestricted rather than invalid", () => {

@@ -21,6 +21,8 @@ interface Store {
   disputes: Dispute[]
   payouts: Payout[]
   cards: Card[]
+  /** Idempotency key -> card id, so a double-submit issues one card. */
+  issuedKeys: Record<string, string>
 }
 
 declare global {
@@ -30,7 +32,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards: seedCards() }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: seedCards(payments),
+    issuedKeys: {},
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

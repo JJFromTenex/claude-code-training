@@ -20,6 +20,8 @@ export function CardActions({
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Cancelling is terminal, so it asks first. One click arms, the next commits.
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   const move = async (next: CardStatus) => {
     setBusy(true)
@@ -35,6 +37,7 @@ export function CardActions({
         setError(payload.message ?? "That change was refused.")
         return
       }
+      setConfirmingCancel(false)
       router.refresh()
     } catch {
       setError("Could not reach the server.")
@@ -45,6 +48,32 @@ export function CardActions({
 
   if (status === "cancelled") {
     return <span className="text-sm text-gray-400 dark:text-gray-600">—</span>
+  }
+
+  if (confirmingCancel) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-gray-500" role="alert">
+          Cancel this card? It cannot be undone.
+        </span>
+        <Button
+          variant="secondary"
+          className="py-1 text-xs"
+          disabled={busy}
+          onClick={() => setConfirmingCancel(false)}
+        >
+          Keep it
+        </Button>
+        <Button
+          variant="destructive"
+          className="py-1 text-xs"
+          disabled={busy}
+          onClick={() => move("cancelled")}
+        >
+          Yes, cancel
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -66,7 +95,7 @@ export function CardActions({
         variant="secondary"
         className="py-1 text-xs"
         disabled={busy}
-        onClick={() => move("cancelled")}
+        onClick={() => setConfirmingCancel(true)}
       >
         Cancel
       </Button>
