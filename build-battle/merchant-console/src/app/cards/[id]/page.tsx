@@ -2,7 +2,7 @@ import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { MerchantCategory } from "@/data/types"
+import { CardStatus, MerchantCategory } from "@/data/types"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -15,6 +15,39 @@ const CATEGORY_LABELS: Record<MerchantCategory, string> = {
   travel: "Travel",
   utilities: "Utilities",
   office_supplies: "Office supplies",
+}
+
+const STATUS_LABELS: Record<CardStatus, string> = {
+  active: "Active",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
+}
+
+// Static Tailwind width classes for the spend bar, keyed by percent in steps of
+// 5. Listing the literals keeps this Tailwind-only (no inline style); the bar is
+// quantised to the nearest 5%, which is plenty for a progress indicator.
+const BAR_WIDTHS: Record<number, string> = {
+  0: "w-0",
+  5: "w-[5%]",
+  10: "w-[10%]",
+  15: "w-[15%]",
+  20: "w-[20%]",
+  25: "w-[25%]",
+  30: "w-[30%]",
+  35: "w-[35%]",
+  40: "w-[40%]",
+  45: "w-[45%]",
+  50: "w-[50%]",
+  55: "w-[55%]",
+  60: "w-[60%]",
+  65: "w-[65%]",
+  70: "w-[70%]",
+  75: "w-[75%]",
+  80: "w-[80%]",
+  85: "w-[85%]",
+  90: "w-[90%]",
+  95: "w-[95%]",
+  100: "w-full",
 }
 
 export default async function CardDetail({
@@ -32,7 +65,8 @@ export default async function CardDetail({
   // ratio is only used to size the bar and pick its colour.
   const ratio = card.spendLimit > 0 ? card.spend / card.spendLimit : 0
   const pct = Math.min(100, Math.round(ratio * 100))
-  const overThreshold = pct >= 80
+  const overThreshold = pct > 80
+  const widthClass = BAR_WIDTHS[Math.round(pct / 5) * 5]
 
   return (
     <div className="p-4 sm:p-6">
@@ -102,16 +136,40 @@ export default async function CardDetail({
           <div
             className={cx(
               "h-full rounded-full",
+              widthClass,
               overThreshold
                 ? "bg-amber-500 dark:bg-amber-500"
                 : "bg-blue-500 dark:bg-blue-500",
             )}
-            // Width is the one genuinely data-driven value; Tailwind cannot
-            // express an arbitrary runtime percentage as a class.
-            style={{ width: `${pct}%` }}
           />
         </div>
       </div>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        Status history
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {[...card.history].reverse().map((event, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {event.from
+                  ? `${STATUS_LABELS[event.from]} → ${STATUS_LABELS[event.to]}`
+                  : `Issued (${STATUS_LABELS[event.to]})`}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(event.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

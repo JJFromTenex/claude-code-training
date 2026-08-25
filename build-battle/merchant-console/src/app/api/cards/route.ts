@@ -49,14 +49,17 @@ export async function POST(request: NextRequest) {
     spendLimit: limit,
     currency: currency as Currency,
     category: (body.category ?? null) as MerchantCategory | null,
+    idempotencyKey: request.headers.get("idempotency-key") ?? undefined,
   })
 
   if (!result.ok) {
     return Response.json({ message: result.message }, { status: 400 })
   }
 
+  // A replayed key returns the existing card with no number (200); a fresh
+  // issue returns the full number exactly once (201).
   return Response.json(
-    { card: result.card, number: result.number },
-    { status: 201 },
+    { card: result.card, number: result.number, duplicate: result.duplicate },
+    { status: result.duplicate ? 200 : 201 },
   )
 }

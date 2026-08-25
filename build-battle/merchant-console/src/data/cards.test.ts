@@ -68,6 +68,8 @@ describe("issueCard", () => {
     const result = issueCard(base)
     expect(result.ok).toBe(true)
     if (!result.ok) return
+    expect(result.number).not.toBeNull()
+    if (result.number === null) return
     expect(result.number.startsWith("4242")).toBe(true)
     expect(isValidLuhn(result.number)).toBe(true)
     expect(result.card.last4).toBe(result.number.slice(-4))
@@ -97,6 +99,36 @@ describe("issueCard", () => {
       issueCard({ ...base, currency: "JPY" }),
     ).toMatchObject({ ok: false })
   })
+
+  it("rejects a currency that does not match the merchant", () => {
+    // mch_04 (Halcyon Studio) settles in GBP.
+    expect(
+      issueCard({ ...base, merchantId: "mch_04", currency: "USD" }),
+    ).toMatchObject({ ok: false })
+    expect(
+      issueCard({ ...base, merchantId: "mch_04", currency: "GBP" }),
+    ).toMatchObject({ ok: true })
+  })
+
+  it("records an issue event in the history", () => {
+    const result = issueCard(base)
+    if (!result.ok) throw new Error("issue failed")
+    expect(result.card.history).toHaveLength(1)
+    expect(result.card.history[0]).toMatchObject({ from: null, to: "active" })
+  })
+
+  it("is idempotent for a repeated idempotency key", () => {
+    const key = "issue-key-abc"
+    const first = issueCard({ ...base, idempotencyKey: key })
+    const second = issueCard({ ...base, idempotencyKey: key })
+    if (!first.ok || !second.ok) throw new Error("issue failed")
+    expect(first.duplicate).toBe(false)
+    expect(first.number).not.toBeNull()
+    // The replay returns the same card and never re-reveals the number.
+    expect(second.duplicate).toBe(true)
+    expect(second.number).toBeNull()
+    expect(second.card.id).toBe(first.card.id)
+  })
 })
 
 describe("setCardStatus", () => {
@@ -112,9 +144,17 @@ describe("setCardStatus", () => {
 
     expect(setCardStatus(id, "frozen")).toMatchObject({ ok: true })
     expect(setCardStatus(id, "active")).toMatchObject({ ok: true })
-    expect(setCardStatus(id, "cancelled")).toMatchObject({ ok: true })
+    const cancelled = setCardStatus(id, "cancelled")
+    expect(cancelled).toMatchObject({ ok: true })
     // Cancelled is terminal.
     expect(setCardStatus(id, "active")).toMatchObject({ ok: false })
+    // Every successful transition is recorded: issue + freeze + unfreeze + cancel.
+    if (!cancelled.ok) throw new Error("cancel failed")
+    expect(cancelled.card.history).toHaveLength(4)
+    expect(cancelled.card.history.at(-1)).toMatchObject({
+      from: "active",
+      to: "cancelled",
+    })
   })
 
   it("reports a missing card", () => {

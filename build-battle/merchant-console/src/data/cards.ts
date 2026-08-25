@@ -2,6 +2,11 @@ import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardStatus, Currency, MerchantCategory } from "./types"
 
+// Server-side idempotency: an Idempotency-Key maps to the card it created, so a
+// retried or double-fired issue request returns the same card instead of a
+// second one. Lives for the process, like the store itself.
+const issuedByKey = new Map<string, string>()
+
 /**
  * The one place cards are created, read, and transitioned. Route handlers call
  * these; they never touch `store.cards` directly. A second lookup or write path
@@ -98,29 +103,49 @@ export interface IssueCardInput {
   spendLimit: number
   currency: Currency
   category?: MerchantCategory | null
+  /** Optional client-supplied key that makes a repeated issue idempotent. */
+  idempotencyKey?: string
 }
 
 export type IssueResult =
-  | { ok: true; card: Card; number: string }
+  | { ok: true; card: Card; number: string | null; duplicate: boolean }
   | { ok: false; message: string }
 
 export function issueCard(input: IssueCardInput): IssueResult {
   const nickname = input.nickname?.trim()
   if (!nickname) return { ok: false, message: "Nickname is required." }
-  if (!merchantById(input.merchantId))
-    return { ok: false, message: "Unknown merchant." }
+
+  const merchant = merchantById(input.merchantId)
+  if (!merchant) return { ok: false, message: "Unknown merchant." }
   if (!Number.isInteger(input.spendLimit) || input.spendLimit <= 0)
     return { ok: false, message: "Spend limit must be a positive amount." }
   if (input.spendLimit > MAX_SPEND_LIMIT)
     return { ok: false, message: "Spend limit exceeds the maximum of 5,000,000." }
   if (!CARD_CURRENCIES.includes(input.currency))
     return { ok: false, message: "Currency must be USD, EUR, or GBP." }
+  // A card settles in its merchant's currency; a mismatch is a data-integrity bug.
+  if (input.currency !== merchant.currency)
+    return {
+      ok: false,
+      message: `${merchant.name} settles in ${merchant.currency}; issue the card in ${merchant.currency}.`,
+    }
 
   const category = input.category ?? null
   if (category !== null && !CARD_CATEGORIES.includes(category))
     return { ok: false, message: "Unknown category." }
 
+  // Idempotent replay: a key we have already fulfilled returns its card, and
+  // never a second reveal of the number (reveal-once holds).
+  if (input.idempotencyKey) {
+    const priorId = issuedByKey.get(input.idempotencyKey)
+    if (priorId) {
+      const prior = cardById(priorId)
+      if (prior) return { ok: true, card: prior, number: null, duplicate: true }
+    }
+  }
+
   const number = generateCardNumber()
+  const now = new Date().toISOString()
   const card: Card = {
     id: nextCardId(),
     nickname,
@@ -131,10 +156,12 @@ export function issueCard(input: IssueCardInput): IssueResult {
     status: "active",
     last4: number.slice(-4),
     category,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    history: [{ at: now, from: null, to: "active" }],
   }
   store.cards.push(card)
-  return { ok: true, card, number }
+  if (input.idempotencyKey) issuedByKey.set(input.idempotencyKey, card.id)
+  return { ok: true, card, number, duplicate: false }
 }
 
 // --- Status transitions -------------------------------------------------------
@@ -161,6 +188,7 @@ export function setCardStatus(id: string, to: CardStatus): StatusResult {
       ok: false,
       message: `A ${card.status} card cannot become ${to}.`,
     }
+  card.history.push({ at: new Date().toISOString(), from: card.status, to })
   card.status = to
   return { ok: true, card }
 }

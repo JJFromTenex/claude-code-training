@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 /**
- * Freeze / unfreeze a card in place. The status transition is enforced
+ * Freeze / unfreeze / cancel a card in place. Every transition is enforced
  * server-side; this only offers the moves the state machine allows and
- * re-renders the server component on success — no full page reload.
+ * re-renders the server component on success — no full page reload. Cancel is
+ * terminal, so it asks for confirmation first.
  */
 export function CardActions({
   id,
@@ -20,6 +21,7 @@ export function CardActions({
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (status === "cancelled") {
     return <span className="text-sm text-gray-400">—</span>
@@ -44,7 +46,33 @@ export function CardActions({
       setError("Could not reach the server.")
     } finally {
       setBusy(false)
+      setConfirmingCancel(false)
     }
+  }
+
+  if (confirmingCancel) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-gray-500">Cancel this card?</span>
+        <Button
+          variant="destructive"
+          className="py-1"
+          isLoading={busy}
+          disabled={busy}
+          onClick={() => move("cancelled")}
+        >
+          Confirm
+        </Button>
+        <Button
+          variant="ghost"
+          className="py-1"
+          disabled={busy}
+          onClick={() => setConfirmingCancel(false)}
+        >
+          Keep
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -62,6 +90,14 @@ export function CardActions({
         onClick={() => move(status === "active" ? "frozen" : "active")}
       >
         {status === "active" ? "Freeze" : "Unfreeze"}
+      </Button>
+      <Button
+        variant="ghost"
+        className="py-1 text-red-600 dark:text-red-500"
+        disabled={busy}
+        onClick={() => setConfirmingCancel(true)}
+      >
+        Cancel
       </Button>
     </div>
   )

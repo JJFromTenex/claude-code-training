@@ -80,6 +80,14 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export interface CardEvent {
+  /** ISO 8601, always UTC. */
+  at: string
+  /** Prior status; null for the issue event. */
+  from: CardStatus | null
+  to: CardStatus
+}
+
 export interface Card {
   id: string
   nickname: string
@@ -96,6 +104,8 @@ export interface Card {
   category: MerchantCategory | null
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Status-change audit trail, oldest first. Starts with the issue event. */
+  history: CardEvent[]
 }
 
 export interface PaymentFilters {

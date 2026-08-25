@@ -37,7 +37,7 @@ const CATEGORY_LABELS: Record<MerchantCategory, string> = {
 export function IssueCardDrawer({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: { id: string; name: string; currency: Currency }[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -47,6 +47,10 @@ export function IssueCardDrawer({
   const [limit, setLimit] = useState("")
   const [currency, setCurrency] = useState<Currency>("USD")
   const [category, setCategory] = useState<MerchantCategory | "none">("none")
+  // A stable key per issue intent, so a double-submit is idempotent server-side.
+  const [idemKey, setIdemKey] = useState<string>(() =>
+    globalThis.crypto.randomUUID(),
+  )
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +58,14 @@ export function IssueCardDrawer({
   const [issued, setIssued] = useState<{ card: Card; number: string } | null>(
     null,
   )
+
+  // A card settles in its merchant's currency; pick the merchant, and the
+  // currency follows so it can never mismatch.
+  const selectMerchant = (id: string) => {
+    setMerchantId(id)
+    const merchant = merchants.find((m) => m.id === id)
+    if (merchant) setCurrency(merchant.currency)
+  }
 
   const reset = () => {
     setNickname("")
@@ -64,6 +76,7 @@ export function IssueCardDrawer({
     setError(null)
     setIssued(null)
     setSubmitting(false)
+    setIdemKey(globalThis.crypto.randomUUID())
   }
 
   const onOpenChange = (next: boolean) => {
@@ -81,7 +94,10 @@ export function IssueCardDrawer({
     try {
       const res = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": idemKey,
+        },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -95,7 +111,15 @@ export function IssueCardDrawer({
         setError(data.message ?? "Could not issue the card.")
         return
       }
-      setIssued({ card: data.card, number: data.number })
+      if (data.number) {
+        // Fresh issue — reveal the number once.
+        setIssued({ card: data.card, number: data.number })
+      } else {
+        // Idempotent replay: the card already exists and its number was already
+        // revealed. Just refresh the list and close.
+        router.refresh()
+        onOpenChange(false)
+      }
     } catch {
       setError("Could not reach the server. Try again.")
     } finally {
@@ -179,7 +203,7 @@ export function IssueCardDrawer({
                 >
                   Merchant
                 </label>
-                <Select value={merchantId} onValueChange={setMerchantId}>
+                <Select value={merchantId} onValueChange={selectMerchant}>
                   <SelectTrigger id="card-merchant" className="mt-2">
                     <SelectValue placeholder="Select a merchant" />
                   </SelectTrigger>
@@ -220,6 +244,7 @@ export function IssueCardDrawer({
                   <Select
                     value={currency}
                     onValueChange={(v) => setCurrency(v as Currency)}
+                    disabled={!merchantId}
                   >
                     <SelectTrigger id="card-currency" className="mt-2">
                       <SelectValue />
@@ -232,6 +257,9 @@ export function IssueCardDrawer({
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Matches the merchant.
+                  </p>
                 </div>
               </div>
 
