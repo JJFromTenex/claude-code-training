@@ -34,6 +34,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: validated.message }, { status: 400 })
   }
 
-  const { card, cardNumber } = issueCard(validated.value)
+  // A repeated key returns the card that key already made, without a number:
+  // the reveal happened on the first response and does not happen twice.
+  const key = request.headers.get("idempotency-key") ?? undefined
+  const { card, cardNumber, replayed } = issueCard(validated.value, key)
+
+  if (replayed) {
+    return NextResponse.json({ card, replayed: true }, { status: 200 })
+  }
+
   return NextResponse.json({ card, cardNumber }, { status: 201 })
 }

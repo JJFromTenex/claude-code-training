@@ -194,6 +194,24 @@ function generateCards(): Card[] {
     createdAt.setUTCHours(between(9, 17), between(0, 59), between(0, 59), 0)
 
     const number = generateCardNumber(rand)
+    const createdIso = createdAt.toISOString()
+
+    // History starts at issue, then records however it got to where it is.
+    const history = [
+      { status: "active" as CardStatus, at: createdIso, note: "Card issued and live" },
+    ]
+    if (seed.status !== "active") {
+      const changedAt = new Date(createdAt)
+      changedAt.setUTCDate(changedAt.getUTCDate() + between(3, 20))
+      history.push({
+        status: seed.status,
+        at: changedAt.toISOString(),
+        note:
+          seed.status === "frozen"
+            ? "Frozen — declines until it is unfrozen"
+            : "Cancelled from active. This is permanent",
+      })
+    }
 
     return {
       id: `card_${pad(index + 1)}`,
@@ -207,7 +225,8 @@ function generateCards(): Card[] {
       last4: number.slice(-4),
       reference: `cn_${pad(index + 1, 10)}`,
       category: seed.category,
-      createdAt: createdAt.toISOString(),
+      createdAt: createdIso,
+      history,
     }
   })
 }

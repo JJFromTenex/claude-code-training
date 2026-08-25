@@ -81,6 +81,14 @@ export interface Payout {
   paymentIds: string[]
 }
 
+/** One entry in a card's history. Append-only; nothing rewrites the past. */
+export interface CardEvent {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+  note: string
+}
+
 /**
  * A virtual card.
  *
@@ -106,6 +114,8 @@ export interface Card {
   category: CardCategory | null
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Every status this card has been in, oldest first. */
+  history: CardEvent[]
 }
 
 export interface CardFilters {

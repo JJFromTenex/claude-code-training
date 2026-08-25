@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { canTransition, transitionCard, validateIssueRequest } from "./cards"
+import {
+  canTransition,
+  issueCard,
+  transitionCard,
+  validateIssueRequest,
+} from "./cards"
 import { Card, CardStatus } from "./types"
 
 /**
@@ -29,6 +34,13 @@ function cardWith(status: CardStatus): Card {
     reference: "cn_0000000001",
     category: null,
     createdAt: "2026-08-01T00:00:00.000Z",
+    history: [
+      {
+        status: "active",
+        at: "2026-08-01T00:00:00.000Z",
+        note: "Card issued and live",
+      },
+    ],
   }
 }
 
@@ -84,9 +96,20 @@ describe("validateIssueRequest", () => {
 
   it("rejects a currency outside the allowlist", () => {
     expect(validateIssueRequest({ ...valid, currency: "JPY" }).ok).toBe(false)
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(validateIssueRequest({ ...valid, currency }).ok).toBe(true)
-    }
+  })
+
+  it("rejects a currency the merchant does not settle in", () => {
+    // mch_01 is USD; mch_04 is GBP. A card has to match its merchant, or the
+    // limit cannot be compared to the spend it is meant to cap.
+    expect(validateIssueRequest({ ...valid, currency: "EUR" }).ok).toBe(false)
+    expect(
+      validateIssueRequest({ ...valid, merchantId: "mch_04", currency: "GBP" })
+        .ok,
+    ).toBe(true)
+    expect(
+      validateIssueRequest({ ...valid, merchantId: "mch_04", currency: "USD" })
+        .ok,
+    ).toBe(false)
   })
 
   it("rejects a missing or blank nickname", () => {
@@ -152,5 +175,68 @@ describe("transitionCard", () => {
   it("refuses a move to the status it is already in", () => {
     const card = cardWith("frozen")
     expect(transitionCard(card, "frozen").ok).toBe(false)
+  })
+
+  it("records every move in the history, oldest first", () => {
+    const card = cardWith("active")
+    transitionCard(card, "frozen")
+    transitionCard(card, "active")
+    transitionCard(card, "cancelled")
+
+    expect(card.history.map((e) => e.status)).toEqual([
+      "active",
+      "frozen",
+      "active",
+      "cancelled",
+    ])
+    // Ops needs to read this, not decode it.
+    expect(card.history.at(-1)?.note).toBe(
+      "Cancelled from active. This is permanent",
+    )
+  })
+
+  it("records nothing when a move is refused", () => {
+    const card = cardWith("cancelled")
+    const before = card.history.length
+    transitionCard(card, "active")
+    expect(card.history.length).toBe(before)
+  })
+})
+
+describe("issueCard", () => {
+  it("issues one card per idempotency key", () => {
+    const request = validateIssueRequest(valid)
+    expect(request.ok).toBe(true)
+    if (!request.ok) return
+
+    const first = issueCard(request.value, "key-abc")
+    const second = issueCard(request.value, "key-abc")
+
+    expect(second.card.id).toBe(first.card.id)
+    expect(second.replayed).toBe(true)
+    // The number was revealed once. A replay does not reveal it again.
+    expect(second.cardNumber).toBe("")
+  })
+
+  it("issues separate cards for separate keys", () => {
+    const request = validateIssueRequest(valid)
+    if (!request.ok) return
+
+    const a = issueCard(request.value, "key-1")
+    const b = issueCard(request.value, "key-2")
+    expect(a.card.id).not.toBe(b.card.id)
+  })
+
+  it("starts a new card active, at zero spend, with a history entry", () => {
+    const request = validateIssueRequest(valid)
+    if (!request.ok) return
+
+    const { card, cardNumber } = issueCard(request.value)
+    expect(card.status).toBe("active")
+    expect(card.spend).toBe(0)
+    expect(card.last4).toBe(cardNumber.slice(-4))
+    expect(card.history).toHaveLength(1)
+    // Nothing on the record can hold the full number.
+    expect(JSON.stringify(card)).not.toContain(cardNumber)
   })
 })

@@ -68,6 +68,9 @@ export function IssueCardDrawer({
     nickname: string
   } | null>(null)
 
+  /** Held across retries of one form, cleared when the drawer closes. */
+  const idempotencyKey = React.useRef<string | null>(null)
+
   /** Whatever happens, the number does not survive the drawer closing. */
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -79,6 +82,7 @@ export function IssueCardDrawer({
       setCurrency("USD")
       setCategory("")
       setError(null)
+      idempotencyKey.current = null
     }
   }
 
@@ -102,9 +106,16 @@ export function IssueCardDrawer({
 
     setSubmitting(true)
     try {
+      // One key per filled-in form, so a double submit cannot make two cards.
+      const key = idempotencyKey.current ?? crypto.randomUUID()
+      idempotencyKey.current = key
+
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": key,
+        },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -252,21 +263,21 @@ export function IssueCardDrawer({
                   >
                     Currency
                   </label>
-                  <Select
+                  {/*
+                    Not a choice: a card settles in its merchant's currency and
+                    the server refuses anything else. Showing a picker here
+                    would be offering a decision that cannot be made.
+                  */}
+                  <Input
+                    id="currency"
+                    className="mt-2"
                     value={currency}
-                    onValueChange={(v) => setCurrency(v as Currency)}
-                  >
-                    <SelectTrigger id="currency" className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((code) => (
-                        <SelectItem key={code} value={code}>
-                          {code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    readOnly
+                    aria-describedby="currency-hint"
+                  />
+                  <p id="currency-hint" className="mt-1 text-xs text-gray-500">
+                    {merchantId ? "Set by the merchant." : "Pick a merchant."}
+                  </p>
                 </div>
               </div>
 

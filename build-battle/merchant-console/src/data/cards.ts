@@ -117,6 +117,16 @@ export function validateIssueRequest(body: unknown): Validated<IssueCardRequest>
     return { ok: false, message: "Choose USD, EUR, or GBP." }
   }
 
+  // A card settles in the merchant's currency. Anything else produces a limit
+  // that cannot be compared to the spend it is supposed to cap.
+  const merchant = merchantById(merchantId)!
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      message: `${merchant.name} settles in ${merchant.currency}, so the card must be ${merchant.currency}.`,
+    }
+  }
+
   let category: CardCategory | null = null
   if (input.category != null && input.category !== "") {
     if (!CARD_CATEGORIES.includes(input.category as CardCategory)) {
@@ -212,10 +222,22 @@ function nextSequence(): number {
  * for the single creation response and never written to the record — the
  * stored card carries the last four and a reference.
  */
-export function issueCard(request: IssueCardRequest): {
-  card: Card
-  cardNumber: string
-} {
+export function issueCard(
+  request: IssueCardRequest,
+  idempotencyKey?: string,
+): { card: Card; cardNumber: string; replayed?: true } {
+  // Ops clicks twice, or the network retries. Either way one card, and the
+  // number is not re-revealed on the replay — it was shown once already.
+  if (idempotencyKey) {
+    const seen = issuedKeys.get(idempotencyKey)
+    if (seen) {
+      const existing = cardById(seen)
+      if (existing) {
+        return { card: existing, cardNumber: "", replayed: true }
+      }
+    }
+  }
+
   const cardNumber = generateCardNumber()
   const sequence = nextSequence()
 
@@ -232,11 +254,28 @@ export function issueCard(request: IssueCardRequest): {
     reference: `cn_${String(sequence).padStart(10, "0")}`,
     category: request.category,
     createdAt: new Date().toISOString(),
+    history: [],
   }
 
+  card.history.push({
+    status: "active",
+    at: card.createdAt,
+    note: "Card issued and live",
+  })
+
   store.cards.push(card)
+  if (idempotencyKey) issuedKeys.set(idempotencyKey, card.id)
+
   return { card, cardNumber }
 }
+
+/**
+ * Idempotency keys already used, mapped to the card they made.
+ *
+ * In memory alongside the store, and gone on restart for the same reason
+ * everything else here is.
+ */
+const issuedKeys = new Map<string, string>()
 
 /**
  * Move a card to a new status, guarded by the state machine.
@@ -257,6 +296,21 @@ export function transitionCard(
       : { ok: false, message: `A ${card.status} card cannot become ${to}.` }
   }
 
+  const from = card.status
   card.status = to
+  card.history.push({
+    status: to,
+    at: new Date().toISOString(),
+    note: NOTES[to](from),
+  })
+
   return { ok: true, value: card }
+}
+
+/** What the history reads like, so ops can answer "what happened last Tuesday". */
+const NOTES: Record<CardStatus, (from: CardStatus) => string> = {
+  active: (from) =>
+    from === "frozen" ? "Unfrozen and back in use" : "Card activated",
+  frozen: () => "Frozen — declines until it is unfrozen",
+  cancelled: (from) => `Cancelled from ${from}. This is permanent`,
 }

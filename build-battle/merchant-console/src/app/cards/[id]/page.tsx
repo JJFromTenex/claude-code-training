@@ -99,6 +99,30 @@ export default async function CardDetail({
 
       <Divider />
 
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {entry.note}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(entry.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <Divider />
+
       <p className="text-sm text-gray-500">
         The full number was shown once, when this card was issued. It is not
         stored and cannot be retrieved.
