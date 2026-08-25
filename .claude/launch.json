@@ -4,8 +4,14 @@
     {
       "name": "merchant-console",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "build-battle/merchant-console"],
-      "port": 3000
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "build-battle/merchant-console"
+      ],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
