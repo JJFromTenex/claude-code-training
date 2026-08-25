@@ -1,3 +1,8 @@
+---
+name: epic
+description: Turn a ticket into a written, reviewable epic — a plan that cites real files in this repo — before any code is written. Use when starting work on a ticket in docs/tickets/, when asked to plan an implementation, or when the user invokes /epic.
+---
+
 # /epic
 
 Turn a ticket into an epic: a written, reviewable plan that becomes the context for the build.

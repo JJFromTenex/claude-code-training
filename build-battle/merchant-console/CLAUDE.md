@@ -4,22 +4,65 @@ The internal tool support and ops staff use to look up a payment, refund it, wor
 
 Northwind Payments is fictional. Every merchant, cardholder, amount, and card in this app is generated.
 
-## Run it
+## Commands
+
+There is no package.json at the repository root. Run everything from
+`build-battle/merchant-console/`.
 
 ```bash
 npm install
-npm run dev
+npm run dev        # Next dev server on :3000
+npm run build      # production build — also the only full typecheck; there is no `typecheck` script
+npm run lint       # eslint-config-next
+npm test           # vitest run
+npm run test:watch
 ```
 
-No database, no seed step, no Docker.
+A single file or case:
+
+```bash
+npx vitest run src/lib/money.test.ts
+npx vitest run -t "groups thousands"
+```
+
+Tests are plain Node, no jsdom, and vitest only collects `src/**/*.test.ts`. A test
+written as `.test.tsx` is never collected and the suite still passes green.
+
+Imports use the `@/*` → `./src/*` alias; vitest resolves it via `vite-tsconfig-paths`.
 
 ## Data lives in memory
 
-Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.
+Records are generated deterministically at boot — there is no JSON seed file, no database,
+and no seed step. `src/data/generate.ts` builds payments, refunds, disputes, and payouts
+from a `mulberry32` PRNG seeded `20260813`, so every machine reproduces a bug identically.
+Merchants are a TS literal in `src/data/merchants.ts`; Berlin and London are there so
+timezone bugs have somewhere to show up.
 
-- Writes last for the life of the dev server and vanish on restart. That is expected.
-- Persistence is tracked separately as NWP-203. **Do not add a database, an ORM, or migrations.**
-- If you need more seed data, add it to the JSON. Never edit seed data to make a failing case disappear.
+- `GENERATED_AT` (`2026-08-13T00:00:00.000Z`) is the app's "now". `metrics.ts` and
+  `analytics.ts` anchor their buckets to it, not to `Date.now()`. Dashboards showing
+  nothing "recent" relative to today's real date is expected.
+- The store is held on `globalThis.__northwindStore` so dev-server module reloading does
+  not hand each request a fresh copy. Writes last for the life of the process and vanish
+  on restart. That is expected.
+- Persistence is tracked separately as NWP-203. **Do not add a database, an ORM, or
+  migrations.**
+- To add records, extend the generator. Never edit seed data to make a failing case
+  disappear.
+
+## How a payments request flows
+
+Every list, export, and metric goes through one path:
+
+    page.tsx → GET /api/payments → parseFilters() → queryPayments() → store
+
+- `parseFilters()` (`src/data/queries.ts`) is the allowlist boundary. Route handlers pass
+  it the raw `URLSearchParams` and never read params themselves.
+- `queryPayments()` = `filterPayments` → `sortPayments` → `paginate`. Call it rather than
+  composing the three by hand.
+- `GET /api/payments/export` deliberately reuses filter + sort but skips `paginate`, so an
+  export covers the full filtered set rather than the visible page.
+- `metrics.ts` and `analytics.ts` read `store` directly for aggregates; they do not go
+  through the builder.
 
 ## Where the rest of the context lives
 

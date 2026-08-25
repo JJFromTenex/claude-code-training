@@ -1,3 +1,8 @@
+---
+name: pr
+description: Write the pull request description for the work on the current branch, checking each acceptance criterion in the ticket honestly against the diff. Use when opening a PR, writing a PR description, or when the user invokes /pr.
+---
+
 # /pr
 
 Write the pull request description for the work in this branch.

@@ -21,6 +21,7 @@ Read the narrowest one that applies before you write code.
 - `.claude/` — the skills (`/epic`, `/pr`, `/ship-ready`) and the `bug-investigator` subagent. Open Claude Code at this root and they are available everywhere
 - `build-battle/` — the exercise brief and the scoring rubric
 - `build-battle/merchant-console/` — Northwind Payments, the application itself
+- `build-battle/merchant-console/.claude/rules/` — `money.md`, `api-routes.md`, `cards.md`, `components.md`. Each carries `paths:` frontmatter and loads automatically when you open a matching file, so read the file you are editing rather than all four up front
 - `.github/` — pull request template and the grading workflow
 
 ## Conventions
@@ -37,3 +38,9 @@ Work is submitted as a pull request against this repository and scored automatic
 - Branch from `main` with the ticket ID: `NWP-201-issue-cards`
 - Commit subjects carry the ticket ID: `NWP-201: issue virtual cards`
 - Fill in the pull request template. The grader reads it.
+
+## Release Standards
+
+- Every change carries test evidence before it merges. Paste the run — command and result — into the pull request; a claim that it passes is not evidence.
+- No direct commits to `main`. Branch, open a pull request, merge from there.
+- Every pull request includes a one-line business impact summary: what changes for merchants or the business if this ships.
