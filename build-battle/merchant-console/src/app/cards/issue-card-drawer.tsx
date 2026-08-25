@@ -77,9 +77,10 @@ export function IssueCardDrawer({
       setRequestId(crypto.randomUUID())
     } else {
       // Closing is what ends the reveal: the number is gone from state and
-      // there is nowhere left to read it from.
+      // there is nowhere left to read it from. The list was already refreshed
+      // when the card was issued, so closing stays a pure client change and
+      // does not restart a render underneath the drawer's exit animation.
       reset()
-      router.refresh()
     }
     setOpen(next)
   }
@@ -109,6 +110,9 @@ export function IssueCardDrawer({
         return
       }
       setFullNumber(body.fullNumber ?? null)
+      // Refresh behind the success screen, so the card is already in the list
+      // by the time the drawer closes.
+      router.refresh()
     } catch {
       setError("Could not reach the server. The card was not issued.")
     } finally {
