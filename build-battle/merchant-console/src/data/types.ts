@@ -71,6 +71,35 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "software"
+  | "advertising"
+  | "contractor"
+  | "travel"
+  | "other"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Spend to date against the limit, same currency, integer minor units. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  category: CardCategory
+  /**
+   * The last four digits of the generated number. There is deliberately no
+   * field for the full number: it exists only in the creation response.
+   */
+  last4: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
