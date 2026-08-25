@@ -1,6 +1,6 @@
 import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
-import { cardById } from "@/data/cards"
+import { CATEGORY_LABELS, cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
 import { formatDate } from "@/lib/dates"
 import { maskedNumber } from "@/lib/luhn"
@@ -9,14 +9,6 @@ import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardActions } from "../card-actions"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  software: "Software",
-  advertising: "Advertising",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  other: "Other",
-}
 
 export default async function CardDetail({
   params,

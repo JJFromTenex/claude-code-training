@@ -4,13 +4,21 @@ import { store } from "./store"
 import { Card, CardStatus, Currency, MerchantCategory } from "./types"
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
-const CATEGORIES: readonly MerchantCategory[] = [
-  "software",
-  "advertising",
-  "travel",
-  "office_supplies",
-  "other",
-]
+
+/**
+ * The one place category values and their display labels are declared.
+ * The issue dialog and the card detail page both read this rather than
+ * each keeping their own copy of the same five strings.
+ */
+export const CATEGORY_LABELS: Record<MerchantCategory, string> = {
+  software: "Software",
+  advertising: "Advertising",
+  travel: "Travel",
+  office_supplies: "Office supplies",
+  other: "Other",
+}
+
+const CATEGORIES = Object.keys(CATEGORY_LABELS) as MerchantCategory[]
 
 export const MAX_SPEND_LIMIT = 5_000_000
 

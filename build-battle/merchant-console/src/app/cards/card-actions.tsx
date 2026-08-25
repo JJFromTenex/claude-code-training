@@ -18,14 +18,21 @@ export function CardActions({ id, status }: { id: string; status: CardStatus }) 
     setPending(to)
     setError(null)
     try {
-      const res = await fetch(`/api/cards/${id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: to }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.errors?.[0] ?? "Could not update the card.")
+      let res: Response
+      try {
+        res = await fetch(`/api/cards/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: to }),
+        })
+      } catch {
+        setError("Could not reach the server. Check your connection and try again.")
+        return
+      }
+
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        setError(data?.errors?.[0] ?? "Could not update the card.")
         return
       }
       router.refresh()

@@ -19,19 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
+import { CATEGORY_LABELS } from "@/data/cards"
 import { Currency, MerchantCategory } from "@/data/types"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
-const CATEGORIES: { value: MerchantCategory; label: string }[] = [
-  { value: "software", label: "Software" },
-  { value: "advertising", label: "Advertising" },
-  { value: "travel", label: "Travel" },
-  { value: "office_supplies", label: "Office supplies" },
-  { value: "other", label: "Other" },
-]
+const CATEGORIES = Object.entries(CATEGORY_LABELS) as [MerchantCategory, string][]
 
 export function IssueCardDialog({
   merchants,
@@ -76,17 +71,26 @@ export function IssueCardDialog({
 
     setSubmitting(true)
     try {
-      const res = await fetch("/api/cards", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "idempotency-key": idempotencyKey,
-        },
-        body: JSON.stringify({ nickname, merchantId, spendLimit, currency, category }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setServerErrors(data.errors ?? ["Something went wrong."])
+      let res: Response
+      try {
+        res = await fetch("/api/cards", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": idempotencyKey,
+          },
+          body: JSON.stringify({ nickname, merchantId, spendLimit, currency, category }),
+        })
+      } catch {
+        // Network failure, not a rejection — the idempotency key is kept as-is,
+        // so retrying this same submit cannot mint a second card either.
+        setServerErrors(["Could not reach the server. Check your connection and try again."])
+        return
+      }
+
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        setServerErrors(data?.errors ?? ["Something went wrong. Try again."])
         return
       }
       // A retried submit under the same key replays the original card without
@@ -208,9 +212,9 @@ export function IssueCardDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
+                    {CATEGORIES.map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
