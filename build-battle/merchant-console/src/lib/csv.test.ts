@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,39 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("inserts a scope label between the prefix and the date when given one", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T00:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+})
+
+describe("NWP-101: column selection", () => {
+  it("writes a caller-chosen subset in the order requested, not canonical order", () => {
+    expect(toCsv([payment], ["amount", "id"])).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("excludes card last-four from the default column set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(DEFAULT_EXPORT_COLUMNS).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  describe("parseExportColumns", () => {
+    it("keeps only allowlisted columns, deduped, in first-seen order", () => {
+      expect(parseExportColumns("amount,id,amount,bogus")).toEqual([
+        "amount",
+        "id",
+      ])
+    })
+
+    it("returns an empty selection rather than falling back to every column", () => {
+      expect(parseExportColumns(null)).toEqual([])
+      expect(parseExportColumns("")).toEqual([])
+      expect(parseExportColumns("routing_number,ssn")).toEqual([])
+    })
   })
 })
