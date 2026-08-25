@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Ankit Raheja
-**Status:** draft
+**Status:** done
 
 ## Problem
 
@@ -105,6 +105,25 @@ Core first, in the ticket's order — "Hit the core criteria first — they are 
 11. **Merchant category lock** — server-side allowlist, shown on the card.
 12. **Designed empty and error states**, beyond the plain strings from steps 5 and 7.
 13. **`/ship-ready`, then commit** — *Done when:* the skill reports clean and commits are prefixed `NWP-201:`.
+
+### Built beyond the plan
+
+The ticket says the reviewer credits what it did not spell out — "the things an
+ops tool actually needs once real people click it twice, pick the wrong
+currency, or ask what happened to a card last Tuesday". Read literally, that
+sentence names three of these four:
+
+14. **Idempotent issue** — `POST /api/cards` honours an `Idempotency-Key`, so a
+    double click makes one card. The replay returns the card without the
+    number, because the reveal already happened. *(clicks it twice)*
+15. **Currency is the merchant's**, enforced server-side and shown as a derived
+    read-only field rather than a choice that would be refused. *(picks the
+    wrong currency)*
+16. **Audit trail** — every status change appends a readable note to the card's
+    history, rendered as a timeline on the detail page. *(what happened last
+    Tuesday)*
+17. **Cancel with a confirmation step**, since `cancelled` is the one state
+    nothing comes back from.
 
 ### Core criteria coverage
 
