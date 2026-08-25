@@ -8,13 +8,13 @@ import {
   TableRoot,
   TableRow,
 } from "@/components/Table"
+import { ExportOptionsDialog } from "@/components/ui/payments/ExportOptionsDialog"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
+import { allPaymentsCount, queryPayments } from "@/data/queries"
 import { PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
 import Link from "next/link"
 import { PaymentsFilterBar } from "./filter-bar"
 
@@ -65,15 +65,11 @@ export default async function PaymentsPage({
             search: filters.search ?? "",
           }}
         />
-        <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
-          <a href={`/api/payments/export?${query.toString()}`}>
-            <Download
-              className="-ml-0.5 size-4 shrink-0 text-gray-400 dark:text-gray-600"
-              aria-hidden="true"
-            />
-            Export
-          </a>
-        </Button>
+        <ExportOptionsDialog
+          filterQuery={query.toString()}
+          filteredCount={total}
+          allCount={allPaymentsCount()}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
