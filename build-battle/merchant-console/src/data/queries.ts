@@ -1,3 +1,10 @@
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  EXPORT_SCOPES,
+  ExportColumn,
+  ExportScope,
+} from "@/lib/csv"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Payment, PaymentFilters, PaymentStatus } from "./types"
@@ -32,6 +39,36 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
     page: Number.isFinite(page) && page > 0 ? page : 1,
     sort: sort === "amount" ? "amount" : "createdAt",
     direction: direction === "asc" ? "asc" : "desc",
+  }
+}
+
+export interface ExportOptions {
+  columns: ExportColumn[]
+  scope: ExportScope
+}
+
+/**
+ * Column names and scope arrive from the client, so both are checked against
+ * an allowlist here before they reach a serializer or a filename. Unknown
+ * names are dropped rather than echoed back, and the order is canonical so the
+ * same selection always produces the same file. An empty selection is returned
+ * as an empty list for the route to reject; it is not silently widened.
+ */
+export function parseExportOptions(params: URLSearchParams): ExportOptions {
+  const requestedScope = params.get("scope")
+  const scope: ExportScope = EXPORT_SCOPES.includes(requestedScope as ExportScope)
+    ? (requestedScope as ExportScope)
+    : "filtered"
+
+  const requestedColumns = params.get("columns")
+  if (requestedColumns === null) {
+    return { columns: [...DEFAULT_EXPORT_COLUMNS], scope }
+  }
+
+  const asked = new Set(requestedColumns.split(",").map((name) => name.trim()))
+  return {
+    columns: EXPORT_COLUMNS.filter((column) => asked.has(column)),
+    scope,
   }
 }
 

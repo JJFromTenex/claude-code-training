@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { parseExportOptions } from "@/data/queries"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportSegment,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +88,76 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("carries the scope segment, so a file names its own scope", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T00:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+})
+
+describe("exportSegment", () => {
+  it("names the status when the export follows a status filter", () => {
+    expect(exportSegment("filtered", "disputed")).toBe("disputed")
+  })
+
+  it("names a whole-table export all, whatever the screen was filtered to", () => {
+    expect(exportSegment("all", "disputed")).toBe("all")
+  })
+
+  it("falls back to filtered when the filter sets no status", () => {
+    expect(exportSegment("filtered", "all")).toBe("filtered")
+  })
+})
+
+describe("column selection", () => {
+  it("writes a subset of columns in the order requested", () => {
+    expect(toCsv([payment], ["currency", "amount", "id"])).toBe(
+      ["currency,amount,id", "USD,$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("leaves the card last four out of the default selection", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+
+    const csv = toCsv([payment], DEFAULT_EXPORT_COLUMNS)
+    expect(csv.split("\n")[0]).toBe(
+      EXPORT_COLUMNS.filter((column) => column !== "last4").join(","),
+    )
+    expect(csv).not.toContain("4242")
+  })
+
+  it("writes no payment data for an empty selection", () => {
+    // The route answers 400 rather than serving this; the serializer simply
+    // has nothing to write.
+    expect(toCsv([payment], [])).not.toContain("pay_0001")
+  })
+})
+
+describe("parseExportOptions", () => {
+  const parse = (search: string) => parseExportOptions(new URLSearchParams(search))
+
+  it("defaults to every column except the card last four", () => {
+    expect(parse("").columns).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("defaults to the current filter, and only widens when asked", () => {
+    expect(parse("").scope).toBe("filtered")
+    expect(parse("scope=all").scope).toBe("all")
+    expect(parse("scope=everything").scope).toBe("filtered")
+  })
+
+  it("drops column names it does not know rather than echoing them back", () => {
+    expect(parse("columns=id,password,amount").columns).toEqual(["id", "amount"])
+  })
+
+  it("keeps an empty selection empty, for the route to reject", () => {
+    expect(parse("columns=").columns).toEqual([])
+    expect(parse("columns=nonsense").columns).toEqual([])
+  })
+
+  it("canonicalises order and duplicates, so one selection is one file", () => {
+    expect(parse("columns=amount,id,amount").columns).toEqual(["id", "amount"])
   })
 })

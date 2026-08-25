@@ -1,13 +1,13 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentStatus } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses which columns ship and how wide the scope is (NWP-101). Both
+ * arrive from the client, so both are allowlisted before they reach this file
+ * — see `parseExportOptions` in `@/data/queries`.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,18 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What ops gets without choosing: everything except the card last four, which
+ * is the column that has to be stripped by hand before a file goes to a
+ * merchant. Opt in to it, never out.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+export const EXPORT_SCOPES = ["filtered", "all"] as const
+
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +78,21 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * The middle segment of the filename, so a file names its own scope: an
+ * unedited merchant-filtered export is no longer indistinguishable from a
+ * complete one. Derived from values that have already been validated, never
+ * from a raw client string.
+ */
+export function exportSegment(
+  scope: ExportScope,
+  status: PaymentStatus | "all" = "all",
+): string {
+  if (scope === "all") return "all"
+  return status === "all" ? "filtered" : status
+}
+
+export function exportFilename(date = new Date(), segment?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  return segment ? `payments-${segment}-${stamp}.csv` : `payments-${stamp}.csv`
 }
