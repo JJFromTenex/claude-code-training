@@ -71,6 +71,54 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/** What a card may be spent on. Chosen at issue time; changing it is NWP-202. */
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+export type CardEventType = "issued" | "frozen" | "unfrozen" | "cancelled"
+
+/** One entry in a card's audit trail. Append-only. */
+export interface CardEvent {
+  type: CardEventType
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Authorized spend against the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /**
+   * Last four of the generated number. The full number is returned exactly
+   * once, in the issue response, and is never stored or re-readable.
+   */
+  last4: string
+  /** Opaque handle for the issued number. Not the number, not derived from it. */
+  reference: string
+  categoryLock: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** Audit trail, oldest first. Answers "what happened to this card". */
+  events: CardEvent[]
+}
+
+export interface CardFilters {
+  status?: CardStatus | "all"
+  merchantId?: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string

@@ -1,5 +1,9 @@
+import { CARD_CATEGORIES, generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardEvent,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +152,74 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  // Cards are generated last so adding them leaves every payment record above
+  // byte-identical to what it was before this ticket.
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_NICKNAMES = [
+  "Ad spend — search",
+  "Ad spend — social",
+  "Design tooling",
+  "Contractor retainer",
+  "Cloud hosting",
+  "Shipping supplies",
+  "Team travel",
+  "Analytics seats",
+  "Support tooling",
+]
+
+/** A handful of cards so the list is not empty on a fresh boot. */
+function generateCards(): Card[] {
+  const cards: Card[] = []
+
+  for (let i = 0; i < CARD_NICKNAMES.length; i++) {
+    const merchant = merchants[i % merchants.length]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(3, 90))
+    createdAt.setUTCHours(between(0, 23), between(0, 59), 0, 0)
+
+    // Round limits, the way a person actually sets one.
+    const spendLimit = between(5, 60) * 100_00
+    const roll = rand()
+    const status: CardStatus =
+      roll < 0.7 ? "active" : roll < 0.89 ? "frozen" : "cancelled"
+
+    // One card deliberately sits past the 80% warning line.
+    const ratio = i === 2 ? 0.92 : rand() * 0.75
+    const spend = Math.round(spendLimit * ratio)
+
+    const events: CardEvent[] = [{ type: "issued", at: createdAt.toISOString() }]
+    if (status !== "active") {
+      const changedAt = new Date(
+        createdAt.getTime() + between(1, 20) * 86_400_000,
+      )
+      events.push({
+        type: status === "frozen" ? "frozen" : "cancelled",
+        at: changedAt.toISOString(),
+      })
+    }
+
+    const number = generateCardNumber(rand)
+
+    cards.push({
+      id: `card_${pad(i + 1)}`,
+      merchantId: merchant.id,
+      nickname: CARD_NICKNAMES[i],
+      spendLimit,
+      spend,
+      currency: merchant.currency,
+      status,
+      last4: number.slice(-4),
+      reference: `cref_${pad(i + 1, 12)}`,
+      categoryLock: rand() < 0.55 ? pick(CARD_CATEGORIES) : null,
+      createdAt: createdAt.toISOString(),
+      events,
+    })
+  }
+
+  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
