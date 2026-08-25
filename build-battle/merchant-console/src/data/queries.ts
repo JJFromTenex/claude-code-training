@@ -1,6 +1,6 @@
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import { Card, Payment, PaymentFilters, PaymentStatus } from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -115,4 +115,25 @@ export function refundsForPayment(paymentId: string) {
 
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
+}
+
+/**
+ * Cards, newest first. The full number is not on the record, so nothing here
+ * can leak one.
+ */
+export function listCards(): Card[] {
+  return [...store.cards].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function cardById(id: string): Card | null {
+  return store.cards.find((c) => c.id === id) ?? null
+}
+
+/** Next card id, following the `pay_000001` convention used elsewhere. */
+export function nextCardId(): string {
+  const highest = store.cards.reduce((max, card) => {
+    const n = Number(card.id.replace("crd_", ""))
+    return Number.isFinite(n) && n > max ? n : max
+  }, 0)
+  return `crd_${String(highest + 1).padStart(6, "0")}`
 }
