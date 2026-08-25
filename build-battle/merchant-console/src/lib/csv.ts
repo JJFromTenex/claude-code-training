@@ -5,9 +5,8 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Callers choose from an allowlisted column set. The default omits card last
+ * four so merchant-facing exports do not include it accidentally.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +23,33 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+function isExportColumn(value: string): value is ExportColumn {
+  return (EXPORT_COLUMNS as readonly string[]).includes(value)
+}
+
+export function parseExportColumns(
+  raw: string | null,
+): ExportColumn[] | null {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const requested = raw
+    .split(",")
+    .map((column) => column.trim())
+    .filter(Boolean)
+  const columns: ExportColumn[] = []
+
+  for (const column of requested) {
+    if (!isExportColumn(column)) return null
+    if (!columns.includes(column)) columns.push(column)
+  }
+
+  return columns
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +92,6 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), scope = "all"): string {
+  return `payments-${scope}-${date.toISOString().slice(0, 10)}.csv`
 }
