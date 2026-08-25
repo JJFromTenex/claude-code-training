@@ -70,10 +70,10 @@ export default async function CardDetailPage({
           </p>
         </div>
         <CardActions
-                    cardId={card.id}
-                    nickname={card.nickname}
-                    status={card.status}
-                  />
+          cardId={card.id}
+          nickname={card.nickname}
+          status={card.status}
+        />
       </div>
 
       <Divider />
