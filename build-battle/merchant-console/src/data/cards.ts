@@ -3,10 +3,7 @@ import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardCategory, CardStatus, Currency } from "./types"
 
-/**
- * Card reads and the only two writes. Everything from the client is checked
- * against an allowlist here, before it reaches the store.
- */
+/** Card reads and the only two writes. Client input is allowlist-checked here, before the store. */
 
 export const CARD_CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
 export const CARD_CATEGORIES: readonly CardCategory[] = [
@@ -74,11 +71,7 @@ export function validateIssueCard(
   }
 }
 
-/**
- * Issue a card. The full number exists only in this return value: the stored
- * record carries the last four and a reference. Replaying an
- * `idempotencyKey` returns the existing card and no number.
- */
+/** The full number exists only in this return value; the record keeps last4 and a reference. A replayed key returns the card without one. */
 export function issueCard(
   input: IssueCardInput,
   idempotencyKey?: string,

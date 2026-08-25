@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest"
 import {
   CARD_BIN,
   canTransition,
-  formatCardNumber,
   generateCardNumber,
   isLuhnValid,
   luhnCheckDigit,
@@ -23,6 +22,7 @@ describe("isLuhnValid", () => {
     expect(isLuhnValid("4242424242424242")).toBe(true)
     expect(isLuhnValid("4242424242424243")).toBe(false)
     expect(isLuhnValid("4242 4242 4242 4242")).toBe(false)
+    expect(maskCard("4242")).toBe("•••• 4242")
   })
 })
 
@@ -43,13 +43,6 @@ describe("generateCardNumber", () => {
     expect(isLuhnValid(nines)).toBe(true)
   })
 
-})
-
-describe("masking", () => {
-  it("shows only the last four", () => {
-    expect(maskCard("4242")).toBe("•••• 4242")
-    expect(formatCardNumber("4242424242424242")).toBe("4242 4242 4242 4242")
-  })
 })
 
 describe("canTransition", () => {

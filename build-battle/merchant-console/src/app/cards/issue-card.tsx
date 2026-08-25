@@ -22,7 +22,6 @@ import {
 } from "@/components/Select"
 import { CARD_CATEGORIES, FieldErrors } from "@/data/cards"
 import { Card, CardCategory, Currency } from "@/data/types"
-import { formatCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -32,11 +31,7 @@ type MerchantOption = { id: string; name: string; currency: Currency }
 
 const EMPTY = { nickname: "", merchantId: "", amount: "", category: "" as CardCategory | "" }
 
-/**
- * The issue form and the one-time reveal. The number arrives in the creation
- * response, lives in this component's state while the success screen is
- * open, and is dropped on close. Nothing else ever holds it.
- */
+/** The issue form and the one-time reveal. The number lives in state only while the success screen is open. */
 export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -120,14 +115,13 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
             <DrawerHeader>
               <DrawerTitle>Card issued</DrawerTitle>
               <DrawerDescription>
-                This is the only time the full number is shown. From here on the
-                console shows the last four only.
+                This is the only time the full number is shown. From here on it is the last four.
               </DrawerDescription>
             </DrawerHeader>
             <DrawerBody className="space-y-4">
               <p className="text-sm text-gray-500">{issued.card.nickname}</p>
               <p className="font-mono text-2xl tracking-wider text-gray-900 dark:text-gray-50">
-                {formatCardNumber(issued.cardNumber)}
+                {issued.cardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
               </p>
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 Limit {formatMoney(issued.card.spendLimit, issued.card.currency)}{" "}
@@ -144,13 +138,11 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
           <form onSubmit={submit} noValidate>
             <DrawerHeader>
               <DrawerTitle>Issue a virtual card</DrawerTitle>
-              <DrawerDescription>
-                Single merchant, always virtual, with a limit from the moment it exists.
-              </DrawerDescription>
+              <DrawerDescription>Single merchant, with a limit from the moment it exists.</DrawerDescription>
             </DrawerHeader>
             <DrawerBody className="space-y-4">
               <Field label="Nickname" id="card-nickname" error={errors.nickname}>
-                <Input id="card-nickname" value={form.nickname} placeholder="Meta ads · Q3"
+                <Input id="card-nickname" value={form.nickname} placeholder="Ads · Q3"
                   onChange={(e) => set({ nickname: e.target.value })} hasError={Boolean(errors.nickname)} />
               </Field>
               <Field label="Merchant" id="card-merchant" error={errors.merchantId}>
@@ -183,7 +175,7 @@ export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
                       onChange={(e) => set({ amount: e.target.value })} hasError={Boolean(errors.spendLimit)} />
                   </Field>
                 </div>
-                <Field label="Currency" id="card-currency" error={errors.currency} hint="Set by the merchant">
+                <Field label="Currency" id="card-currency" error={errors.currency}>
                   <Input id="card-currency" value={currency} readOnly />
                 </Field>
               </div>

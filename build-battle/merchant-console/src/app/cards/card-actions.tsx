@@ -5,10 +5,7 @@ import { CardStatus } from "@/data/types"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-/**
- * Freeze / unfreeze / cancel from a row. The buttons only offer legal moves;
- * the PATCH handler is what enforces them. Cancel is terminal, so it asks.
- */
+/** Freeze / unfreeze / cancel from a row. The buttons offer legal moves; the PATCH handler enforces them. */
 export function CardActions({ id, status }: { id: string; status: CardStatus }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)

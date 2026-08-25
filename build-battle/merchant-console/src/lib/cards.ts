@@ -1,15 +1,8 @@
 import { CardStatus } from "@/data/types"
 
-/**
- * Virtual card primitives: number generation, masking, and the status state
- * machine. Pure — nothing here touches the store, so it tests in plain Node.
- *
- * Every number this module produces starts with the 4242 test BIN, so nothing
- * in this repository can resemble a real PAN.
- */
+/** Number generation, masking, and the status state machine. Pure — no store access. */
 
 export const CARD_BIN = "4242"
-export const CARD_LENGTH = 16
 
 /** The digit that makes `partial + digit` pass the Luhn checksum. */
 export function luhnCheckDigit(partial: string): string {
@@ -32,13 +25,10 @@ export function isLuhnValid(number: string): boolean {
   return luhnCheckDigit(number.slice(0, -1)) === number.slice(-1)
 }
 
-/**
- * A 16-digit number on the test BIN with a valid check digit. Server-side
- * only. `random` is injectable so a test can pin the body.
- */
+/** A 16-digit number on the 4242 test BIN with a valid check digit. Server-side only; `random` is injectable for tests. */
 export function generateCardNumber(random: () => number = Math.random): string {
   let body = CARD_BIN
-  while (body.length < CARD_LENGTH - 1) {
+  while (body.length < 15) {
     body += String(Math.floor(random() * 10))
   }
   return body + luhnCheckDigit(body)
@@ -49,15 +39,7 @@ export function maskCard(last4: string): string {
   return `•••• ${last4}`
 }
 
-/** Groups of four for the success screen, the only place a full number renders. */
-export function formatCardNumber(number: string): string {
-  return number.replace(/(\d{4})(?=\d)/g, "$1 ")
-}
-
-/**
- * active ⇄ frozen, either to cancelled, cancelled is terminal. The single
- * source of truth for both the PATCH handler and the row actions.
- */
+/** active ⇄ frozen, either to cancelled, cancelled is terminal. Used by the PATCH handler and the row actions. */
 const TRANSITIONS: Record<CardStatus, readonly CardStatus[]> = {
   active: ["frozen", "cancelled"],
   frozen: ["active", "cancelled"],
