@@ -82,3 +82,34 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory = "retail" | "travel" | "dining" | "software" | "other"
+
+export const CARD_CATEGORIES: readonly CardCategory[] = [
+  "retail",
+  "travel",
+  "dining",
+  "software",
+  "other",
+]
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  currency: Currency
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Always 0 today — there is no transaction feed. */
+  spent: number
+  /** Last four of the generated number. The only remnant of it that persists. */
+  last4: string
+  /** Opaque reference. Not a hash or encoding of the number — unrelated to it. */
+  numberRef: string
+  status: CardStatus
+  category: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
