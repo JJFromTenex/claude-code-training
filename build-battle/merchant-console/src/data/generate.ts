@@ -18,7 +18,7 @@ const DAYS = 120
 const PAYMENTS_PER_DAY = 14
 
 /** Small, fast, deterministic PRNG. Not for anything that matters. */
-function mulberry32(a: number) {
+export function mulberry32(a: number) {
   return function () {
     a |= 0
     a = (a + 0x6d2b79f5) | 0
