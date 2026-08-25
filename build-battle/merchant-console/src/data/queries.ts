@@ -1,6 +1,6 @@
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import { Card, Payment, PaymentFilters, PaymentStatus } from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -115,4 +115,16 @@ export function refundsForPayment(paymentId: string) {
 
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
+}
+
+/**
+ * Cards, newest first. Simple accessors — cards have no filter surface yet,
+ * so nothing here duplicates the payment query builder above.
+ */
+export function cardsList(): Card[] {
+  return [...store.cards].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function cardById(id: string): Card | null {
+  return store.cards.find((c) => c.id === id) ?? null
 }
