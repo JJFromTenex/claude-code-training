@@ -1,8 +1,8 @@
 import { Badge } from "@/components/Badge"
-import { DisputeStatus, PaymentStatus, PayoutStatus } from "@/data/types"
+import { CardStatus, DisputeStatus, PaymentStatus, PayoutStatus } from "@/data/types"
 import { cx } from "@/lib/utils"
 
-type AnyStatus = PaymentStatus | DisputeStatus | PayoutStatus
+type AnyStatus = PaymentStatus | DisputeStatus | PayoutStatus | CardStatus
 
 const LABELS: Record<AnyStatus, string> = {
   authorized: "Authorized",
@@ -17,6 +17,9 @@ const LABELS: Record<AnyStatus, string> = {
   paid: "Paid",
   in_transit: "In transit",
   pending: "Pending",
+  active: "Active",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
 }
 
 const DOTS: Record<AnyStatus, string> = {
@@ -32,6 +35,9 @@ const DOTS: Record<AnyStatus, string> = {
   paid: "bg-emerald-600 dark:bg-emerald-400",
   in_transit: "bg-blue-500 dark:bg-blue-500",
   pending: "bg-gray-500 dark:bg-gray-500",
+  active: "bg-emerald-600 dark:bg-emerald-400",
+  frozen: "bg-blue-500 dark:bg-blue-500",
+  cancelled: "bg-gray-500 dark:bg-gray-500",
 }
 
 const VARIANTS: Record<AnyStatus, "default" | "neutral" | "success" | "error" | "warning"> = {
@@ -47,6 +53,9 @@ const VARIANTS: Record<AnyStatus, "default" | "neutral" | "success" | "error" | 
   paid: "success",
   in_transit: "default",
   pending: "neutral",
+  active: "success",
+  frozen: "default",
+  cancelled: "neutral",
 }
 
 export function StatusBadge({ status }: { status: AnyStatus }) {

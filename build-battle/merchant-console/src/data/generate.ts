@@ -1,5 +1,6 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +149,18 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  // Three issued cards so /cards, the spend bar, and the history have
+  // something to show on first boot. Spend is a plain field: nothing links a
+  // payment to a card, so a card issued from the console honestly starts at 0.
+  const cards: Card[] = [
+    card("card_0001", "Meta ads · Q3", "mch_01", "8231", 500000, 435000, "advertising", "active", "2026-08-03T14:12:00.000Z"),
+    card("card_0002", "Figma seats", "mch_04", "1104", 120000, 24000, "software", "frozen", "2026-08-10T09:40:00.000Z"),
+    card("card_0003", "Berlin trade fair", "mch_05", "7719", 250000, 250000, "travel", "cancelled", "2026-07-21T16:05:00.000Z"),
+  ]
+  cards[1].events.push({ type: "frozen", at: "2026-08-18T11:02:00.000Z" })
+  cards[2].events.push({ type: "cancelled", at: "2026-08-14T08:30:00.000Z" })
+
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +202,32 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+function card(
+  id: string,
+  nickname: string,
+  merchantId: string,
+  last4: string,
+  spendLimit: number,
+  spent: number,
+  category: Card["category"],
+  status: Card["status"],
+  createdAt: string,
+): Card {
+  const merchant = merchants.find((m) => m.id === merchantId)!
+  return {
+    id,
+    nickname,
+    merchantId,
+    reference: `ref_${id}`,
+    last4,
+    spendLimit,
+    spent,
+    currency: merchant.currency,
+    category,
+    status,
+    createdAt,
+    events: [{ type: "issued", at: createdAt }],
+  }
 }

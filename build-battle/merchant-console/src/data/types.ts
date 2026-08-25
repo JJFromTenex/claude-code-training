@@ -82,3 +82,41 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+/** Append-only. What happened to the card and when, UTC. */
+export interface CardEvent {
+  type: "issued" | "frozen" | "unfrozen" | "cancelled"
+  at: string
+}
+
+/**
+ * A virtual card. There is deliberately no field for the full number: it is
+ * returned once from the creation response and never stored.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Opaque reference to the generated number. Not the number. */
+  reference: string
+  last4: string
+  /** Integer minor units, in `currency`. */
+  spendLimit: number
+  /** Integer minor units spent against the limit, in `currency`. */
+  spent: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  events: CardEvent[]
+}
