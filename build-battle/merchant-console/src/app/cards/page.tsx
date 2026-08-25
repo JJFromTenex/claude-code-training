@@ -46,9 +46,9 @@ export default function CardsPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableHeaderCell>Nickname</TableHeaderCell>
-              <TableHeaderCell>Merchant</TableHeaderCell>
-              <TableHeaderCell>Number</TableHeaderCell>
+              {["Nickname", "Merchant", "Number"].map((h) => (
+                <TableHeaderCell key={h}>{h}</TableHeaderCell>
+              ))}
               <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
               <TableHeaderCell>Issued</TableHeaderCell>
@@ -72,10 +72,8 @@ export default function CardsPage() {
             {cards.map((card) => (
               <TableRow key={card.id}>
                 <TableCell>
-                  <Link
-                    href={`/cards/${card.id}`}
-                    className="font-medium text-blue-600 hover:underline dark:text-blue-500"
-                  >
+                  <Link href={`/cards/${card.id}`}
+                    className="font-medium text-blue-600 hover:underline dark:text-blue-500">
                     {card.nickname}
                   </Link>
                 </TableCell>
@@ -86,9 +84,7 @@ export default function CardsPage() {
                 <TableCell className="text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">
                   {formatMoney(card.spendLimit, card.currency)}
                 </TableCell>
-                <TableCell>
-                  <StatusBadge status={card.status} />
-                </TableCell>
+                <TableCell><StatusBadge status={card.status} /></TableCell>
                 <TableCell>{formatDate(card.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   <CardActions cardId={card.id} status={card.status} />

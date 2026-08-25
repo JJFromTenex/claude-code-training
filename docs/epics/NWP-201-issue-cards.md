@@ -97,18 +97,7 @@ Add a `Card` record to the in-memory store and drive everything through server r
 
 ## Open questions
 
-Both were resolved during the build. Recorded here with what shipped, so the
-plan and the code do not drift apart.
+Both were resolved during the build; recorded so the plan and the code do not drift.
 
-- **Where does a card's spend come from?** No payment in the store links to a
-  card, and the ticket does not say. **Resolved:** `spent` is a minor-units
-  field on the `Card`, zero for anything issued through the console. Seeded
-  cards derive theirs in `src/data/cards-seed.ts` from real captured payments
-  for that merchant and currency in the three days after issue, capped at the
-  limit. The window is a stated modelling choice; the figures are real rows and
-  move when the seed does. A payment-to-card join was not invented.
-- **Must a card's currency match its merchant's?** The ticket requires only the
-  three-currency allowlist. **Resolved: yes, enforced.** `validateIssueRequest`
-  rejects a mismatch by name — "Lumen Coffee Roasters settles in USD" — because
-  a card issued in a currency its merchant does not trade in is one nobody can
-  reconcile. Covered by a test.
+- **Where does a card's spend come from?** Nothing links a payment to a card. **Resolved:** `spent` is minor units on the `Card`, zero for anything issued through the console; seeded cards derive theirs in `src/data/cards-seed.ts` from real captured payments for that merchant and currency in the three days after issue, capped at the limit. The window is a stated modelling choice, the rows are real, and no payment-to-card join was invented.
+- **Must a card's currency match its merchant's?** **Resolved: yes, enforced.** `validateIssueRequest` rejects a mismatch by name, because a card in a currency its merchant does not trade in is one nobody can reconcile. Covered by a test.

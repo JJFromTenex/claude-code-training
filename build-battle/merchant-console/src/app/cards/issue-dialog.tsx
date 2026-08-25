@@ -2,23 +2,12 @@
 
 import { Button } from "@/components/Button"
 import {
-  Drawer,
-  DrawerBody,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
+  Drawer, DrawerBody, DrawerClose, DrawerContent, DrawerDescription,
+  DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from "@/components/Drawer"
 import { Input } from "@/components/Input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/Select"
 import { CardCategory } from "@/data/types"
 import { CATEGORY_LABELS } from "@/lib/card-labels"
@@ -30,18 +19,14 @@ import { useState } from "react"
 /**
  * Issue a card.
  *
- * The form collects strings and hands them to the server, which does the
- * validating and the generating. The revealed number lives in this component's
- * state for exactly as long as the success screen is open, and is cleared when
- * it closes — it is never written anywhere else.
+ * The form collects strings; the server validates them and generates the
+ * number. The revealed number lives in this component's state only while the
+ * success screen is open and is cleared on close — it is never stored.
  */
 
 /** A labelled row. Every control in this form has a real <label for>. */
 function Field({
-  id,
-  label,
-  children,
-  className,
+  id, label, children, className = "space-y-1.5",
 }: {
   id: string
   label: string
@@ -49,7 +34,7 @@ function Field({
   className?: string
 }) {
   return (
-    <div className={className ?? "space-y-1.5"}>
+    <div className={className}>
       <label htmlFor={id} className="text-sm font-medium text-gray-900 dark:text-gray-50">
         {label}
       </label>
@@ -59,9 +44,7 @@ function Field({
 }
 
 export function IssueCardDialog({
-  merchants,
-  categories,
-  currencies,
+  merchants, categories, currencies,
 }: {
   merchants: { id: string; name: string; currency: string }[]
   categories: CardCategory[]
@@ -69,35 +52,31 @@ export function IssueCardDialog({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [nickname, setNickname] = useState("")
-  const [merchantId, setMerchantId] = useState("")
-  const [limit, setLimit] = useState("")
-  const [currency, setCurrency] = useState("USD")
-  const [category, setCategory] = useState("")
+  const [form, setForm] = useState({
+    nickname: "", merchantId: "", limit: "", currency: "USD", category: "",
+  })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<{ number: string; nickname: string } | null>(null)
   // One key per opened form: a double-submit reuses it and the server returns
-  // the card it already issued instead of issuing a second one.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  // the card it already issued rather than issuing a second one.
+  const [key, setKey] = useState(() => crypto.randomUUID())
+
+  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
 
   const reset = () => {
-    setNickname("")
-    setMerchantId("")
-    setLimit("")
-    setCurrency("USD")
-    setCategory("")
+    setForm({ nickname: "", merchantId: "", limit: "", currency: "USD", category: "" })
     setError(null)
     setBusy(false)
     setRevealed(null)
-    setIdempotencyKey(crypto.randomUUID())
+    setKey(crypto.randomUUID())
   }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
 
-    const spendLimit = parseAmountToMinorUnits(limit)
+    const spendLimit = parseAmountToMinorUnits(form.limit)
     if (spendLimit === null) {
       setError("Enter a spend limit like 2500 or 2500.00.")
       return
@@ -107,16 +86,13 @@ export function IssueCardDialog({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "idempotency-key": idempotencyKey,
-        },
+        headers: { "content-type": "application/json", "idempotency-key": key },
         body: JSON.stringify({
-          nickname,
-          merchantId,
+          nickname: form.nickname,
+          merchantId: form.merchantId,
           spendLimit,
-          currency,
-          category: category || null,
+          currency: form.currency,
+          category: form.category || null,
         }),
       })
       const payload = await response.json()
@@ -125,10 +101,7 @@ export function IssueCardDialog({
         return
       }
       if (payload.alreadyIssued) {
-        // The server recognised the key and did not issue a second card.
-        setError(
-          "That card was already issued. Its number was shown once and cannot be shown again.",
-        )
+        setError("That card was already issued. Its number was shown once and cannot be shown again.")
         router.refresh()
         return
       }
@@ -197,16 +170,15 @@ export function IssueCardDialog({
               <Field id="nickname" label="Nickname">
                 <Input
                   id="nickname"
-                  name="nickname"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
+                  value={form.nickname}
+                  onChange={(e) => set({ nickname: e.target.value })}
                   placeholder="Ad spend — Q3"
                   required
                 />
               </Field>
 
               <Field id="merchant" label="Merchant">
-                <Select value={merchantId} onValueChange={setMerchantId}>
+                <Select value={form.merchantId} onValueChange={(merchantId) => set({ merchantId })}>
                   <SelectTrigger id="merchant" className="w-full">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
@@ -224,24 +196,21 @@ export function IssueCardDialog({
                 <Field id="limit" label="Spend limit" className="flex-1 space-y-1.5">
                   <Input
                     id="limit"
-                    name="limit"
                     inputMode="decimal"
-                    value={limit}
-                    onChange={(e) => setLimit(e.target.value)}
+                    value={form.limit}
+                    onChange={(e) => set({ limit: e.target.value })}
                     placeholder="2500.00"
                     required
                   />
                 </Field>
                 <Field id="currency" label="Currency" className="w-32 space-y-1.5">
-                  <Select value={currency} onValueChange={setCurrency}>
+                  <Select value={form.currency} onValueChange={(currency) => set({ currency })}>
                     <SelectTrigger id="currency" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {currencies.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -250,8 +219,8 @@ export function IssueCardDialog({
 
               <Field id="category" label="Category lock">
                 <Select
-                  value={category || "none"}
-                  onValueChange={(v) => setCategory(v === "none" ? "" : v)}
+                  value={form.category || "none"}
+                  onValueChange={(v) => set({ category: v === "none" ? "" : v })}
                 >
                   <SelectTrigger id="category" className="w-full">
                     <SelectValue placeholder="No category lock" />
@@ -259,9 +228,7 @@ export function IssueCardDialog({
                   <SelectContent>
                     <SelectItem value="none">No category lock</SelectItem>
                     {categories.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {CATEGORY_LABELS[c]}
-                      </SelectItem>
+                      <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -279,9 +246,7 @@ export function IssueCardDialog({
 
             <DrawerFooter className="gap-2">
               <DrawerClose asChild>
-                <Button type="button" variant="secondary" className="py-1.5">
-                  Cancel
-                </Button>
+                <Button type="button" variant="secondary" className="py-1.5">Cancel</Button>
               </DrawerClose>
               <Button type="submit" className="py-1.5" disabled={busy} isLoading={busy}>
                 Issue card

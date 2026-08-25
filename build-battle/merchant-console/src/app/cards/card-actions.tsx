@@ -50,26 +50,20 @@ export function CardActions({
     return <span className="text-sm text-gray-400 dark:text-gray-600">—</span>
   }
 
+  const small = "py-1 text-xs"
+
   if (confirmingCancel) {
     return (
       <div className="flex items-center justify-end gap-2">
         <span className="text-xs text-gray-500" role="alert">
           Cancel this card? It cannot be undone.
         </span>
-        <Button
-          variant="secondary"
-          className="py-1 text-xs"
-          disabled={busy}
-          onClick={() => setConfirmingCancel(false)}
-        >
+        <Button variant="secondary" className={small} disabled={busy}
+          onClick={() => setConfirmingCancel(false)}>
           Keep it
         </Button>
-        <Button
-          variant="destructive"
-          className="py-1 text-xs"
-          disabled={busy}
-          onClick={() => move("cancelled")}
-        >
+        <Button variant="destructive" className={small} disabled={busy}
+          onClick={() => move("cancelled")}>
           Yes, cancel
         </Button>
       </div>
@@ -79,24 +73,14 @@ export function CardActions({
   return (
     <div className="flex items-center justify-end gap-2">
       {error && (
-        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-          {error}
-        </span>
+        <span role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</span>
       )}
-      <Button
-        variant="secondary"
-        className="py-1 text-xs"
-        disabled={busy}
-        onClick={() => move(status === "active" ? "frozen" : "active")}
-      >
+      <Button variant="secondary" className={small} disabled={busy}
+        onClick={() => move(status === "active" ? "frozen" : "active")}>
         {status === "active" ? "Freeze" : "Unfreeze"}
       </Button>
-      <Button
-        variant="secondary"
-        className="py-1 text-xs"
-        disabled={busy}
-        onClick={() => setConfirmingCancel(true)}
-      >
+      <Button variant="secondary" className={small} disabled={busy}
+        onClick={() => setConfirmingCancel(true)}>
         Cancel
       </Button>
     </div>
