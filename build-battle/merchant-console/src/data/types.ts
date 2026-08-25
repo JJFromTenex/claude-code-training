@@ -71,6 +71,42 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardEventType = "issued" | "frozen" | "unfrozen" | "cancelled"
+
+export interface CardEvent {
+  type: CardEventType
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "shipping"
+  | "office"
+  | "travel"
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  last4: string
+  /** Opaque reference to the generated number. Never the PAN. */
+  numberRef: string
+  /** Integer minor units. Never a float. */
+  limitMinorUnits: number
+  /** Integer minor units. Never a float. */
+  spentMinorUnits: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  events: CardEvent[]
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
