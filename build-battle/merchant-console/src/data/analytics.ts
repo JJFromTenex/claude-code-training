@@ -1,3 +1,4 @@
+import { sumMinorUnits } from "@/lib/money"
 import { GENERATED_AT } from "./generate"
 import { merchants } from "./merchants"
 import { store } from "./store"
@@ -48,10 +49,13 @@ export function volumeByWeek(count = 12) {
       start: week.start - count * WEEK_MS,
       end: week.end - count * WEEK_MS,
     }
+    // Sum in minor units, then divide once for the chart — never mid-sum.
     const sum = (bucket: WeekBucket) =>
-      store.payments
-        .filter((p) => p.status === "captured" && inWeek(p.createdAt, bucket))
-        .reduce((total, p) => total + p.amount, 0) / 100
+      sumMinorUnits(
+        store.payments
+          .filter((p) => p.status === "captured" && inWeek(p.createdAt, bucket))
+          .map((p) => p.amount),
+      ) / 100
 
     return {
       date: week.date,
@@ -70,7 +74,7 @@ export function countAndVolumeByWeek(count = 12) {
       date: week.date,
       Payments: inBucket.length,
       "Captured volume": Math.round(
-        captured.reduce((total, p) => total + p.amount, 0) / 100,
+        sumMinorUnits(captured.map((p) => p.amount)) / 100,
       ),
     }
   })
