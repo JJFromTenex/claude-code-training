@@ -71,6 +71,35 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "office_supplies"
+  | "professional_services"
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /** Last four digits of the generated number. The full PAN is never stored. */
+  last4: string
+  /** Opaque reference to the issued number. Cannot be turned back into a PAN. */
+  numberRef: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units spent so far against the limit. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  /** Merchant category the card is locked to, or null for unrestricted. */
+  categoryLock: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
