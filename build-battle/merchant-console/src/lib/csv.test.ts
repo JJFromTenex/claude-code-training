@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { DEFAULT_COLUMNS, EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,12 +74,51 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("returns columns in the requested order, not the default order", () => {
+    const csv = toCsv([payment], ["status", "id", "currency"])
+    const lines = csv.split("\n")
+    expect(lines[0]).toBe("status,id,currency")
+    expect(lines[1]).toBe("captured,pay_0001,USD")
+  })
+
+  it("produces empty rows when given an empty column list", () => {
+    const lines = toCsv([payment], []).split("\n")
+    expect(lines).toHaveLength(2)
+    expect(lines[0]).toBe("")
+    expect(lines[1]).toBe("")
+  })
 })
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
+    expect(exportFilename(undefined, new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("includes the scope label between 'payments' and the date", () => {
+    expect(exportFilename("disputed", new Date("2026-08-13T00:00:00.000Z"))).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+  })
+
+  it("omits the label when scope is an empty string", () => {
+    expect(exportFilename("", new Date("2026-08-13T00:00:00.000Z"))).toBe(
+      "payments-2026-08-13.csv",
+    )
+  })
+})
+
+describe("DEFAULT_COLUMNS", () => {
+  it("excludes last4 from the default column set", () => {
+    expect(DEFAULT_COLUMNS).not.toContain("last4")
+  })
+
+  it("includes all columns except last4", () => {
+    expect(DEFAULT_COLUMNS).toHaveLength(EXPORT_COLUMNS.length - 1)
+    for (const col of DEFAULT_COLUMNS) {
+      expect(EXPORT_COLUMNS).toContain(col)
+    }
   })
 })

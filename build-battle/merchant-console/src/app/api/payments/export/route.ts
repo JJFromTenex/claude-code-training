@@ -1,25 +1,57 @@
 import { filterPayments, parseFilters, sortPayments } from "@/data/queries"
-import { exportFilename, toCsv } from "@/lib/csv"
-import { NextRequest } from "next/server"
+import { store } from "@/data/store"
+import {
+  EXPORT_COLUMNS,
+  ExportColumn,
+  exportFilename,
+  toCsv,
+} from "@/lib/csv"
+import { NextRequest, NextResponse } from "next/server"
 
-/**
- * Exports the payments table as CSV.
- *
- * Honors the active filters and reuses the query builder, but the column set
- * and the scope are fixed. Giving ops control over both is NWP-101.
- */
+const VALID_COLUMNS = new Set<string>(EXPORT_COLUMNS)
+const VALID_SCOPES = new Set(["filtered", "all"])
+
+function parseExportParams(params: URLSearchParams) {
+  const rawColumns = params.get("columns")
+  const columns: ExportColumn[] = rawColumns
+    ? rawColumns.split(",").filter((c): c is ExportColumn => VALID_COLUMNS.has(c))
+    : [...EXPORT_COLUMNS]
+
+  if (columns.length === 0) {
+    return {
+      error: NextResponse.json(
+        { message: "At least one valid column is required" },
+        { status: 400 },
+      ),
+    }
+  }
+
+  const rawScope = params.get("scope")
+  const scope = VALID_SCOPES.has(rawScope ?? "") ? (rawScope as "filtered" | "all") : "filtered"
+
+  return { columns, scope }
+}
+
 export function GET(request: NextRequest) {
-  const filters = parseFilters(request.nextUrl.searchParams)
-  const rows = sortPayments(
-    filterPayments(filters),
-    filters.sort,
-    filters.direction,
-  )
+  const params = request.nextUrl.searchParams
+  const exported = parseExportParams(params)
+  if ("error" in exported) return exported.error
+  const { columns, scope } = exported
 
-  return new Response(toCsv(rows), {
+  const filters = parseFilters(params)
+
+  const rows =
+    scope === "all"
+      ? sortPayments([...store.payments], filters.sort, filters.direction)
+      : sortPayments(filterPayments(filters), filters.sort, filters.direction)
+
+  const statusLabel =
+    filters.status && filters.status !== "all" ? filters.status : undefined
+
+  return new Response(toCsv(rows, columns), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="${exportFilename()}"`,
+      "content-disposition": `attachment; filename="${exportFilename(statusLabel)}"`,
     },
   })
 }

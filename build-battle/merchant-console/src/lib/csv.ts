@@ -4,10 +4,6 @@ import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
- *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +20,23 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+export const DEFAULT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (col) => col !== "last4",
+)
+
+export const COLUMN_LABELS: Record<ExportColumn, string> = {
+  id: "Payment ID",
+  created_at: "Date",
+  merchant: "Merchant",
+  description: "Description",
+  status: "Status",
+  method: "Method",
+  card_brand: "Card brand",
+  last4: "Card last four",
+  amount: "Amount",
+  currency: "Currency",
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +79,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(scope?: string, date = new Date()): string {
+  const label = scope ? `-${scope}` : ""
+  return `payments${label}-${date.toISOString().slice(0, 10)}.csv`
 }
