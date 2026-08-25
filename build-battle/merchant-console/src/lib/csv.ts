@@ -66,6 +66,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), label?: string): string {
+  const dateStr = date.toISOString().slice(0, 10)
+  return label ? `payments-${label}-${dateStr}.csv` : `payments-${dateStr}.csv`
 }

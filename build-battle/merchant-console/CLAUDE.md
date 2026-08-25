@@ -1,25 +1,31 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Northwind Payments — Merchant Console
 
 The internal tool support and ops staff use to look up a payment, refund it, work the dispute queue, and issue virtual cards.
 
 Northwind Payments is fictional. Every merchant, cardholder, amount, and card in this app is generated.
 
-## Run it
+## Commands
 
 ```bash
-npm install
-npm run dev
+npm run dev          # start dev server on localhost:3000
+npm test             # run all tests (Vitest, node environment, no jsdom)
+npm test -- src/lib/csv.test.ts   # run a single test file
+npm run lint         # ESLint via next lint
 ```
 
 No database, no seed step, no Docker.
 
 ## Data lives in memory
 
-Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.
+Seed data is generated deterministically at boot (fixed PRNG seed) and held on `globalThis.__northwindStore` so Next.js hot-reload doesn't reset it. Route handlers read and write that store directly.
 
-- Writes last for the life of the dev server and vanish on restart. That is expected.
+- Writes survive the dev session and vanish on restart. That is expected.
 - Persistence is tracked separately as NWP-203. **Do not add a database, an ORM, or migrations.**
-- If you need more seed data, add it to the JSON. Never edit seed data to make a failing case disappear.
+- Never edit seed data to make a failing case disappear.
 
 ## Where the rest of the context lives
 
@@ -47,15 +53,29 @@ These four explain most of the code, and breaking them is how bugs get in here.
 - The full number is returned exactly once, in the creation response. After that, last four only.
 - Status is a state machine: `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal.
 
+## Architecture patterns worth knowing
+
+**Rendering model.** All pages are React Server Components by default. The only `"use client"` component on `/payments` is `filter-bar.tsx` (it drives the URL with `useRouter`). New UI that doesn't need browser state should stay as RSC.
+
+**Query pipeline.** Four functions in `src/data/queries.ts` compose in a fixed order: `parseFilters → filterPayments → sortPayments → paginate`. `queryPayments` wraps all four. The export route deliberately skips `paginate` to stream every matching row, not just the current page.
+
+**Test scope.** Only `src/lib/` has tests (money, dates, CSV). Components and route handlers are not unit-tested. When the ticket says "add a test", it means extending an existing `.test.ts` in `src/lib/`, not creating new test infrastructure.
+
 ## Layout
 
 | Path | What lives there |
 | --- | --- |
 | `src/app/` | Console routes: overview, payments, disputes, payouts. Cards is NWP-201 and does not exist yet |
 | `src/app/api/` | Route handlers |
-| `src/data/` | Seed JSON, the in-memory store, and types |
+| `src/data/` | Seed data generator, the in-memory store, types, and the query builder |
 | `src/components/` | Tremor-based primitives and the console's own components |
 | `src/lib/` | Money, date, and CSV helpers, each with a `.test.ts` beside it. Read these before touching an amount |
+
+## Release Standards
+
+- All changes require test evidence (passing `npm test` output) before merging.
+- No direct commits to `main`. Every change goes through a pull request.
+- Every PR description must include a one-line business impact summary.
 
 ## Before you push
 

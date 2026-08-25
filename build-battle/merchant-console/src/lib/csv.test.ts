@@ -82,4 +82,29 @@ describe("exportFilename", () => {
       "payments-2026-03-14.csv",
     )
   })
+
+  it("includes the label in the filename when provided", () => {
+    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-03-14.csv",
+    )
+  })
+})
+
+describe("NWP-101 column selection", () => {
+  it("writes columns in the caller-requested order, not EXPORT_COLUMNS order", () => {
+    expect(toCsv([payment], ["currency", "amount", "id"])).toBe(
+      ["currency,amount,id", "USD,$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("excludes last4 when omitted from the column list", () => {
+    const cols = EXPORT_COLUMNS.filter((c) => c !== "last4")
+    const output = toCsv([payment], cols)
+    expect(output.split("\n")[0]).not.toContain("last4")
+    expect(output).not.toContain(payment.last4!)
+  })
+
+  it("outputs an empty header and empty row when no columns are selected", () => {
+    expect(toCsv([payment], [])).toBe("\n")
+  })
 })
