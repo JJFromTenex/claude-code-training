@@ -17,6 +17,7 @@ import { maskLast4 } from "@/lib/cards"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardActions } from "./card-actions"
+import { CardsFilterBar } from "./filter-bar"
 import { IssueCardDialog } from "./issue-card-dialog"
 
 const STATUSES: (CardStatus | "all")[] = ["all", "active", "frozen", "cancelled"]
@@ -57,7 +58,16 @@ export default async function CardsPage({
             Issue and manage virtual cards for merchant vendor spend.
           </p>
         </div>
-        <IssueCardDialog merchants={merchants.map((m) => ({ id: m.id, name: m.name }))} />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <CardsFilterBar
+            statuses={STATUSES}
+            current={{
+              status: (filters.status as string) ?? "all",
+              merchantId: filters.merchantId ?? "",
+            }}
+          />
+          <IssueCardDialog merchants={merchants.map((m) => ({ id: m.id, name: m.name }))} />
+        </div>
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
