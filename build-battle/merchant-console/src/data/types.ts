@@ -11,6 +11,15 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "utilities"
+  | "office_supplies"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +78,24 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units spent against the limit. Starts at 0 on issue. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** Last four of the generated 4242-BIN number. The full number is never stored. */
+  last4: string
+  /** Optional merchant category lock, chosen at issue. */
+  category: MerchantCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {
