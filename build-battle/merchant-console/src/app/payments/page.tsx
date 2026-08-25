@@ -10,8 +10,8 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { filterPayments, queryPayments } from "@/data/queries"
-import { PaymentFilters, PaymentStatus } from "@/data/types"
+import { filterPayments, parseFilters, queryPayments } from "@/data/queries"
+import { PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
@@ -33,22 +33,15 @@ export default async function PaymentsPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: PaymentFilters = {
-    status: (STATUSES.includes(params.status as PaymentStatus)
-      ? params.status
-      : "all") as PaymentFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
-
-  const { rows, total, page, pageCount } = queryPayments(filters)
-  // Both counts come from the one query builder, so the export dialog can show
-  // what each scope would download without a second filter path.
-  const totalCount = filterPayments({}).length
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
+
+  // The page and the export route parse the same query string through the same
+  // allowlist, so the count the dialog shows is the count the file contains.
+  const filters = parseFilters(query)
+  const { rows, total, page, pageCount } = queryPayments(filters)
+  const totalCount = filterPayments({}).length
 
   const pageHref = (next: number) => {
     const q = new URLSearchParams(query)

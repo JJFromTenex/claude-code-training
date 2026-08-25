@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
 import {
+  DEFAULT_EXPORT_COLUMNS,
   EXPORT_COLUMNS,
   exportFilename,
   exportScopeLabel,
   parseExportColumns,
+  parseExportScope,
   toCsv,
 } from "./csv"
 
@@ -32,7 +34,13 @@ describe("toCsv", () => {
   it("writes a header row followed by one row per payment", () => {
     const lines = toCsv([payment]).split("\n")
     expect(lines).toHaveLength(2)
-    expect(lines[0]).toBe(EXPORT_COLUMNS.join(","))
+    expect(lines[0]).toBe(DEFAULT_EXPORT_COLUMNS.join(","))
+  })
+
+  it("leaves the card last four out when no columns are given", () => {
+    // The lazy call has to be the safe one: a caller who forgets the argument
+    // must not silently put card data in a file bound for a merchant.
+    expect(toCsv([payment]).split("\n")[0]).not.toContain("last4")
   })
 
   it("writes only the requested columns, in the order given", () => {
@@ -119,17 +127,49 @@ describe("parseExportColumns", () => {
 })
 
 describe("exportScopeLabel", () => {
-  it("names the status, so the file says what is inside it", () => {
+  it("names the status when the status is the whole story", () => {
     expect(exportScopeLabel({ status: "disputed" }, "filter")).toBe("disputed")
   })
 
   it("calls any other narrowing filtered", () => {
     expect(exportScopeLabel({ merchantId: "mch_01" }, "filter")).toBe("filtered")
+    expect(exportScopeLabel({ search: "lumen" }, "filter")).toBe("filtered")
+    expect(exportScopeLabel({ from: "2026-08-01" }, "filter")).toBe("filtered")
+    expect(exportScopeLabel({ to: "2026-08-31" }, "filter")).toBe("filtered")
+  })
+
+  it("does not name the status when something else narrows it further", () => {
+    // payments-disputed-….csv holding one merchant's disputes overstates what
+    // is inside, which is the near-miss this ticket exists to prevent.
+    expect(
+      exportScopeLabel({ status: "disputed", merchantId: "mch_01" }, "filter"),
+    ).toBe("filtered")
+    expect(
+      exportScopeLabel({ status: "captured", from: "2026-08-01" }, "filter"),
+    ).toBe("filtered")
+  })
+
+  it("ignores a whitespace-only search, which narrows nothing", () => {
+    expect(exportScopeLabel({ search: "   " }, "filter")).toBe("all")
   })
 
   it("is all when nothing narrows, whichever scope was asked for", () => {
+    expect(exportScopeLabel({}, "filter")).toBe("all")
     expect(exportScopeLabel({ status: "all" }, "filter")).toBe("all")
     expect(exportScopeLabel({ status: "disputed" }, "all")).toBe("all")
+  })
+})
+
+describe("parseExportScope", () => {
+  it("recognizes only the exact token all", () => {
+    expect(parseExportScope("all")).toBe("all")
+    expect(parseExportScope("ALL")).toBe("filter")
+  })
+
+  it("falls back to the narrower scope for anything else", () => {
+    expect(parseExportScope(null)).toBe("filter")
+    expect(parseExportScope("")).toBe("filter")
+    expect(parseExportScope("everything")).toBe("filter")
   })
 })
 
@@ -138,5 +178,17 @@ describe("exportFilename", () => {
     expect(
       exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z")),
     ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("stamps the UTC day even when the server's local day differs", () => {
+    // 23:00Z on the 14th is already the 15th east of UTC. The file says the 14th.
+    expect(exportFilename("all", new Date("2026-03-14T23:59:59.999Z"))).toBe(
+      "payments-all-2026-03-14.csv",
+    )
+  })
+
+  it("defaults to today, which is the argument production actually uses", () => {
+    const today = new Date().toISOString().slice(0, 10)
+    expect(exportFilename("all")).toBe(`payments-all-${today}.csv`)
   })
 })

@@ -131,7 +131,33 @@ it a feature. That is the exact failure the ticket names. Rejected outright.
 
 ## Open questions
 
-- Does "all payments" ignore a date range too, or only status, merchant, and search? Assuming
-  it ignores every filter, which is the plainer reading of "all payments".
-- Column order in the file: assuming canonical `EXPORT_COLUMNS` order regardless of the order
-  boxes were ticked, so two people picking the same columns get identical files.
+Both resolved during implementation:
+
+- **Does "all payments" ignore a date range too?** Yes. `scope=all` runs `filterPayments({})`,
+  discarding every filter, and the dialog now strips the filter params from the URL rather than
+  sending ones the server will drop.
+- **Column order in the file.** Split, deliberately. The dialog always emits canonical
+  `EXPORT_COLUMNS` order, so two people ticking the same boxes get identical files. The server
+  honors the order it is given, so a hand-built `?columns=amount,id` gets `amount,id`. Order is
+  not a safety property, and honoring it keeps the contract `csv.test.ts` already pinned.
+
+## Decisions changed during implementation
+
+Recorded because they contradict the plan above, not because the plan was wrong to write.
+
+- **Reused `Drawer` instead of adding `src/components/Dialog.tsx`** (file map, step 3). Reading
+  `src/components/Drawer.tsx` in full showed it is already a complete accessible Radix dialog;
+  a new `Dialog.tsx` would have been ~150 near-duplicate lines plus new Tailwind keyframes.
+  Trade-off: the panel slides in from the right rather than sitting centered.
+- **`page.tsx` now calls `parseFilters`** rather than hand-rolling its filter object. Review
+  found the two parses could disagree: `/payments?status=captured&from=2026-08-01` showed 1,299
+  in the dialog while the file held 132 rows, because the page ignored `from`/`to` and the route
+  honored them. One allowlist for both is the fix, and it makes AC2's count trustworthy.
+- **`exportScopeLabel` names a status only when the status is the sole narrowing filter.** The
+  first implementation returned the status and stopped, so `status=disputed&merchantId=mch_01`
+  produced `payments-disputed-….csv` holding 5 of 33 disputed payments. A name that overstates
+  its contents is the near-miss this ticket exists to prevent.
+- **Added `src/app/api/payments/export/route.test.ts`.** The plan put all coverage in
+  `csv.test.ts`, but the route is a plain function of a `NextRequest` and runs in the existing
+  node environment, so the 400 path and the `scope=all` branch are now tested rather than
+  hand-checked.

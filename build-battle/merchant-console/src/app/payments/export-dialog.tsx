@@ -11,7 +11,12 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/Drawer"
-import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS, ExportColumn } from "@/lib/csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  ExportColumn,
+  ExportScope,
+} from "@/lib/csv"
 import { Download } from "lucide-react"
 import { useState } from "react"
 
@@ -37,8 +42,6 @@ const COLUMN_LABELS: Record<ExportColumn, string> = {
   currency: "Currency",
 }
 
-type Scope = "filter" | "all"
-
 export function ExportDialog({
   query,
   filteredCount,
@@ -50,27 +53,33 @@ export function ExportDialog({
   totalCount: number
 }) {
   const [open, setOpen] = useState(false)
-  const [scope, setScope] = useState<Scope>("filter")
+  const [scope, setScope] = useState<ExportScope>("filter")
   const [selected, setSelected] = useState<ExportColumn[]>([
     ...DEFAULT_EXPORT_COLUMNS,
   ])
 
   const rowCount = scope === "all" ? totalCount : filteredCount
 
+  // Rebuild from EXPORT_COLUMNS in both directions, so the header order is
+  // canonical no matter what order the boxes were ticked in.
   const toggle = (column: ExportColumn) =>
     setSelected((columns) =>
-      columns.includes(column)
-        ? columns.filter((name) => name !== column)
-        : // Keep the canonical order so the header reads the same every time.
-          EXPORT_COLUMNS.filter(
-            (name) => name === column || columns.includes(name),
-          ),
+      EXPORT_COLUMNS.filter((name) =>
+        name === column ? !columns.includes(column) : columns.includes(name),
+      ),
     )
 
   const href = () => {
     const params = new URLSearchParams(query)
+    // The export never paginates, and an all-payments URL should not also
+    // carry the filters the server is about to discard.
     params.delete("page")
-    if (scope === "all") params.set("scope", "all")
+    if (scope === "all") {
+      for (const key of ["status", "merchantId", "search", "from", "to"]) {
+        params.delete(key)
+      }
+      params.set("scope", "all")
+    }
     params.set("columns", selected.join(","))
     return `/api/payments/export?${params.toString()}`
   }
@@ -137,7 +146,6 @@ export function ExportDialog({
               >
                 <input
                   type="checkbox"
-                  name="columns"
                   value={column}
                   checked={selected.includes(column)}
                   onChange={() => toggle(column)}

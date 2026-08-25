@@ -18,7 +18,12 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
-  const columns = parseExportColumns(params.get("columns"))
+  // Accept both `columns=id,amount` and a repeated `columns=id&columns=amount`,
+  // so a form-encoded caller cannot silently export one column.
+  const requested = params.getAll("columns")
+  const columns = parseExportColumns(
+    requested.length > 0 ? requested.join(",") : null,
+  )
 
   // Reject early: a header row with no data underneath is not a useful file.
   if (columns.length === 0) {

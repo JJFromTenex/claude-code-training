@@ -1,5 +1,5 @@
 import { merchantById } from "@/data/merchants"
-import { Payment, PaymentFilters } from "@/data/types"
+import { Payment, PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
@@ -24,6 +24,10 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** Columns sent to a merchant by default. The card last four is opt-in. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -57,7 +61,7 @@ function cell(payment: Payment, column: ExportColumn): string {
 
 export function toCsv(
   payments: Payment[],
-  columns: readonly ExportColumn[] = EXPORT_COLUMNS,
+  columns: readonly ExportColumn[] = DEFAULT_EXPORT_COLUMNS,
 ): string {
   const header = columns.join(",")
   const rows = payments.map((payment) =>
@@ -65,10 +69,6 @@ export function toCsv(
   )
   return [header, ...rows].join("\n")
 }
-
-/** Columns sent to a merchant by default. The card last four is opt-in. */
-export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
-  EXPORT_COLUMNS.filter((column) => column !== "last4")
 
 /**
  * Turn the `columns` query param into a column set.
@@ -97,6 +97,9 @@ export function parseExportColumns(raw: string | null): ExportColumn[] {
 /** Either the filters currently on screen, or every payment. */
 export type ExportScope = "filter" | "all"
 
+/** The closed set a filename's scope segment can be drawn from. */
+export type ExportScopeLabel = PaymentStatus | "all" | "filtered"
+
 /** Narrow the `scope` query param. Anything unrecognized falls back to the filters. */
 export function parseExportScope(raw: string | null): ExportScope {
   return raw === "all" ? "all" : "filter"
@@ -105,26 +108,38 @@ export function parseExportScope(raw: string | null): ExportScope {
 /**
  * The scope segment of the filename, built from validated filters only.
  *
- * A status names itself, so `payments-disputed-…` says what is inside. Any
- * other narrowing is `filtered`, which is vaguer but still distinguishes the
- * file from a full export — the distinction the near-miss turned on.
+ * A status names itself, so `payments-disputed-…` says what is inside — but
+ * only when the status is the *whole* story. A file narrowed to one merchant
+ * as well is `filtered`, because naming it `disputed` would describe a set
+ * far larger than what it holds, which is the near-miss the ticket is about.
+ * An under-promising name is safe; an over-promising one is not.
  */
 export function exportScopeLabel(
   filters: PaymentFilters,
   scope: ExportScope,
-): string {
+): ExportScopeLabel {
   if (scope === "all") return "all"
-  if (filters.status && filters.status !== "all") return filters.status
-  if (filters.merchantId || filters.search || filters.from || filters.to) {
-    return "filtered"
-  }
-  return "all"
+
+  const status =
+    filters.status && filters.status !== "all" ? filters.status : null
+  // A whitespace-only search narrows nothing: the builder trims it away too.
+  const narrowedFurther = Boolean(
+    filters.merchantId || filters.search?.trim() || filters.from || filters.to,
+  )
+
+  if (status) return narrowedFurther ? "filtered" : status
+  return narrowedFurther ? "filtered" : "all"
 }
 
 /**
- * `payments-disputed-2026-08-13.csv`. The scope is resolved server-side from
- * validated filters, never from a string the client supplied.
+ * `payments-disputed-2026-08-13.csv`. The date is the UTC calendar day.
+ *
+ * The scope is typed to a closed set rather than `string`, so no future caller
+ * can hand client input to a response header through this.
  */
-export function exportFilename(scope: string, date = new Date()): string {
+export function exportFilename(
+  scope: ExportScopeLabel,
+  date = new Date(),
+): string {
   return `payments-${scope}-${date.toISOString().slice(0, 10)}.csv`
 }
