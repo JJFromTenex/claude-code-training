@@ -51,7 +51,7 @@ Add a `Card` domain that mirrors the existing payments domain's shape exactly: a
 
 | File | Add or change | Why |
 | --- | --- | --- |
-| `src/data/types.ts` | change | Add `CardStatus`, `MerchantCategory`, `Card` |
+| `src/data/types.ts` | change | Add `CardStatus`, `CardCategory`, `Card` |
 | `src/data/store.ts` | change | Add `cards: Card[]` to `Store`, start empty |
 | `src/lib/cards.ts` | add | Luhn generate/validate, `canTransition`, input validation — pure, no store access |
 | `src/lib/cards.test.ts` | add | Luhn (BIN, length, check digit) + status-transition tests — the named stretch goal |
@@ -68,7 +68,7 @@ Add a `Card` domain that mirrors the existing payments domain's shape exactly: a
 
 ## Plan
 
-1. **Types + store** — `Card`, `CardStatus`, `MerchantCategory` added; `store.cards` exists and starts empty. Done when: `npm run build` still passes (nothing references it yet).
+1. **Types + store** — `Card`, `CardStatus`, `CardCategory` added (named `CardCategory` since it's chosen per-card at issue time, not a field on `Merchant`); `store.cards` exists and starts empty. Done when: `npm run build` still passes (nothing references it yet).
 2. **`src/lib/cards.ts` + tests** — Luhn generator/validator, `canTransition`, `validateCreateCardInput`. Done when: `npm test` is green with the new cases (generated numbers start `4242`, are 16 digits, pass Luhn; every legal/illegal transition is asserted).
 3. **`src/data/cardQueries.ts` + API routes** — create/list/get/status-update wired to the store. Done when: `curl` against a running dev server proves creation returns the full number exactly once, list/detail never do, and each of the six invalid-input cases from the ticket returns 400.
 4. **List + detail pages** — server-rendered, masked, empty state written. Done when: the pages build and render with zero cards, and with cards present after a manual create.

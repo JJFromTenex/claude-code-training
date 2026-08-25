@@ -1,11 +1,13 @@
 import { cx } from "@/lib/utils"
+import { progressTone, spendRatio } from "@/lib/progress"
 
 /**
  * Spend progress. Turns amber at 80% of the limit or higher.
  *
  * The fill's width is data-driven (spend / limit), so it's the one place
  * here that needs an inline style — there's no static Tailwind class for
- * an arbitrary computed percentage.
+ * an arbitrary computed percentage. The ratio/threshold math itself lives
+ * in `@/lib/progress` so it's unit-tested, not just visually checked.
  */
 export function ProgressBar({
   value,
@@ -16,8 +18,8 @@ export function ProgressBar({
   max: number
   className?: string
 }) {
-  const ratio = max > 0 ? Math.min(1, value / max) : 0
-  const fillColor = ratio >= 0.8 ? "bg-amber-500" : "bg-blue-500"
+  const ratio = spendRatio(value, max)
+  const fillColor = progressTone(ratio) === "amber" ? "bg-amber-500" : "bg-blue-500"
 
   return (
     <div
