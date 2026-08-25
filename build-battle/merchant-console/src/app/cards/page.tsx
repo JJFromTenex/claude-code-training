@@ -13,7 +13,7 @@ import { merchantById, merchants } from "@/data/merchants"
 import { queryCards } from "@/data/queries"
 import { CardFilters, CardStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
-import { maskLast4 } from "@/lib/cards"
+import { CATEGORY_LABELS, maskLast4 } from "@/lib/cards"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardActions } from "./card-actions"
@@ -78,6 +78,7 @@ export default async function CardsPage({
             <TableRow>
               <TableHeaderCell>Nickname</TableHeaderCell>
               <TableHeaderCell>Merchant</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
               <TableHeaderCell>Number</TableHeaderCell>
               <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
@@ -88,7 +89,7 @@ export default async function CardsPage({
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
                     {hasAnyCards ? "No cards match these filters" : "No cards issued yet"}
                   </p>
@@ -113,6 +114,9 @@ export default async function CardsPage({
                     </Link>
                   </TableCell>
                   <TableCell>{merchant?.name}</TableCell>
+                  <TableCell className="text-gray-500">
+                    {CATEGORY_LABELS[card.category]}
+                  </TableCell>
                   <TableCell className="font-mono text-sm text-gray-500">
                     {maskLast4(card.last4)}
                   </TableCell>

@@ -2,21 +2,13 @@ import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import { cardById } from "@/data/queries"
-import { maskLast4, spendFraction } from "@/lib/cards"
+import { CATEGORY_LABELS, maskLast4, spendFraction } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardActions } from "../card-actions"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
-}
 
 /** The first entry is always the issuance; later `active` entries are unfreezes. */
 function historyLabel(status: string, index: number): string {

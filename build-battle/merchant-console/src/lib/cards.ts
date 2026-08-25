@@ -29,6 +29,14 @@ export const CARD_CATEGORIES: readonly CardCategory[] = [
   "utilities",
 ]
 
+export const CATEGORY_LABELS: Record<CardCategory, string> = {
+  advertising: "Advertising",
+  software: "Software",
+  travel: "Travel",
+  contractors: "Contractors",
+  utilities: "Utilities",
+}
+
 /** Ticket cap: a limit above 5,000,000 minor units is rejected. */
 export const MAX_SPEND_LIMIT_MINOR = 5_000_000
 

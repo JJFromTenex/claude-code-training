@@ -20,19 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CARD_CATEGORIES, maskLast4 } from "@/lib/cards"
+import { CARD_CATEGORIES, CATEGORY_LABELS, maskLast4 } from "@/lib/cards"
 import { Card, CardCategory, Currency } from "@/data/types"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-
-const CATEGORY_LABELS: Record<CardCategory, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
-}
 
 type MerchantOption = { id: string; name: string; currency: Currency }
 
