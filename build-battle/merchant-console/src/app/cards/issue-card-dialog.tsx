@@ -44,9 +44,11 @@ export function IssueCardDialog({
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [issued, setIssued] = useState<{ card: Card; number: string } | null>(
-    null,
-  )
+  const [issued, setIssued] = useState<{
+    card: Card
+    number: string
+    warning: string | null
+  } | null>(null)
 
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
@@ -97,7 +99,11 @@ export function IssueCardDialog({
         return
       }
 
-      setIssued({ card: payload.card, number: payload.reveal.number })
+      setIssued({
+        card: payload.card,
+        number: payload.reveal.number,
+        warning: payload.warning ?? null,
+      })
       router.refresh()
     } catch {
       setError("Could not reach the server. Check your connection and retry.")
@@ -127,6 +133,15 @@ export function IssueCardDialog({
               </DrawerDescription>
             </DrawerHeader>
             <DrawerBody>
+              {issued.warning && (
+                <div
+                  role="status"
+                  className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/50 dark:text-amber-400"
+                >
+                  {issued.warning} The card works, but check that this is what
+                  you meant.
+                </div>
+              )}
               <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p className="text-sm text-gray-500">Card number</p>
                 <p className="mt-1 font-mono text-lg tracking-wider text-gray-900 dark:text-gray-50">

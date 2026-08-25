@@ -100,7 +100,11 @@ export default async function CardsPage() {
                   </TableCell>
                   <TableCell>{formatDate(card.createdAt)}</TableCell>
                   <TableCell className="text-right">
-                    <CardActions cardId={card.id} status={card.status} />
+                    <CardActions
+                      cardId={card.id}
+                      cardNickname={card.nickname}
+                      status={card.status}
+                    />
                   </TableCell>
                 </TableRow>
               )

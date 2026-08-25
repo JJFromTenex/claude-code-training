@@ -1,4 +1,10 @@
-import { createCard, listCards, validateCreateCard } from "@/data/cards"
+import {
+  createCard,
+  currencyMismatch,
+  findRecentDuplicate,
+  listCards,
+  validateCreateCard,
+} from "@/data/cards"
 import { NextRequest, NextResponse } from "next/server"
 
 /**
@@ -32,6 +38,19 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Ops double-clicks a form that feels slow. A second live card with the
+  // same details is a real cost, so say so rather than issuing it.
+  const duplicate = findRecentDuplicate(result.value)
+  if (duplicate) {
+    return NextResponse.json(
+      {
+        message: `A card called "${duplicate.nickname}" with this limit was issued moments ago. Open it rather than issuing a second one.`,
+        duplicateOf: duplicate.id,
+      },
+      { status: 409 },
+    )
+  }
+
   const { card, fullNumber } = createCard(result.value)
 
   return NextResponse.json(
@@ -39,6 +58,8 @@ export async function POST(request: NextRequest) {
       card,
       // Shown once, on the success screen, and never persisted.
       reveal: { number: fullNumber },
+      // Legal, but usually a misclick. A warning, not a rejection.
+      warning: currencyMismatch(result.value),
     },
     { status: 201 },
   )

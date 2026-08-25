@@ -1,6 +1,7 @@
 import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
-import { CATEGORY_LABELS, cardById } from "@/data/cards"
+import { CATEGORY_LABELS, cardById, eventsForCard } from "@/data/cards"
+import { CardEvent } from "@/data/types"
 import { merchantById } from "@/data/merchants"
 import { maskCardNumber, spendRatio } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
@@ -20,6 +21,7 @@ export default async function CardDetail({
   if (!card) notFound()
 
   const merchant = merchantById(card.merchantId)!
+  const events = eventsForCard(card.id)
   const ratio = spendRatio(card.spend, card.spendLimit)
   const percent = Math.round(ratio * 100)
   const remaining = Math.max(0, card.spendLimit - card.spend)
@@ -40,7 +42,11 @@ export default async function CardDetail({
         </h1>
         <CardStatusBadge status={card.status} />
         <div className="ml-auto">
-          <CardActions cardId={card.id} status={card.status} />
+          <CardActions
+            cardId={card.id}
+            cardNickname={card.nickname}
+            status={card.status}
+          />
         </div>
       </div>
       <p className="mt-1 font-mono text-sm text-gray-500">
@@ -127,6 +133,34 @@ export default async function CardDetail({
         </Field>
       </dl>
 
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {events.map((event) => (
+          <li key={event.id} className="flex gap-3">
+            <span
+              className={cx(
+                "mt-1.5 size-2 shrink-0 rounded-full",
+                EVENT_DOTS[event.type],
+              )}
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {EVENT_LABELS[event.type]}
+                <span className="ml-2 text-gray-500">{event.actor}</span>
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(event.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
       {card.status === "cancelled" && (
         <>
           <Divider />
@@ -138,6 +172,20 @@ export default async function CardDetail({
       )}
     </div>
   )
+}
+
+const EVENT_LABELS: Record<CardEvent["type"], string> = {
+  issued: "Card issued",
+  frozen: "Frozen",
+  unfrozen: "Unfrozen",
+  cancelled: "Cancelled",
+}
+
+const EVENT_DOTS: Record<CardEvent["type"], string> = {
+  issued: "bg-emerald-600 dark:bg-emerald-400",
+  frozen: "bg-blue-500",
+  unfrozen: "bg-emerald-600 dark:bg-emerald-400",
+  cancelled: "bg-gray-500",
 }
 
 /**

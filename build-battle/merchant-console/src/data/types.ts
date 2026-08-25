@@ -106,6 +106,20 @@ export interface Card {
   createdAt: string
 }
 
+/**
+ * One entry in a card's history. Ops asks "what happened to this card last
+ * Tuesday" and the answer has to come from somewhere other than memory.
+ */
+export interface CardEvent {
+  id: string
+  cardId: string
+  type: "issued" | "frozen" | "unfrozen" | "cancelled"
+  /** ISO 8601, always UTC. Display converts to the merchant's timezone. */
+  at: string
+  /** There is no auth in this app yet, so every actor is the console. */
+  actor: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string

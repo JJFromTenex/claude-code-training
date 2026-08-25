@@ -2,6 +2,7 @@ import { generateCardNumber, lastFour } from "@/lib/cards"
 import { merchantById, merchants } from "./merchants"
 import {
   Card,
+  CardEvent,
   CardStatus,
   Currency,
   Dispute,
@@ -153,7 +154,44 @@ export function generate() {
 
   const payouts = generatePayouts(payments)
   const cards = generateCards()
-  return { payments, refunds, disputes, payouts, cards }
+  const cardEvents = generateCardEvents(cards)
+  return { payments, refunds, disputes, payouts, cards, cardEvents }
+}
+
+/**
+ * History for the seeded cards. A card that is frozen or cancelled today got
+ * that way at some point, and the detail timeline has to be able to say when.
+ */
+function generateCardEvents(cards: Card[]): CardEvent[] {
+  const events: CardEvent[] = []
+  let seq = 0
+
+  const add = (cardId: string, type: CardEvent["type"], at: string) => {
+    events.push({
+      id: `cev_${pad(++seq, 4)}`,
+      cardId,
+      type,
+      at,
+      actor: "Merchant Console",
+    })
+  }
+
+  const daysAfter = (iso: string, days: number) =>
+    new Date(new Date(iso).getTime() + days * 86_400_000).toISOString()
+
+  for (const card of cards) {
+    add(card.id, "issued", card.createdAt)
+    if (card.status === "frozen") {
+      add(card.id, "frozen", daysAfter(card.createdAt, 3))
+    }
+    if (card.status === "cancelled") {
+      add(card.id, "frozen", daysAfter(card.createdAt, 5))
+      add(card.id, "unfrozen", daysAfter(card.createdAt, 9))
+      add(card.id, "cancelled", daysAfter(card.createdAt, 14))
+    }
+  }
+
+  return events
 }
 
 /**

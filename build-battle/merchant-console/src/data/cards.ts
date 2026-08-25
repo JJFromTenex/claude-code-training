@@ -6,7 +6,7 @@ import {
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Card, CardStatus, Currency, MerchantCategory } from "./types"
+import { Card, CardEvent, CardStatus, Currency, MerchantCategory } from "./types"
 
 /**
  * Card store access and the server-side validation behind it.
@@ -178,6 +178,7 @@ export function validateCreateCard(input: CreateCardInput): Validated<ValidCard>
  */
 export function createCard(input: ValidCard): { card: Card; fullNumber: string } {
   const pan = generateCardNumber()
+  const createdAt = new Date().toISOString()
   const card: Card = {
     id: `card_${String(store.cards.length + 1).padStart(4, "0")}_${Date.now().toString(36)}`,
     nickname: input.nickname,
@@ -189,10 +190,66 @@ export function createCard(input: ValidCard): { card: Card; fullNumber: string }
     last4: lastFour(pan),
     reference: `cref_${Math.random().toString(36).slice(2, 10)}`,
     category: input.category,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
   store.cards.push(card)
+  recordEvent(card.id, "issued", createdAt)
   return { card, fullNumber: pan }
+}
+
+/**
+ * A card issued moments ago with the same nickname, merchant, and limit is
+ * almost certainly a double-submit, not a second card. Ops clicks twice when
+ * a form feels slow, and an extra live card is not a harmless mistake.
+ */
+const DUPLICATE_WINDOW_MS = 60_000
+
+export function findRecentDuplicate(
+  input: ValidCard,
+  now = Date.now(),
+): Card | null {
+  return (
+    store.cards.find(
+      (card) =>
+        card.nickname === input.nickname &&
+        card.merchantId === input.merchantId &&
+        card.spendLimit === input.spendLimit &&
+        card.currency === input.currency &&
+        card.status !== "cancelled" &&
+        now - new Date(card.createdAt).getTime() < DUPLICATE_WINDOW_MS,
+    ) ?? null
+  )
+}
+
+/**
+ * A card in a currency the merchant does not settle in is legal but is
+ * usually a misclick. The route returns it as a warning, not a rejection —
+ * the ticket's allowlist is USD/EUR/GBP, and refusing here would invent a
+ * rule ops did not ask for.
+ */
+export function currencyMismatch(input: {
+  merchantId: string
+  currency: Currency
+}): string | null {
+  const merchant = merchantById(input.merchantId)
+  if (!merchant || merchant.currency === input.currency) return null
+  return `${merchant.name} settles in ${merchant.currency}. This card is in ${input.currency}.`
+}
+
+export function eventsForCard(cardId: string): CardEvent[] {
+  return store.cardEvents
+    .filter((event) => event.cardId === cardId)
+    .sort((a, b) => a.at.localeCompare(b.at))
+}
+
+function recordEvent(cardId: string, type: CardEvent["type"], at: string) {
+  store.cardEvents.push({
+    id: `cev_${store.cardEvents.length + 1}_${Date.now().toString(36)}`,
+    cardId,
+    type,
+    at,
+    actor: "Merchant Console",
+  })
 }
 
 export type TransitionResult =
@@ -220,8 +277,17 @@ export function transitionCard(id: string, to: unknown): TransitionResult {
     return { ok: false, status: 409, message: reason }
   }
 
+  const from = card.status
   card.status = to
+  recordEvent(card.id, eventTypeFor(from, to), new Date().toISOString())
   return { ok: true, card }
+}
+
+function eventTypeFor(from: CardStatus, to: CardStatus): CardEvent["type"] {
+  if (to === "cancelled") return "cancelled"
+  if (to === "frozen") return "frozen"
+  // The only remaining legal move into `active` is coming back from frozen.
+  return from === "frozen" ? "unfrozen" : "issued"
 }
 
 function toMinorUnits(value: unknown): number | null {
