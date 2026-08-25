@@ -63,6 +63,10 @@ export function IssueCardDialog({
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<Issued | null>(null)
 
+  // One key per open form. Regenerated when the drawer resets.
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    crypto.randomUUID(),
+  )
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
@@ -77,6 +81,7 @@ export function IssueCardDialog({
     setCategoryLock("any")
     setError(null)
     setSubmitting(false)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   // Closing is the only exit from the success screen, and it drops the number.
@@ -113,7 +118,12 @@ export function IssueCardDialog({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          // Same key for retries of this form, so a double submit or a
+          // reconnect cannot mint two cards.
+          "idempotency-key": idempotencyKey,
+        },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -344,7 +354,13 @@ export function IssueCardDialog({
               <Button
                 type="submit"
                 className="w-full sm:w-fit"
-                disabled={submitting || !nickname.trim() || !merchantId || !limit}
+                disabled={
+                  submitting ||
+                  !nickname.trim() ||
+                  !merchantId ||
+                  !limit ||
+                  currencyMismatch
+                }
                 isLoading={submitting}
                 loadingText="Issuing"
               >

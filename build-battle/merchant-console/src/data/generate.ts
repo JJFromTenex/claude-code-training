@@ -210,6 +210,19 @@ function generateCards(): Card[] {
       status: seed.status,
       categoryLock: seed.categoryLock,
       createdAt: createdAt.toISOString(),
+      history:
+        seed.status === "active"
+          ? [{ from: null, to: "active", at: createdAt.toISOString() }]
+          : [
+              { from: null, to: "active", at: createdAt.toISOString() },
+              {
+                from: "active",
+                to: seed.status,
+                at: new Date(
+                  createdAt.getTime() + 2 * 86_400_000,
+                ).toISOString(),
+              },
+            ],
     }
   })
 }

@@ -1,4 +1,4 @@
-import { issueCard, listCards, validateIssueInput } from "@/data/cards"
+import { issueCardOnce, listCards, validateIssueInput } from "@/data/cards"
 import { NextRequest, NextResponse } from "next/server"
 
 /**
@@ -30,8 +30,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: parsed.error }, { status: 400 })
   }
 
-  const { card, cardNumber } = issueCard(parsed.input)
+  // Ops double-clicking Issue, or a client retry, must not mint two cards.
+  const key = request.headers.get("idempotency-key")
+  const { card, cardNumber, replayed } = issueCardOnce(parsed.input, key)
 
-  // cardNumber appears here and nowhere else, ever.
-  return NextResponse.json({ card, cardNumber }, { status: 201 })
+  // cardNumber appears here and nowhere else, ever — and not on a replay,
+  // because reveal-once outranks returning an identical body.
+  return NextResponse.json(
+    { card, cardNumber, replayed },
+    { status: replayed ? 200 : 201 },
+  )
 }

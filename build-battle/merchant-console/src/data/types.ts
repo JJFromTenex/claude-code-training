@@ -111,4 +111,13 @@ export interface Card {
   categoryLock: MerchantCategory
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Every status change, oldest first. Answers "what happened to this card?". */
+  history: CardEvent[]
+}
+
+export interface CardEvent {
+  from: CardStatus | null
+  to: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
 }

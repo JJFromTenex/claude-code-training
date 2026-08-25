@@ -62,6 +62,14 @@ export function spendForCard(card: Card): number {
     .reduce((total, payment) => total + payment.amount, 0)
 }
 
+/**
+ * Idempotency keys already used, mapped to the card they created.
+ *
+ * Ops double-clicking Issue, or a retried request, must not mint two cards.
+ * Lives with the store, so it has the same lifetime as the data it guards.
+ */
+const issuedKeys = new Map<string, string>()
+
 export interface IssueCardInput {
   nickname: string
   merchantId: string
@@ -81,6 +89,7 @@ export function issueCard(input: IssueCardInput): {
   cardNumber: string
 } {
   const cardNumber = generateCardNumber()
+  const now = new Date().toISOString()
   const card: Card = {
     id: `card_${String(store.cards.length + 1).padStart(4, "0")}`,
     nickname: input.nickname,
@@ -90,11 +99,36 @@ export function issueCard(input: IssueCardInput): {
     currency: input.currency,
     status: "active",
     categoryLock: input.categoryLock,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    history: [{ from: null, to: "active", at: now }],
   }
 
   store.cards.push(card)
   return { card, cardNumber }
+}
+
+/**
+ * Issue a card at most once per idempotency key.
+ *
+ * A replay returns the original card and no number: reveal-once outranks
+ * returning a byte-identical response, so the caller is told it is a replay
+ * rather than being handed the PAN a second time.
+ */
+export function issueCardOnce(
+  input: IssueCardInput,
+  key: string | null,
+): { card: Card; cardNumber?: string; replayed: boolean } {
+  if (key) {
+    const existingId = issuedKeys.get(key)
+    if (existingId) {
+      const existing = cardById(existingId)
+      if (existing) return { card: existing, replayed: true }
+    }
+  }
+
+  const { card, cardNumber } = issueCard(input)
+  if (key) issuedKeys.set(key, card.id)
+  return { card, cardNumber, replayed: false }
 }
 
 /**
@@ -119,6 +153,11 @@ export function setCardStatus(
     }
   }
 
+  card.history.push({
+    from: card.status,
+    to: next,
+    at: new Date().toISOString(),
+  })
   card.status = next
   return { card }
 }
@@ -144,11 +183,20 @@ export function validateIssueInput(
 
   const merchantId = typeof raw.merchantId === "string" ? raw.merchantId : ""
   if (!merchantId) return { error: "Choose a merchant." }
-  if (!merchantById(merchantId)) return { error: "Unknown merchant." }
+  const merchant = merchantById(merchantId)
+  if (!merchant) return { error: "Unknown merchant." }
 
   const currency = raw.currency as Currency
   if (!CURRENCIES.includes(currency)) {
     return { error: "Currency must be USD, EUR, or GBP." }
+  }
+  // A card that does not settle in the merchant's currency is the same class of
+  // mistake as a wrong limit, so it is refused here rather than only warned
+  // about in the dialog. The client cannot talk its way past this.
+  if (currency !== merchant.currency) {
+    return {
+      error: `${merchant.name} settles in ${merchant.currency}, so this card cannot be ${currency}.`,
+    }
   }
 
   const spendLimit = raw.spendLimit

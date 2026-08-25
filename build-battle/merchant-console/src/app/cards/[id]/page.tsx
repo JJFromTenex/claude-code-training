@@ -2,7 +2,7 @@ import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { cardById, spendForCard } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { MerchantCategory } from "@/data/types"
+import { CardStatus, MerchantCategory } from "@/data/types"
 import { maskedNumber } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -10,6 +10,12 @@ import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardActions } from "../card-actions"
+
+const EVENT_LABELS: Record<CardStatus, string> = {
+  active: "Active",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
+}
 
 const CATEGORY_LABELS: Record<MerchantCategory, string> = {
   any: "No lock",
@@ -151,6 +157,36 @@ export default async function CardDetailPage({
           </dd>
         </div>
       </dl>
+
+      <Divider />
+
+      <div className="max-w-xl">
+        <h2 className="text-sm font-medium text-gray-900 dark:text-gray-50">
+          History
+        </h2>
+        <p className="mt-0.5 text-xs text-gray-500">
+          Every status change on this card, oldest first.
+        </p>
+        <ol className="mt-3 flex flex-col gap-2">
+          {card.history.map((event, index) => (
+            <li
+              key={`${event.at}-${index}`}
+              className="flex items-baseline justify-between gap-4 text-sm"
+            >
+              <span className="text-gray-900 dark:text-gray-50">
+                {event.from === null
+                  ? "Issued"
+                  : `${EVENT_LABELS[event.from]} → ${EVENT_LABELS[event.to]}`}
+              </span>
+              <span className="shrink-0 tabular-nums text-gray-500">
+                {merchant
+                  ? formatInZone(event.at, merchant.timezone)
+                  : event.at}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   )
 }
