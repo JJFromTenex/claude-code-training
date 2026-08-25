@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { EXPORT_COLUMNS, exportFilename, parseExportColumns, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +81,33 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("folds a scope or status label into the name when one is given", () => {
+    const date = new Date("2026-03-14T23:00:00.000Z")
+    expect(exportFilename(date, "disputed")).toBe("payments-disputed-2026-03-14.csv")
+    expect(exportFilename(date, "all")).toBe("payments-all-2026-03-14.csv")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("returns every column, in the allowlist's order, when the param is absent", () => {
+    expect(parseExportColumns(null)).toEqual([...EXPORT_COLUMNS])
+  })
+
+  it("returns a requested subset in the order given, not the allowlist's order", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("drops unrecognized columns rather than rejecting the whole request", () => {
+    expect(parseExportColumns("id,nope")).toEqual(["id"])
+  })
+
+  it("returns an empty array when every requested column is unrecognized", () => {
+    expect(parseExportColumns("nope,also-nope")).toEqual([])
+  })
+
+  it("returns an empty array for an empty string", () => {
+    expect(parseExportColumns("")).toEqual([])
   })
 })

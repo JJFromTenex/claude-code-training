@@ -5,9 +5,11 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses which columns ship and whether the export is scoped to the
+ * current filter or all payments (NWP-101) — see the export route and
+ * `export-dialog.tsx`. `EXPORT_COLUMNS` is the full, ordered allowlist;
+ * `parseExportColumns` validates whatever subset the client requests
+ * against it.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +26,20 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * Validates a client-supplied `columns` param against the allowlist.
+ * Unknown entries are dropped rather than rejected outright; the caller
+ * decides what to do if the result is empty. `null` (param absent) means
+ * "not specified" and returns every column, not none.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...EXPORT_COLUMNS]
+  const requested = raw.split(",").map((c) => c.trim()).filter(Boolean)
+  return requested.filter((c): c is ExportColumn =>
+    (EXPORT_COLUMNS as readonly string[]).includes(c),
+  )
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +82,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), label?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  return label ? `payments-${label}-${stamp}.csv` : `payments-${stamp}.csv`
 }
