@@ -24,46 +24,18 @@ interface SeedSpec {
 }
 
 const SPECS: SeedSpec[] = [
-  {
-    id: "crd_000001",
-    nickname: "Google Ads — Lumen",
-    merchantId: "mch_01",
-    spendLimit: 500000,
-    currency: "USD",
-    status: "active",
-    category: "advertising",
-    createdAt: "2026-06-02T09:15:00.000Z",
-  },
-  {
-    id: "crd_000002",
-    nickname: "Figma + Notion seats",
-    merchantId: "mch_02",
-    spendLimit: 120000,
-    currency: "USD",
-    status: "active",
-    category: "software",
-    createdAt: "2026-06-18T14:02:00.000Z",
-  },
-  {
-    id: "crd_000003",
-    nickname: "Contractor — brand refresh",
-    merchantId: "mch_04",
-    spendLimit: 300000,
-    currency: "GBP",
-    status: "frozen",
-    category: "contractors",
-    createdAt: "2026-07-01T11:40:00.000Z",
-  },
-  {
-    id: "crd_000004",
-    nickname: "Trade show travel",
-    merchantId: "mch_03",
-    spendLimit: 200000,
-    currency: "USD",
-    status: "cancelled",
-    category: "travel",
-    createdAt: "2026-05-11T08:00:00.000Z",
-  },
+  { id: "crd_000001", nickname: "Google Ads — Lumen", merchantId: "mch_01",
+    spendLimit: 500000, currency: "USD", status: "active",
+    category: "advertising", createdAt: "2026-06-02T09:15:00.000Z" },
+  { id: "crd_000002", nickname: "Figma + Notion seats", merchantId: "mch_02",
+    spendLimit: 120000, currency: "USD", status: "active",
+    category: "software", createdAt: "2026-06-18T14:02:00.000Z" },
+  { id: "crd_000003", nickname: "Contractor — brand refresh", merchantId: "mch_04",
+    spendLimit: 300000, currency: "GBP", status: "frozen",
+    category: "contractors", createdAt: "2026-07-01T11:40:00.000Z" },
+  { id: "crd_000004", nickname: "Trade show travel", merchantId: "mch_03",
+    spendLimit: 200000, currency: "USD", status: "cancelled",
+    category: "travel", createdAt: "2026-05-11T08:00:00.000Z" },
 ]
 
 /** How much of a merchant's captured volume a seeded card is taken to represent. */

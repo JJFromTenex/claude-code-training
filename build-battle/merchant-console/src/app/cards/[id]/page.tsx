@@ -105,38 +105,23 @@ export default async function CardDetailPage({
       </div>
 
       <dl className="mt-10 grid max-w-xl grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-gray-500">Merchant</dt>
-          <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-50">
-            {merchant?.name ?? card.merchantId}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">Category lock</dt>
-          <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-50">
-            {card.category ? CATEGORY_LABELS[card.category] : "None"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">Card id</dt>
-          <dd className="mt-0.5 font-mono text-sm text-gray-900 dark:text-gray-50">{card.id}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">Number reference</dt>
-          <dd className="mt-0.5 font-mono text-sm text-gray-900 dark:text-gray-50">
-            {card.reference}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">Issued</dt>
-          <dd className="mt-0.5 text-sm text-gray-900 dark:text-gray-50">
-            {formatInZone(card.createdAt, merchant?.timezone ?? "UTC")}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">Currency</dt>
-          <dd className="mt-0.5 text-sm text-gray-900 dark:text-gray-50">{card.currency}</dd>
-        </div>
+        {(
+          [
+            ["Merchant", merchant?.name ?? card.merchantId],
+            ["Category lock", card.category ? CATEGORY_LABELS[card.category] : "None"],
+            ["Card id", card.id],
+            ["Number reference", card.reference],
+            ["Issued", formatInZone(card.createdAt, merchant?.timezone ?? "UTC")],
+            ["Currency", card.currency],
+          ] as const
+        ).map(([term, value]) => (
+          <div key={term}>
+            <dt className="text-sm text-gray-500">{term}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-50">
+              {value}
+            </dd>
+          </div>
+        ))}
       </dl>
 
       <div className="mt-10 max-w-xl">

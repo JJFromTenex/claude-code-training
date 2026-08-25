@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
+import { parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -63,14 +64,6 @@ function Field({
   )
 }
 
-/** Display only. Amounts travel to the server as integer minor units. */
-function toMinorUnits(input: string): number | null {
-  const trimmed = input.trim().replace(/[, ]/g, "")
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null
-  const [whole, fraction = ""] = trimmed.split(".")
-  return Number(whole) * 100 + Number((fraction + "00").slice(0, 2))
-}
-
 export function IssueCardDialog({
   merchants,
   categories,
@@ -110,7 +103,7 @@ export function IssueCardDialog({
     event.preventDefault()
     setError(null)
 
-    const spendLimit = toMinorUnits(limit)
+    const spendLimit = parseAmountToMinorUnits(limit)
     if (spendLimit === null) {
       setError("Enter a spend limit like 2500 or 2500.00.")
       return
