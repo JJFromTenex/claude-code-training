@@ -13,6 +13,20 @@ npm run dev
 
 No database, no seed step, no Docker.
 
+## Commands
+
+- `npm test` — Vitest, node environment, no DOM. Run a single file: `npm test -- src/lib/csv.test.ts`
+- `npm run lint` — ESLint
+- `npm run build` / `npm run start` — production build and serve
+
+## Architecture
+
+Pages under `src/app/` are React Server Components — they call `data/queries.ts` functions
+directly (e.g. `queryPayments()`), no client-side fetch. Route handlers under `src/app/api/`
+exist for the cases that need an HTTP boundary, like the CSV export link's `<a href>`, and call
+the same query builder rather than a second one. Both sit on the store in `data/store.ts`, held
+on `globalThis` so Next's dev-server module reloading doesn't hand each request a fresh copy.
+
 ## Data lives in memory
 
 Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.
