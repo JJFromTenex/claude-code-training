@@ -22,7 +22,7 @@ Ops issues virtual cards by messaging the platform team, who create them by hand
 - `src/lib/dates.ts:31` — `formatDate` for table timestamps.
 - `src/components/ui/payments/StatusBadge.tsx` — `LABELS`/`DOTS`/`VARIANTS` keyed by `AnyStatus = PaymentStatus | DisputeStatus | PayoutStatus`. Card statuses should extend this union rather than get their own badge.
 - `src/app/payments/filter-bar.tsx` — the house pattern for an interactive island: `"use client"`, props in from a server page, `router` out.
-- `src/app/siteConfig.ts:5-10` and `src/components/ui/navigation/AppSidebar.tsx:26-50` — nav lives in two places and has no Cards entry. `CreditCard` is already imported at `AppSidebar.tsx:20`.
+- `src/app/siteConfig.ts:5-10` and `src/components/ui/navigation/AppSidebar.tsx:26-50` — nav lives in two places and has no Cards entry. Payments already uses the `CreditCard` icon, so Cards takes a distinct one rather than repeating it.
 - **Docs vs code:** `.claude/rules/components.md` claims `src/components/` has a `Dialog`. It does not — the Radix-dialog primitive is `src/components/Drawer.tsx`, and there is no `Checkbox` or `RadioGroup` either.
 - `merchant-console/CLAUDE.md` confirms it: "Cards is NWP-201 and does not exist yet." Nothing to reuse; everything here is new.
 

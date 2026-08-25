@@ -44,16 +44,15 @@ function Field({
 }
 
 export function IssueCardDialog({
-  merchants, categories, currencies,
+  merchants, categories,
 }: {
   merchants: { id: string; name: string; currency: string }[]
   categories: CardCategory[]
-  currencies: string[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
-    nickname: "", merchantId: "", limit: "", currency: "USD", category: "",
+    nickname: "", merchantId: "", limit: "", currency: "", category: "",
   })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -65,7 +64,7 @@ export function IssueCardDialog({
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
 
   const reset = () => {
-    setForm({ nickname: "", merchantId: "", limit: "", currency: "USD", category: "" })
+    setForm({ nickname: "", merchantId: "", limit: "", currency: "", category: "" })
     setError(null)
     setBusy(false)
     setRevealed(null)
@@ -178,7 +177,19 @@ export function IssueCardDialog({
               </Field>
 
               <Field id="merchant" label="Merchant">
-                <Select value={form.merchantId} onValueChange={(merchantId) => set({ merchantId })}>
+                <Select
+                  value={form.merchantId}
+                  onValueChange={(merchantId) =>
+                    // A card settles in its merchant's currency, so choosing the
+                    // merchant chooses the currency. The server enforces the same
+                    // rule; this stops ops reaching a rejection it can prevent.
+                    set({
+                      merchantId,
+                      currency:
+                        merchants.find((m) => m.id === merchantId)?.currency ?? "",
+                    })
+                  }
+                >
                   <SelectTrigger id="merchant" className="w-full">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
@@ -204,16 +215,16 @@ export function IssueCardDialog({
                   />
                 </Field>
                 <Field id="currency" label="Currency" className="w-32 space-y-1.5">
-                  <Select value={form.currency} onValueChange={(currency) => set({ currency })}>
-                    <SelectTrigger id="currency" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currencies.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="currency"
+                    value={form.currency}
+                    readOnly
+                    aria-describedby="currency-hint"
+                    placeholder="—"
+                  />
+                  <p id="currency-hint" className="text-xs text-gray-500">
+                    Set by the merchant
+                  </p>
                 </Field>
               </div>
 

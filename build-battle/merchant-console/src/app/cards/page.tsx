@@ -10,7 +10,7 @@ import {
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
 import { listCards } from "@/data/queries"
-import { CARD_CATEGORIES, CURRENCIES, maskCardNumber } from "@/lib/cards"
+import { CARD_CATEGORIES, maskCardNumber } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
@@ -38,7 +38,6 @@ export default function CardsPage() {
             currency: m.currency,
           }))}
           categories={[...CARD_CATEGORIES]}
-          currencies={[...CURRENCIES]}
         />
       </div>
 
