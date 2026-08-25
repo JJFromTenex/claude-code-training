@@ -137,10 +137,7 @@ const CARD_STATUSES: readonly (CardStatus | "all")[] = [
   "cancelled",
 ]
 
-/**
- * Anything from the client is checked against an allowlist before it reaches
- * a query, the same shape as `parseFilters()` above.
- */
+/** Same allowlist shape as `parseFilters()` above. */
 export function parseCardFilters(params: URLSearchParams): CardFilters {
   const status = params.get("status")
   const page = Number(params.get("page") ?? "1")
@@ -178,20 +175,10 @@ export type IssueCardResult =
   | { ok: true; card: Card; number: string }
   | { ok: false; error: string }
 
-/**
- * Answers a repeated issue request with the exact result of the first one,
- * keyed on a client-supplied idempotency key, so a double-click or a retried
- * request cannot mint two cards for one submission. This cache is separate
- * from `store.cards` and holds the one-time number only long enough to
- * answer a retry — the `Card` record itself never gets a number field.
- */
+/** Keyed on a client idempotency key so a retry returns the first result, not a second card. */
 const issueIdempotencyCache = new Map<string, IssueCardResult>()
 
-/**
- * Validates, generates the number server-side on the 4242 BIN, and stores
- * the card without the number. `number` is returned once, here, and is not
- * kept anywhere — the one-time reveal (`.claude/rules/cards.md`).
- */
+/** Validates, generates the number server-side, stores the card without it — the one-time reveal. */
 export function issueCard(
   input: Partial<CardInput>,
   idempotencyKey?: string,

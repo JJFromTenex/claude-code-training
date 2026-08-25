@@ -4,19 +4,10 @@ import { merchants } from "./merchants"
 import { Card } from "./types"
 
 /**
- * Deterministic seed cards, generated once at boot the same way payments are
- * in `generate.ts`: a fixed PRNG so every machine in the room sees the same
- * records. Only `last4` is kept from the generated number — the number
- * itself is discarded immediately, the same as a real issue would discard it
- * after the one-time response.
- *
- * There is no transaction feed to derive real spend from yet (that is
- * NWP-203's persistence work, and beyond it, linking spend to payments is a
- * separate ticket). Each seed card below carries a `spentFraction` instead
- * of a bare spent amount, so the number on screen is visibly `spendLimit ×
- * a stated fraction` rather than an unexplained figure — honest about being
- * illustrative, and chosen to put one card past the 80% amber threshold, one
- * comfortably under it, and one still at zero.
+ * Deterministic seed cards, PRNG-seeded like `generate.ts`. Only `last4` is
+ * kept from the generated number. There's no transaction feed yet (NWP-203),
+ * so `spentFraction` makes each `spent` a stated `spendLimit × fraction`
+ * rather than an unexplained figure — honest about being illustrative.
  */
 
 function mulberry32(a: number) {

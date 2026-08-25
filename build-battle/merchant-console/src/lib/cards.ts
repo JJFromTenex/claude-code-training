@@ -2,13 +2,7 @@ import { merchantById } from "@/data/merchants"
 import { Card, CardCategory, CardStatus, Currency } from "@/data/types"
 import { parseAmountToMinorUnits } from "./money"
 
-/**
- * Card numbers, masking, status transitions, and input validation.
- *
- * Pure and server-side only. A card number produced in the browser is a bug
- * (`.claude/rules/cards.md`), so nothing here reaches into the store or a
- * request — callers in `src/data/queries.ts` do that.
- */
+/** Card numbers, masking, status transitions, and input validation. Pure, server-side only. */
 
 export const CARD_BIN = "4242"
 const CARD_NUMBER_LENGTH = 16
@@ -115,11 +109,7 @@ export type ValidationResult =
   | { ok: true; value: ValidCardInput }
   | { ok: false; error: string }
 
-/**
- * Server-side validation against an allowlist. The client is not trusted
- * (`.claude/rules/api-routes.md`): everything here is re-checked no matter
- * what the form already enforced.
- */
+/** Server-side allowlist validation — re-checked regardless of what the client sent. */
 export function validateCardInput(input: Partial<CardInput>): ValidationResult {
   const nickname = typeof input.nickname === "string" ? input.nickname.trim() : ""
   if (!nickname) {

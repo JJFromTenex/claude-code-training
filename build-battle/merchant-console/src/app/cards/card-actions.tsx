@@ -5,12 +5,7 @@ import { CardStatus } from "@/data/types"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-/**
- * Freeze / unfreeze / cancel from the list or the detail screen, without a
- * full page reload — `router.refresh()` re-runs the server component with
- * the store's latest state. Cancel is terminal (`.claude/rules/cards.md`),
- * so it asks for a second click before it fires.
- */
+/** Freeze/unfreeze/cancel with no reload; cancel is terminal, so it asks for a second click. */
 export function CardActions({
   cardId,
   status,

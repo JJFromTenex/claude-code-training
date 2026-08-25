@@ -28,11 +28,17 @@ import { useState } from "react"
 
 type MerchantOption = { id: string; name: string; currency: Currency }
 
-/**
- * Issues a card. Submitting shows a one-time success screen with the full
- * number — the reveal (`.claude/rules/cards.md`). Closing the drawer clears
- * that number out of state; it does not come back.
- */
+const labelClass = "text-sm font-medium text-gray-900 dark:text-gray-50"
+
+function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return (
+    <label htmlFor={htmlFor} className={labelClass}>
+      {children}
+    </label>
+  )
+}
+
+/** Reveals the full number once, on success, then never again (`.claude/rules/cards.md`). */
 export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -43,9 +49,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<{ card: Card; number: string } | null>(null)
-  // One key per open drawer: a double-click or a retried request during that
-  // one submission reuses it, so the server answers with the same card
-  // instead of minting a second one.
+  // One key per open drawer, reused across a retry, so a double-click can't mint two cards.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const selectedMerchant = merchants.find((m) => m.id === merchantId)
@@ -147,9 +151,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
             </DrawerHeader>
             <DrawerBody className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="card-nickname" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Nickname
-                </label>
+                <FieldLabel htmlFor="card-nickname">Nickname</FieldLabel>
                 <Input
                   id="card-nickname"
                   required
@@ -160,9 +162,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="card-merchant" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Merchant
-                </label>
+                <FieldLabel htmlFor="card-merchant">Merchant</FieldLabel>
                 <Select value={merchantId} onValueChange={setMerchantId} required>
                   <SelectTrigger id="card-merchant">
                     <SelectValue placeholder="Choose a merchant" />
@@ -183,9 +183,9 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="card-limit" className="text-sm font-medium text-gray-900 dark:text-gray-50">
+                <FieldLabel htmlFor="card-limit">
                   Spend limit {selectedMerchant ? `(${selectedMerchant.currency})` : ""}
-                </label>
+                </FieldLabel>
                 <Input
                   id="card-limit"
                   required
@@ -197,9 +197,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="card-category" className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Category
-                </label>
+                <FieldLabel htmlFor="card-category">Category</FieldLabel>
                 <Select value={category} onValueChange={(v) => setCategory(v as CardCategory)}>
                   <SelectTrigger id="card-category">
                     <SelectValue />
