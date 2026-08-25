@@ -151,7 +151,7 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  const cards = generateCards()
+  const cards = generateCards(payments)
   return { payments, refunds, disputes, payouts, cards }
 }
 
@@ -159,8 +159,6 @@ const CARD_SEEDS: readonly {
   nickname: string
   merchantIndex: number
   spendLimit: number
-  /** Spend as a fraction of the limit; one is past 80% on purpose. */
-  spentRatio: number
   status: Card["status"]
   categoryLock: CardCategory | null
 }[] = [
@@ -168,23 +166,20 @@ const CARD_SEEDS: readonly {
     nickname: "Ad spend — Meta",
     merchantIndex: 0,
     spendLimit: 500_000,
-    spentRatio: 0.86,
     status: "active",
     categoryLock: "advertising",
   },
   {
     nickname: "Figma seats",
     merchantIndex: 1,
-    spendLimit: 120_000,
-    spentRatio: 0.35,
+    spendLimit: 1_500_000,
     status: "active",
     categoryLock: "software",
   },
   {
     nickname: "Trade show travel",
     merchantIndex: 3,
-    spendLimit: 250_000,
-    spentRatio: 0.12,
+    spendLimit: 2_000_000,
     status: "frozen",
     categoryLock: "travel",
   },
@@ -192,18 +187,32 @@ const CARD_SEEDS: readonly {
     nickname: "Old contractor card",
     merchantIndex: 2,
     spendLimit: 80_000,
-    spentRatio: 1,
     status: "cancelled",
     categoryLock: null,
   },
 ]
 
-function generateCards(): Card[] {
+function generateCards(payments: Payment[]): Card[] {
   return CARD_SEEDS.map((seed, i) => {
     const merchant = merchants[seed.merchantIndex]
     const number = generateCardNumber(rand)
     const createdAt = new Date(GENERATED_AT)
     createdAt.setUTCDate(createdAt.getUTCDate() - between(5, 60))
+    const createdIso = createdAt.toISOString()
+    // Spend is derived, not invented: the merchant's captured card payments
+    // since the card was issued, capped at the limit.
+    const spent = Math.min(
+      seed.spendLimit,
+      payments
+        .filter(
+          (p) =>
+            p.merchantId === merchant.id &&
+            p.status === "captured" &&
+            p.method === "card" &&
+            p.createdAt >= createdIso,
+        )
+        .reduce((sum, p) => sum + p.amount, 0),
+    )
     return {
       id: `card_${pad(i + 1, 4)}`,
       merchantId: merchant.id,
@@ -211,11 +220,11 @@ function generateCards(): Card[] {
       last4: number.slice(-4),
       numberRef: `cardnum_${pad(i + 1, 4)}`,
       spendLimit: seed.spendLimit,
-      spent: Math.round(seed.spendLimit * seed.spentRatio),
+      spent,
       currency: merchant.currency,
       status: seed.status,
       categoryLock: seed.categoryLock,
-      createdAt: createdAt.toISOString(),
+      createdAt: createdIso,
       history: cardHistory(seed.status, createdAt),
     }
   })

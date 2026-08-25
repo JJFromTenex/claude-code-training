@@ -20,6 +20,8 @@ interface Store {
   disputes: Dispute[]
   payouts: Payout[]
   cards: Card[]
+  /** Idempotency keys already used to issue a card, mapped to the card id. */
+  cardIdempotency: Record<string, string>
 }
 
 declare global {
@@ -29,7 +31,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts, cards } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards,
+    cardIdempotency: {},
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

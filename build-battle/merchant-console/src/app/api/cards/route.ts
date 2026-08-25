@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: parsed.error }, { status: 400 })
   }
 
-  const { card, number } = createCard(parsed.input)
+  const result = createCard(parsed.input)
+  if (result.replayed) {
+    // Same idempotency key: same card back, and never the number again.
+    return NextResponse.json({ card: result.card, replayed: true })
+  }
   // The one and only response that ever contains the full number.
-  return NextResponse.json({ card, number }, { status: 201 })
+  return NextResponse.json(
+    { card: result.card, number: result.number },
+    { status: 201 },
+  )
 }

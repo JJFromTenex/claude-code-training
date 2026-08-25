@@ -28,6 +28,8 @@ export interface CreateCardInput {
   spendLimit: number
   currency: Currency
   categoryLock: CardCategory | null
+  /** Client-supplied key so a retried or double-clicked submit issues one card. */
+  idempotencyKey: string | null
 }
 
 export type ParseCardResult =
@@ -50,7 +52,8 @@ export function parseCreateCard(body: unknown): ParseCardResult {
   if (!merchantId) {
     return { ok: false, error: "A merchant is required." }
   }
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return { ok: false, error: "Unknown merchant." }
   }
 
@@ -75,6 +78,24 @@ export function parseCreateCard(body: unknown): ParseCardResult {
   if (!CURRENCIES.includes(currency as Currency)) {
     return { ok: false, error: "Currency must be USD, EUR, or GBP." }
   }
+  // A card settles in its merchant's currency; a mismatch is how limits go wrong.
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `Currency must match the merchant's settlement currency (${merchant.currency}).`,
+    }
+  }
+
+  let idempotencyKey: string | null = null
+  if (raw.idempotencyKey != null && raw.idempotencyKey !== "") {
+    if (
+      typeof raw.idempotencyKey !== "string" ||
+      raw.idempotencyKey.length > 128
+    ) {
+      return { ok: false, error: "Invalid idempotency key." }
+    }
+    idempotencyKey = raw.idempotencyKey
+  }
 
   let categoryLock: CardCategory | null = null
   if (raw.categoryLock != null && raw.categoryLock !== "") {
@@ -92,6 +113,7 @@ export function parseCreateCard(body: unknown): ParseCardResult {
       spendLimit,
       currency: currency as Currency,
       categoryLock,
+      idempotencyKey,
     },
   }
 }
@@ -116,11 +138,20 @@ function nextCardSeq(): number {
 /**
  * Issue a card. Returns the stored record plus the full number, which the
  * caller returns once and nobody stores. Only `last4` and a reference persist.
+ *
+ * A repeated idempotency key returns the already-issued card as a replay,
+ * without the number — the full number exists in exactly one response.
  */
-export function createCard(input: CreateCardInput): {
-  card: Card
-  number: string
-} {
+export function createCard(
+  input: CreateCardInput,
+):
+  | { replayed: false; card: Card; number: string }
+  | { replayed: true; card: Card } {
+  if (input.idempotencyKey) {
+    const existingId = store.cardIdempotency[input.idempotencyKey]
+    const existing = existingId ? cardById(existingId) : null
+    if (existing) return { replayed: true, card: existing }
+  }
   const number = generateCardNumber()
   const seq = nextCardSeq()
   const now = new Date().toISOString()
@@ -139,7 +170,10 @@ export function createCard(input: CreateCardInput): {
     history: [{ at: now, event: "issued" }],
   }
   store.cards.push(card)
-  return { card, number }
+  if (input.idempotencyKey) {
+    store.cardIdempotency[input.idempotencyKey] = card.id
+  }
+  return { replayed: false, card, number }
 }
 
 export type TransitionResult =

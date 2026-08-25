@@ -53,6 +53,7 @@ Server first. Add a `Card` type and a `cards` array to the in-memory store, a ca
 | `src/data/types.ts` | change | `Card`, `CardStatus` types |
 | `src/lib/cards.ts` | add | Luhn generator (4242 BIN), `maskCard`, `canTransition` state machine |
 | `src/lib/cards.test.ts` | add | Tests: Luhn validity, BIN prefix, transitions incl. cancelled-terminal (stretch) |
+| `src/data/cards.test.ts` | add | Tests: the validation rejection matrix, creation storage guarantees, idempotent replay, transition results |
 | `src/data/generate.ts` | change | Seed a few cards with spend so list/detail render real data |
 | `src/data/store.ts` | change | Add `cards` to the `Store` interface and `createStore` |
 | `src/data/cards.ts` | add | Store helpers: `listCards`, `cardById`, `createCard`, `transitionCard` |
@@ -62,7 +63,7 @@ Server first. Add a `Card` type and a `cards` array to the in-memory store, a ca
 | `src/app/cards/page.tsx` | add | List page: nickname, merchant, masked number, limit, status, created |
 | `src/app/cards/issue-card-dialog.tsx` | add | Client dialog: form → POST → one-time reveal success step |
 | `src/app/cards/[id]/page.tsx` | add | Detail page with spend-against-limit (amber past 80%, stretch) |
-| `src/app/cards/card-actions.tsx` | add | Client freeze/unfreeze without reload (stretch) |
+| `src/app/cards/card-actions.tsx` | add | Client freeze/unfreeze without reload, and cancel behind an inline confirm (stretch) |
 | `src/components/Sidebar.tsx` | change | Cards nav entry |
 
 ## Plan
@@ -97,6 +98,11 @@ Server first. Add a `Card` type and a `cards` array to the in-memory store, a ca
 
 - Persistence (NWP-203), auth/roles, real network calls, limit editing after issue (NWP-202).
 
-## Open questions
+## Decisions made while building
 
-- Where card "spend" comes from — there is no card-transaction data. Decision: a `spentMinorUnits` field on the card, seeded for demo cards, zero for new ones. Cheap, honest, and NWP-203 can replace it.
+These were open questions or "the codebase already knows" items the ticket hinted at; each is enforced server-side:
+
+- **Spend source** — there is no card-transaction data, so seeded cards derive `spent` from the merchant's captured card payments since the card's issue date (capped at the limit); new cards start at zero. NWP-203 replaces this with real data.
+- **Currency is the merchant's** — a card settles in its merchant's currency, so `parseCreateCard` rejects a mismatch and the dialog locks the currency field to the chosen merchant. This is the "picked the wrong currency" failure the ticket describes.
+- **Idempotent issue** — the dialog sends one idempotency key per attempt; a retried or double-clicked submit returns the already-issued card, without the number, instead of issuing twice.
+- **Cancel needs a confirm** — cancelled is terminal, so the list's cancel action sits behind an inline confirm step.

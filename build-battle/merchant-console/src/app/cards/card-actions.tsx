@@ -20,6 +20,7 @@ export function CardStatusActions({
   const [status, setStatus] = useState<CardStatus>(initialStatus)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   const transition = async (to: CardStatus) => {
     setPending(true)
@@ -36,6 +37,7 @@ export function CardStatusActions({
         return
       }
       setStatus(payload.card.status)
+      setConfirmingCancel(false)
     } catch {
       setError("The status change failed. Try again.")
     } finally {
@@ -66,6 +68,37 @@ export function CardStatusActions({
           Unfreeze
         </Button>
       )}
+      {status !== "cancelled" &&
+        (confirmingCancel ? (
+          <span className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300">
+            Cancel for good?
+            <Button
+              variant="destructive"
+              className="px-2 py-1 text-xs"
+              disabled={pending}
+              onClick={() => transition("cancelled")}
+            >
+              Yes, cancel
+            </Button>
+            <Button
+              variant="ghost"
+              className="px-2 py-1 text-xs"
+              disabled={pending}
+              onClick={() => setConfirmingCancel(false)}
+            >
+              Keep
+            </Button>
+          </span>
+        ) : (
+          <Button
+            variant="ghost"
+            className="px-2 py-1 text-xs"
+            disabled={pending}
+            onClick={() => setConfirmingCancel(true)}
+          >
+            Cancel…
+          </Button>
+        ))}
       {error && (
         <span className="text-xs text-red-600 dark:text-red-400" role="alert">
           {error}

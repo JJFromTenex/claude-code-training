@@ -52,6 +52,10 @@ export function IssueCardDialog({
   const [category, setCategory] = useState<CardCategory | "none">("none")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // One key per issue attempt: a retry or double-submit creates one card.
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    crypto.randomUUID(),
+  )
   // The full number lives here and nowhere else, only until the drawer closes.
   const [issued, setIssued] = useState<Issued | null>(null)
 
@@ -64,6 +68,7 @@ export function IssueCardDialog({
     setError(null)
     setIssued(null)
     setSubmitting(false)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const close = (next: boolean) => {
@@ -98,11 +103,19 @@ export function IssueCardDialog({
           spendLimit,
           currency,
           categoryLock: category === "none" ? null : category,
+          idempotencyKey,
         }),
       })
       const payload = await response.json()
       if (!response.ok) {
         setError(payload.message ?? "The card could not be issued.")
+        return
+      }
+      if (payload.replayed) {
+        // This form already issued its card on an earlier submit; the number
+        // was revealed then and is never returned again.
+        router.refresh()
+        close(false)
         return
       }
       setIssued(payload)
@@ -207,10 +220,7 @@ export function IssueCardDialog({
                   className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50"
                 >
                   Currency
-                  <Select
-                    value={currency}
-                    onValueChange={(value) => setCurrency(value as Currency)}
-                  >
+                  <Select value={currency} disabled>
                     <SelectTrigger aria-labelledby="issue-currency-label">
                       <SelectValue />
                     </SelectTrigger>
@@ -222,6 +232,9 @@ export function IssueCardDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <span className="text-xs font-normal text-gray-500">
+                    Set by the merchant&apos;s settlement currency.
+                  </span>
                 </label>
               </div>
 
