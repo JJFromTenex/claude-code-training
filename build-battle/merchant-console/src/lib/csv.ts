@@ -25,6 +25,38 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
+  id: "Payment ID",
+  created_at: "Created at",
+  merchant: "Merchant",
+  description: "Description",
+  status: "Status",
+  method: "Method",
+  card_brand: "Card brand",
+  last4: "Card last four",
+  amount: "Amount",
+  currency: "Currency",
+}
+
+/**
+ * Column names arrive from the client, so they are checked against the
+ * `EXPORT_COLUMNS` allowlist before they reach `toCsv` or a filename. Unknown
+ * columns are dropped rather than rejected outright; an empty result after
+ * filtering is the caller's problem to reject.
+ *
+ * No `columns` param at all (`null`) means an older link with no opinion on
+ * columns, so it gets every column. An explicitly empty selection (`""`)
+ * means the caller deselected everything, so it gets none.
+ */
+export function parseExportColumns(param: string | null): ExportColumn[] {
+  if (param === null) return [...EXPORT_COLUMNS]
+  if (param === "") return []
+  const requested = param.split(",").map((c) => c.trim())
+  return requested.filter((c): c is ExportColumn =>
+    (EXPORT_COLUMNS as readonly string[]).includes(c),
+  )
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +98,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/** Scope label stamped into the filename: "all", a specific status, or "filtered". */
+export function exportFilename(scope: string, date = new Date()): string {
+  return `payments-${scope}-${date.toISOString().slice(0, 10)}.csv`
 }
