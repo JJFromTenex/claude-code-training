@@ -1,3 +1,8 @@
+---
+name: ship-ready
+description: Pre-push quality check on the merchant console — money handling, UTC dates, query-builder reuse, server-side validation, TODOs, console logs, accessibility, and tests. Use right before opening a pull request.
+---
+
 # /ship-ready
 
 Run a pre-ship quality check on the merchant console before opening a pull request. Scan the TypeScript and TSX files under `merchant-console/src/` and report issues.

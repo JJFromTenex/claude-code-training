@@ -13,6 +13,8 @@ Context in this repo is layered on purpose, and the layering is part of what the
 
 Read the narrowest one that applies before you write code.
 
+There is no build at this root. `npm install` and `npm run dev` only work inside `build-battle/merchant-console/` — that CLAUDE.md has the commands.
+
 ## Repository layout
 
 - `docs/tickets/` — the tickets engineers work, written as they arrive on a sprint board
@@ -37,3 +39,9 @@ Work is submitted as a pull request against this repository and scored automatic
 - Branch from `main` with the ticket ID: `NWP-201-issue-cards`
 - Commit subjects carry the ticket ID: `NWP-201: issue virtual cards`
 - Fill in the pull request template. The grader reads it.
+
+## Release Standards
+
+- No change merges without test evidence attached.
+- No direct commits to `main`. Everything lands through a pull request.
+- Every PR states its business impact in one line.

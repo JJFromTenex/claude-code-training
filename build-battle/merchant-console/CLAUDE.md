@@ -13,6 +13,8 @@ npm run dev
 
 No database, no seed step, no Docker.
 
+Single test file: `npx vitest run src/lib/money.test.ts`
+
 ## Data lives in memory
 
 Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.

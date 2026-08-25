@@ -1,3 +1,8 @@
+---
+name: pr
+description: Write the pull request description for the work on the current branch, from the diff, the ticket, and the epic. Use once a ticket's implementation is done and ready to submit.
+---
+
 # /pr
 
 Write the pull request description for the work in this branch.
