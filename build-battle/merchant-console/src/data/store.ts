@@ -1,6 +1,15 @@
 import { generate } from "./generate"
+import { generateCards } from "./generate-cards"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import {
+  Card,
+  CardAuthorization,
+  CardEvent,
+  Dispute,
+  Payment,
+  Payout,
+  Refund,
+} from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +28,16 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  cards: Card[]
+  /** Spend is summed from these. A card never carries a stored total. */
+  cardAuthorizations: CardAuthorization[]
+  /** The card audit trail, oldest first. */
+  cardEvents: CardEvent[]
+  /**
+   * Idempotency key to card id, so a double-clicked issue button produces one
+   * card rather than two. Lives with the store because it shares its lifetime.
+   */
+  issuedByKey: Map<string, string>
 }
 
 declare global {
@@ -28,7 +47,18 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  const { cards, cardAuthorizations, cardEvents } = generateCards()
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards,
+    cardAuthorizations,
+    cardEvents,
+    issuedByKey: new Map(),
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
