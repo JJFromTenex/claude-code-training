@@ -198,7 +198,10 @@ export function issueCard(
     nickname: result.value.nickname,
     merchantId: result.value.merchantId,
     last4: number.slice(-4),
-    reference: `ref_${number.slice(4, 12)}`,
+    // Opaque and unrelated to the number's digits — the BIN is always 4242,
+    // so a reference built from real digits plus last4 would reconstruct
+    // the full PAN. This has none of the number in it, by construction.
+    reference: `ref_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
     spendLimit: result.value.spendLimit,
     currency: result.value.currency,
     spent: 0,

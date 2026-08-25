@@ -93,8 +93,16 @@ const SEED_CARDS: SeedCardInput[] = [
   },
 ]
 
+/** Deterministic but numerically unrelated to any card number — see the reference field below. */
+function seedReference(): string {
+  let hex = ""
+  for (let i = 0; i < 8; i++) hex += Math.floor(rand() * 16).toString(16)
+  return `ref_${hex}`
+}
+
 function buildCard(input: SeedCardInput, index: number): Card {
   const number = generateCardNumber(rand)
+  const reference = seedReference()
   const createdAt = daysAgo(input.createdDaysAgo)
   const history: Card["history"] = [{ status: "active", at: createdAt }]
   if (input.status !== "active") {
@@ -107,7 +115,7 @@ function buildCard(input: SeedCardInput, index: number): Card {
     nickname: input.nickname,
     merchantId: input.merchantId,
     last4: number.slice(-4),
-    reference: `ref_${number.slice(4, 12)}`,
+    reference,
     spendLimit: input.spendLimit,
     currency: input.currency,
     spent: Math.round(input.spendLimit * input.spentFraction),
