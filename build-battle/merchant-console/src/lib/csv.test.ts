@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -78,8 +83,46 @@ describe("toCsv", () => {
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+    expect(
+      exportFilename({ scope: "current" }, new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-2026-03-14.csv")
+  })
+
+  it("folds the active status into the name when scoped to the current filter", () => {
+    expect(
+      exportFilename(
+        { scope: "current", status: "disputed" },
+        new Date("2026-08-13T00:00:00.000Z"),
+      ),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
+  it("labels an all-payments export regardless of the active status", () => {
+    expect(
+      exportFilename(
+        { scope: "all", status: "disputed" },
+        new Date("2026-08-13T00:00:00.000Z"),
+      ),
+    ).toBe("payments-all-2026-08-13.csv")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("keeps a subset of columns, in the order requested", () => {
+    expect(parseExportColumns("amount,id,merchant")).toEqual([
+      "amount",
+      "id",
+      "merchant",
+    ])
+  })
+
+  it("excludes last four unless it's explicitly requested, the export dialog's default", () => {
+    const withoutLast4 = EXPORT_COLUMNS.filter((column) => column !== "last4")
+    expect(parseExportColumns(withoutLast4.join(","))).toEqual(withoutLast4)
+  })
+
+  it("resolves an empty or all-invalid selection to nothing, rather than falling back to every column", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("drop table payments")).toEqual([])
   })
 })

@@ -25,6 +25,24 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/**
+ * Column names arrive from the client. `raw` is validated against
+ * `EXPORT_COLUMNS` rather than trusted — anything else is dropped, not
+ * passed through. `null` (the param wasn't sent at all) keeps today's
+ * behavior of every column; an empty or all-invalid value resolves to an
+ * empty list, which the caller must treat as "nothing to export."
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...EXPORT_COLUMNS]
+
+  const allowed: readonly string[] = EXPORT_COLUMNS
+  const requested = new Set<ExportColumn>()
+  for (const name of raw.split(",").map((part) => part.trim())) {
+    if (allowed.includes(name)) requested.add(name as ExportColumn)
+  }
+  return [...requested]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +84,17 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Scope and the active status (when scoped to the current filter) fold into
+ * the name so two different exports on the same day don't collide. When
+ * neither applies, this is the same shape the export has always used.
+ */
+export function exportFilename(
+  { scope, status }: { scope: "current" | "all"; status?: string },
+  date = new Date(),
+): string {
+  const day = date.toISOString().slice(0, 10)
+  if (scope === "all") return `payments-all-${day}.csv`
+  if (status && status !== "all") return `payments-${status}-${day}.csv`
+  return `payments-${day}.csv`
 }
