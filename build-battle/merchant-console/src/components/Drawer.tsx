@@ -1,6 +1,7 @@
 // Tremor Drawer [v0.0.1]
 
 import * as DrawerPrimitives from "@radix-ui/react-dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { RiCloseLine } from "@remixicon/react"
 import * as React from "react"
 
@@ -115,6 +116,7 @@ const DrawerHeader = React.forwardRef<
           className="aspect-square p-1 hover:bg-gray-100 hover:dark:bg-gray-400/10"
         >
           <RiCloseLine className="size-6" aria-hidden="true" />
+          <VisuallyHidden.Root>Close</VisuallyHidden.Root>
         </Button>
       </DrawerPrimitives.Close>
     </div>

@@ -25,6 +25,33 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/** Every column except the one that costs ops a manual scrub before a file can go to a merchant. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+const EXPORT_COLUMN_SET = new Set<string>(EXPORT_COLUMNS)
+
+/**
+ * Column names arrive from the client as a comma-separated list. Anything not
+ * on the allowlist is dropped, never interpolated anywhere. `null` (the param
+ * was absent) falls back to the safe default; `""` (present but empty) is a
+ * deliberate empty selection and returns no columns.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const seen = new Set<string>()
+  const columns: ExportColumn[] = []
+  for (const candidate of raw.split(",")) {
+    const name = candidate.trim()
+    if (!name || seen.has(name) || !EXPORT_COLUMN_SET.has(name)) continue
+    seen.add(name)
+    columns.push(name as ExportColumn)
+  }
+  return columns
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +93,20 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export type ExportScope = "filtered" | "all"
+
+/**
+ * `all` always reads as "all". `filtered` reads as the active status when
+ * there is one (`payments-disputed-...`), or `filtered` when the current
+ * filter is just "every status" narrowed some other way (merchant, search,
+ * date range).
+ */
+export function exportFilename(
+  scope: ExportScope,
+  statusFilter: string | undefined,
+  date = new Date(),
+): string {
+  const label =
+    scope === "all" ? "all" : statusFilter && statusFilter !== "all" ? statusFilter : "filtered"
+  return `payments-${label}-${date.toISOString().slice(0, 10)}.csv`
 }
