@@ -16,7 +16,7 @@ import {
 } from "@/components/Sidebar"
 import { cx, focusRing } from "@/lib/utils"
 import { RiArrowDownSFill } from "@remixicon/react"
-import { Banknote, CreditCard, House, ShieldAlert } from "lucide-react"
+import { Banknote, CreditCard, House, ShieldAlert, WalletCards } from "lucide-react"
 import * as React from "react"
 import { Logo } from "../../../../public/Logo"
 import { UserProfile } from "./UserProfile"
@@ -46,6 +46,12 @@ const navigation = [
     name: "Payouts",
     href: siteConfig.baseLinks.payouts,
     icon: Banknote,
+    notifications: false as const,
+  },
+  {
+    name: "Cards",
+    href: siteConfig.baseLinks.cards,
+    icon: WalletCards,
     notifications: false as const,
   },
 ] as const
