@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportScopeSlug,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +84,109 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("leaves the card last four out of the default set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(parseExportColumns(null)).not.toContain("last4")
+  })
+
+  it("falls back to the defaults when the parameter is absent", () => {
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+    expect(parseExportColumns(undefined)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("includes the card last four only when it is asked for", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("drops names that are not in the allowlist", () => {
+    expect(parseExportColumns("id,merchant_secret,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("drops an injection attempt rather than passing it through", () => {
+    expect(parseExportColumns("id; DROP TABLE payments--")).toEqual([])
+    expect(parseExportColumns("../../etc/passwd")).toEqual([])
+  })
+
+  it("tolerates whitespace around a name", () => {
+    expect(parseExportColumns(" id , amount ")).toEqual(["id", "amount"])
+  })
+
+  it("keeps the order the client asked for", () => {
+    expect(parseExportColumns("currency,amount,id")).toEqual([
+      "currency",
+      "amount",
+      "id",
+    ])
+  })
+
+  it("collapses a repeated column so it is not written twice", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+
+  it("returns nothing for an empty selection, so the caller can refuse", () => {
+    expect(parseExportColumns("")).toEqual([])
+  })
+
+  it("round-trips through toCsv in the requested order", () => {
+    const columns = parseExportColumns("amount,id")
+    expect(toCsv([payment], columns)).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter", () => {
+    expect(parseExportScope(null)).toBe("filter")
+    expect(parseExportScope("everything")).toBe("filter")
+  })
+
+  it("accepts the two known scopes", () => {
+    expect(parseExportScope("filter")).toBe("filter")
+    expect(parseExportScope("all")).toBe("all")
+  })
+})
+
+describe("exportScopeSlug", () => {
+  it("names the status when the filter is narrowed to one", () => {
+    expect(exportScopeSlug("filter", { status: "disputed" })).toBe("disputed")
+  })
+
+  it("says all when the scope ignores the filters", () => {
+    expect(exportScopeSlug("all", { status: "disputed" })).toBe("all")
+  })
+
+  it("says filtered when something other than status is set", () => {
+    expect(exportScopeSlug("filter", { merchantId: "mch_01" })).toBe("filtered")
+    expect(exportScopeSlug("filter", { search: "1180" })).toBe("filtered")
+  })
+
+  it("says nothing when the file is simply every payment", () => {
+    expect(exportScopeSlug("filter", { status: "all" })).toBeUndefined()
+    expect(exportScopeSlug("filter", {})).toBeUndefined()
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("carries the scope between the name and the date", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T00:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
+  it("slugs a scope rather than dropping it into the header raw", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T00:00:00.000Z"), 'a"; drop'),
+    ).toBe("payments-a-drop-2026-08-13.csv")
   })
 })
