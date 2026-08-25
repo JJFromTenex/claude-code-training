@@ -71,6 +71,37 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "supplies"
+  | "services"
+  | "other"
+
+export interface CardTransition {
+  from: CardStatus
+  to: CardStatus
+  at: string
+}
+
+export interface VirtualCard {
+  id: string
+  merchantId: string
+  nickname: string
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  status: CardStatus
+  category: CardCategory | null
+  history: CardTransition[]
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string

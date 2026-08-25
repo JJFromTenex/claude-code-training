@@ -1,6 +1,6 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Dispute, Payment, Payout, Refund, VirtualCard } from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +19,8 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  cards: VirtualCard[]
+  issuedKeys: Map<string, string>
 }
 
 declare global {
@@ -28,7 +30,7 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  return { merchants, payments, refunds, disputes, payouts, cards: [], issuedKeys: new Map() }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
