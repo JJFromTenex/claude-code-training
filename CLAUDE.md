@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Claude Code Training — Repo Rescue
 
 Training repository for the Repo Rescue workshop. Learners take a ticket end to end against the Northwind Payments merchant console, then open a pull request here to be scored.
@@ -17,11 +21,40 @@ Read the narrowest one that applies before you write code.
 
 - `docs/tickets/` — the tickets engineers work, written as they arrive on a sprint board
 - `docs/epics/` — where plans go before code does, and the template they follow
-- `docs/ORG-STANDARDS.md` — the org-wide engineering standards every service is measured against
+- `docs/ORG-STANDARDS.md` — the org-wide engineering standards every service is measured against. Ten numbered items; a reviewer cites them by number, so "violates #1" is what a finding against your pull request looks like
 - `.claude/` — the skills (`/epic`, `/pr`, `/ship-ready`) and the `bug-investigator` subagent. Open Claude Code at this root and they are available everywhere
 - `build-battle/` — the exercise brief and the scoring rubric
 - `build-battle/merchant-console/` — Northwind Payments, the application itself
 - `.github/` — pull request template and the grading workflow
+
+## Commands
+
+The application is in `build-battle/merchant-console/`, not at the repository
+root. Run npm from the root with `--prefix`, or `cd` in first. Node 20+.
+
+```bash
+npm install --prefix build-battle/merchant-console   # no database, no seed step, no Docker
+npm run dev     --prefix build-battle/merchant-console   # http://localhost:3000
+npm test        --prefix build-battle/merchant-console   # Vitest — 28 tests, about a second
+npm run lint    --prefix build-battle/merchant-console
+npm run build   --prefix build-battle/merchant-console
+```
+
+A single test file, or a single case, from inside `build-battle/merchant-console`:
+
+```bash
+npm test -- src/lib/csv.test.ts
+npm test -- -t "quotes cells containing a comma"
+```
+
+Vitest collects only `src/**/*.test.ts` and runs in a node environment with no
+jsdom. Everything under test is money math, date bucketing, and serialization,
+none of which needs a DOM — which is what keeps the suite fast enough to run
+before every push.
+
+`.claude/launch.json` already defines a `merchant-console` dev-server config on
+port 3000, so the app can be launched and previewed without composing the
+command by hand.
 
 ## Conventions
 
@@ -37,3 +70,13 @@ Work is submitted as a pull request against this repository and scored automatic
 - Branch from `main` with the ticket ID: `NWP-201-issue-cards`
 - Commit subjects carry the ticket ID: `NWP-201: issue virtual cards`
 - Fill in the pull request template. The grader reads it.
+
+The grading workflow fires on open, reopen, push, and ready-for-review, so every
+push to an open pull request re-scores it and your best run counts. Draft pull
+requests are skipped until you mark them ready.
+
+## Release Standards
+
+- **Test evidence before merge.** Every change carries proof it works — the command that was run and what it reported. An intention to test is not evidence.
+- **No direct commits to `main`.** Work lands on a ticket branch and merges through a pull request, without exception.
+- **Every pull request states its business impact in one line.** What changes for the people using this, in plain language.
