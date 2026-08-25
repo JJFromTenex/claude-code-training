@@ -116,3 +116,7 @@ export function refundsForPayment(paymentId: string) {
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
 }
+
+export function cardById(id: string) {
+  return store.cards.find((c) => c.id === id) ?? null
+}
