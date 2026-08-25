@@ -2,6 +2,7 @@ import { Button } from "@/components/Button"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import { cardById } from "@/data/queries"
+import { CATEGORY_LABELS } from "@/lib/card-labels"
 import { maskCardNumber, spendRatio } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -9,14 +10,6 @@ import { cx } from "@/lib/utils"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { CardActions } from "../card-actions"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
-}
 
 export default async function CardDetailPage({
   params,

@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
+import { CardCategory } from "@/data/types"
+import { CATEGORY_LABELS } from "@/lib/card-labels"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -33,14 +35,6 @@ import { useState } from "react"
  * state for exactly as long as the success screen is open, and is cleared when
  * it closes — it is never written anywhere else.
  */
-
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  contractors: "Contractors",
-  utilities: "Utilities",
-}
 
 /** A labelled row. Every control in this form has a real <label for>. */
 function Field({
@@ -70,7 +64,7 @@ export function IssueCardDialog({
   currencies,
 }: {
   merchants: { id: string; name: string; currency: string }[]
-  categories: string[]
+  categories: CardCategory[]
   currencies: string[]
 }) {
   const router = useRouter()
@@ -266,7 +260,7 @@ export function IssueCardDialog({
                     <SelectItem value="none">No category lock</SelectItem>
                     {categories.map((c) => (
                       <SelectItem key={c} value={c}>
-                        {CATEGORY_LABELS[c] ?? c}
+                        {CATEGORY_LABELS[c]}
                       </SelectItem>
                     ))}
                   </SelectContent>
