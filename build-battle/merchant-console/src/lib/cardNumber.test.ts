@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { generateCardNumber, isLuhnValid, luhnCheckDigit } from "./cardNumber"
+import { generateCardNumber, isLuhnValid, luhnCheckDigit, maskCardNumber } from "./cardNumber"
 
 describe("luhnCheckDigit", () => {
   it("computes the known check digit for an all-zero payload", () => {
@@ -30,5 +30,12 @@ describe("generateCardNumber", () => {
       expect(number.startsWith("4242")).toBe(true)
       expect(isLuhnValid(number)).toBe(true)
     }
+  })
+})
+
+describe("maskCardNumber", () => {
+  it("shows the card's own real last four, not a constant", () => {
+    expect(maskCardNumber("4242000000000000")).toBe("•••• 0000")
+    expect(maskCardNumber("4242123456789015")).toBe("•••• 9015")
   })
 })

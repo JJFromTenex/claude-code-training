@@ -1,4 +1,4 @@
-import { generateCardNumber, MASKED_CARD_NUMBER } from "@/lib/cardNumber"
+import { generateCardNumber, maskCardNumber } from "@/lib/cardNumber"
 import { CURRENCIES } from "@/lib/money"
 import { merchantById } from "@/data/merchants"
 import { store } from "@/data/store"
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     limit,
     currency: currency as Currency,
     status: "active",
-    maskedNumber: MASKED_CARD_NUMBER,
+    maskedNumber: maskCardNumber(fullNumber),
     spent: 0,
     createdAt: new Date().toISOString(),
   }

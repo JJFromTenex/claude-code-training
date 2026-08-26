@@ -93,7 +93,7 @@ export interface Card {
   limit: number
   currency: Currency
   status: CardStatus
-  /** Always "•••• 4242". The real number exists only in the creation response. */
+  /** e.g. "•••• 7391" — this card's real last four. The full number exists only in the creation response. */
   maskedNumber: string
   /** Integer minor units. Always 0 — nothing in this app generates card spend. */
   spent: number

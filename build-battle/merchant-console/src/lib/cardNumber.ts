@@ -6,8 +6,10 @@
 const BIN = "4242"
 const DIGIT_COUNT = 16
 
-/** Always "•••• 4242" — the BIN, not any individual card's own digits. */
-export const MASKED_CARD_NUMBER = "•••• 4242"
+/** Masks a full number to its own real last four, e.g. "•••• 7391". */
+export function maskCardNumber(fullNumber: string): string {
+  return `•••• ${fullNumber.slice(-4)}`
+}
 
 /**
  * The standard Luhn check digit for a 15-digit payload.
