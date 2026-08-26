@@ -11,6 +11,8 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +71,25 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  currency: Currency
+  /** Integer minor units. Never a float. */
+  limitMinorUnits: number
+  /**
+   * Synthetic spend, set once at issue time. There are no real transactions
+   * in this app, so this exists only so the spend-vs-limit UI has something
+   * meaningful to show.
+   */
+  spentMinorUnits: number
+  status: CardStatus
+  last4: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {
