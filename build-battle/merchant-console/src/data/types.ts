@@ -82,3 +82,21 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  currency: Currency
+  status: CardStatus
+  /** Always "•••• 4242". The real number exists only in the creation response. */
+  maskedNumber: string
+  /** Integer minor units. Always 0 — nothing in this app generates card spend. */
+  spent: number
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}

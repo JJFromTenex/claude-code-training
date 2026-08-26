@@ -11,6 +11,9 @@ const SYMBOLS: Record<Currency, string> = {
   GBP: "£",
 }
 
+/** Every currency this app knows about. Derived from SYMBOLS so it can't drift. */
+export const CURRENCIES = Object.keys(SYMBOLS) as Currency[]
+
 /** Render minor units for display. The only place a decimal point appears. */
 export function formatMoney(minorUnits: number, currency: Currency): string {
   const negative = minorUnits < 0
