@@ -125,9 +125,20 @@ describe("updateCardStatus", () => {
     expect(toFrozen.ok).toBe(false)
   })
 
-  it("returns an error for a card that does not exist", () => {
+  it("returns a not_found reason for a card that does not exist", () => {
     const result = updateCardStatus("card_does_not_exist", "frozen")
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error).toBe("Card not found.")
+    if (!result.ok) {
+      expect(result.reason).toBe("not_found")
+      expect(result.error).toBe("Card not found.")
+    }
+  })
+
+  it("returns an invalid_transition reason for a disallowed transition", () => {
+    const card = issueCard()
+    updateCardStatus(card.id, "cancelled")
+    const result = updateCardStatus(card.id, "active")
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe("invalid_transition")
   })
 })

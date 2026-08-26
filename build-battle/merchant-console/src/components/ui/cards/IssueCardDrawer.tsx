@@ -23,7 +23,7 @@ import { CardCategory, Currency } from "@/data/types"
 import { maskCardNumber } from "@/lib/cardNumber"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
 
@@ -45,6 +45,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reveal, setReveal] = useState<{ number: string; last4: string } | null>(null)
   const [copyFailed, setCopyFailed] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const parsedLimit = parseAmountToMinorUnits(limitInput)
 
@@ -68,6 +69,9 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
       return
     }
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setSubmitting(true)
     try {
       const response = await fetch("/api/cards", {
@@ -80,9 +84,14 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
           currency,
           category: category || undefined,
         }),
+        signal: controller.signal,
       })
 
       const data = await response.json()
+
+      // The drawer closed (and reset) while this request was in flight —
+      // applying this response now would resurrect stale UI after close.
+      if (abortRef.current !== controller) return
 
       if (!response.ok) {
         setErrors(data.fields ?? { form: data.error ?? "Could not issue the card." })
@@ -91,10 +100,12 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
 
       setReveal({ number: data.number, last4: data.card.last4 })
       router.refresh()
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      if (abortRef.current !== controller) return
       setErrors({ form: "Something went wrong reaching the server. Try again." })
     } finally {
-      setSubmitting(false)
+      if (abortRef.current === controller) setSubmitting(false)
     }
   }
 
@@ -103,7 +114,11 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) reset()
+        if (!next) {
+          abortRef.current?.abort()
+          abortRef.current = null
+          reset()
+        }
       }}
     >
       <DrawerTrigger asChild>

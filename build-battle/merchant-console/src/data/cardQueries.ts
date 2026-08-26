@@ -151,16 +151,17 @@ const TRANSITIONS: Record<CardStatus, readonly CardStatus[]> = {
 
 export type UpdateStatusResult =
   | { ok: true; card: Card }
-  | { ok: false; error: string }
+  | { ok: false; reason: "not_found" | "invalid_transition"; error: string }
 
 /** Guards the card status state machine server-side. cancelled is terminal. */
 export function updateCardStatus(id: string, next: CardStatus): UpdateStatusResult {
   const card = cardById(id)
-  if (!card) return { ok: false, error: "Card not found." }
+  if (!card) return { ok: false, reason: "not_found", error: "Card not found." }
 
   if (!TRANSITIONS[card.status].includes(next)) {
     return {
       ok: false,
+      reason: "invalid_transition",
       error: `Cannot move a ${card.status} card to ${next}.`,
     }
   }

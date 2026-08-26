@@ -30,7 +30,8 @@ export async function PATCH(
 
   const result = updateCardStatus(id, status as CardStatus)
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 409 })
+    const httpStatus = result.reason === "not_found" ? 404 : 409
+    return NextResponse.json({ error: result.error }, { status: httpStatus })
   }
 
   return NextResponse.json({ card: result.card })
