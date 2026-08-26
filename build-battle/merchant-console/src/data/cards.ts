@@ -21,6 +21,7 @@ export function issueCard(input: {
   merchantId: string
   limitMinorUnits: number
   currency: Card["currency"]
+  category: Card["category"]
 }): { card: Card; fullNumber: string } {
   const fullNumber = generateCardNumber()
   const last4 = fullNumber.slice(-4)
@@ -34,6 +35,7 @@ export function issueCard(input: {
     limitMinorUnits: input.limitMinorUnits,
     spentMinorUnits,
     status: "active",
+    category: input.category,
     last4,
     createdAt: new Date().toISOString(),
   }

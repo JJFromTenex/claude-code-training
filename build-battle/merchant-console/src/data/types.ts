@@ -13,6 +13,15 @@ export type PayoutStatus = "paid" | "in_transit" | "pending"
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
+/** Locked at issue time. Restricts what the card is meant to be used for. */
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "office_supplies"
+  | "professional_services"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -87,6 +96,8 @@ export interface Card {
    */
   spentMinorUnits: number
   status: CardStatus
+  /** Locked at issue time, never editable afterward. */
+  category: MerchantCategory
   last4: string
   /** ISO 8601, always UTC. */
   createdAt: string

@@ -14,7 +14,12 @@ describe("setCardStatus", () => {
       merchantId: merchants[0].id,
       limitMinorUnits: 25000,
       currency: "USD",
+      category: "advertising",
     }).card
+
+  it("stores the category chosen at issue time", () => {
+    expect(issue().category).toBe("advertising")
+  })
 
   it("moves active to frozen", () => {
     const { card } = { card: issue() }

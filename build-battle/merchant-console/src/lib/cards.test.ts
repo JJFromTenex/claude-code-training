@@ -49,7 +49,13 @@ describe("maskCardNumber", () => {
 
 describe("validateIssueCardInput", () => {
   const merchantId = merchants[0].id
-  const valid = { nickname: "Ad spend", merchantId, limitMinorUnits: 25000, currency: "USD" }
+  const valid = {
+    nickname: "Ad spend",
+    merchantId,
+    limitMinorUnits: 25000,
+    currency: "USD",
+    category: "advertising",
+  }
 
   it("accepts a valid input", () => {
     expect(validateIssueCardInput(valid).valid).toBe(true)
@@ -86,5 +92,13 @@ describe("validateIssueCardInput", () => {
 
   it("rejects a currency outside USD/EUR/GBP", () => {
     expect(validateIssueCardInput({ ...valid, currency: "JPY" }).valid).toBe(false)
+  })
+
+  it("rejects a missing category", () => {
+    expect(validateIssueCardInput({ ...valid, category: undefined }).valid).toBe(false)
+  })
+
+  it("rejects a category outside the allowlist", () => {
+    expect(validateIssueCardInput({ ...valid, category: "groceries" }).valid).toBe(false)
   })
 })

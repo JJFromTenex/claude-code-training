@@ -3,7 +3,7 @@ import { SpendProgress } from "@/components/ui/cards/SpendProgress"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { maskCardNumber } from "@/lib/cards"
+import { CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
@@ -52,6 +52,7 @@ export default async function CardDetail({
           <span className="ml-2 text-gray-500">{merchant.country}</span>
         </Field>
         <Field label="Currency">{card.currency}</Field>
+        <Field label="Category lock">{CATEGORY_LABELS[card.category]}</Field>
         <Field label="Spend limit">
           {formatMoney(card.limitMinorUnits, card.currency)}
         </Field>

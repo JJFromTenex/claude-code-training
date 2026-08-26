@@ -1,5 +1,5 @@
 import { merchantById } from "@/data/merchants"
-import { Currency } from "@/data/types"
+import { Currency, MerchantCategory } from "@/data/types"
 
 /**
  * Card number generation and server-side validation.
@@ -58,12 +58,30 @@ export function maskCardNumber(last4: string): string {
 
 export const MAX_LIMIT_MINOR_UNITS = 5_000_000
 const ALLOWED_CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
+export const MERCHANT_CATEGORIES: MerchantCategory[] = [
+  "advertising",
+  "software",
+  "travel",
+  "office_supplies",
+  "professional_services",
+  "other",
+]
+
+export const CATEGORY_LABELS: Record<MerchantCategory, string> = {
+  advertising: "Advertising",
+  software: "Software",
+  travel: "Travel",
+  office_supplies: "Office supplies",
+  professional_services: "Professional services",
+  other: "Other",
+}
 
 export interface IssueCardInput {
   nickname: string
   merchantId: string
   limitMinorUnits: number
   currency: Currency
+  category: MerchantCategory
 }
 
 /**
@@ -105,8 +123,22 @@ export function validateIssueCardInput(
     return { valid: false, error: "Currency must be USD, EUR, or GBP." }
   }
 
+  const category = input.category
+  if (
+    typeof category !== "string" ||
+    !MERCHANT_CATEGORIES.includes(category as MerchantCategory)
+  ) {
+    return { valid: false, error: "Select a merchant category to lock the card to." }
+  }
+
   return {
     valid: true,
-    data: { nickname, merchantId, limitMinorUnits, currency: currency as Currency },
+    data: {
+      nickname,
+      merchantId,
+      limitMinorUnits,
+      currency: currency as Currency,
+      category: category as MerchantCategory,
+    },
   }
 }

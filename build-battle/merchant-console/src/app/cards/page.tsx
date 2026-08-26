@@ -10,7 +10,7 @@ import {
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { listCards } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { maskCardNumber } from "@/lib/cards"
+import { CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
@@ -37,6 +37,7 @@ export default function CardsPage() {
             <TableRow>
               <TableHeaderCell>Nickname</TableHeaderCell>
               <TableHeaderCell>Merchant</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
               <TableHeaderCell>Number</TableHeaderCell>
               <TableHeaderCell className="text-right">Limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
@@ -46,7 +47,7 @@ export default function CardsPage() {
           <TableBody>
             {cards.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-16 text-center">
+                <TableCell colSpan={7} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
                     No cards issued yet
                   </p>
@@ -70,6 +71,9 @@ export default function CardsPage() {
                     </Link>
                   </TableCell>
                   <TableCell>{merchant?.name}</TableCell>
+                  <TableCell className="text-gray-500">
+                    {CATEGORY_LABELS[card.category]}
+                  </TableCell>
                   <TableCell className="font-mono text-gray-500">
                     {maskCardNumber(card.last4)}
                   </TableCell>

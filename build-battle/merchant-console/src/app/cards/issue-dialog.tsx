@@ -13,7 +13,8 @@ import {
 } from "@/components/Drawer"
 import { Input } from "@/components/Input"
 import { merchants } from "@/data/merchants"
-import { Currency } from "@/data/types"
+import { Currency, MerchantCategory } from "@/data/types"
+import { CATEGORY_LABELS, MERCHANT_CATEGORIES } from "@/lib/cards"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { CreditCard } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -37,6 +38,7 @@ export function IssueCardDialog() {
   const [step, setStep] = useState<Step>("form")
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
+  const [category, setCategory] = useState<MerchantCategory | "">("")
   const [limitInput, setLimitInput] = useState("")
   const [currency, setCurrency] = useState<Currency>("USD")
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +49,7 @@ export function IssueCardDialog() {
     setStep("form")
     setNickname("")
     setMerchantId("")
+    setCategory("")
     setLimitInput("")
     setCurrency("USD")
     setError(null)
@@ -74,7 +77,7 @@ export function IssueCardDialog() {
       const response = await fetch("/api/cards", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nickname, merchantId, limitMinorUnits, currency }),
+        body: JSON.stringify({ nickname, merchantId, limitMinorUnits, currency, category }),
       })
       const body = await response.json()
       if (!response.ok) {
@@ -150,6 +153,33 @@ export function IssueCardDialog() {
                 </select>
               </div>
 
+              <div>
+                <label
+                  htmlFor="card-category"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                >
+                  Category lock
+                </label>
+                <select
+                  id="card-category"
+                  className={nativeSelectClass}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as MerchantCategory)}
+                >
+                  <option value="" disabled>
+                    What is this card for?
+                  </option>
+                  {MERCHANT_CATEGORIES.map((code) => (
+                    <option key={code} value={code}>
+                      {CATEGORY_LABELS[code]}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Locked once the card is issued.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
@@ -201,7 +231,7 @@ export function IssueCardDialog() {
               </DrawerClose>
               <Button
                 variant="primary"
-                disabled={!nickname || !merchantId || !limitInput || submitting}
+                disabled={!nickname || !merchantId || !category || !limitInput || submitting}
                 isLoading={submitting}
                 loadingText="Issuing…"
                 onClick={submit}
