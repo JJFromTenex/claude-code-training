@@ -20,7 +20,10 @@ export async function POST(
   const to = (body as Record<string, unknown> | null)?.status
   const result = transitionCard(id, to)
   if (!result.ok) {
-    return NextResponse.json({ message: result.error }, { status: result.status })
+    return NextResponse.json(
+      { message: result.error, card: result.card },
+      { status: result.status },
+    )
   }
   return NextResponse.json({ card: result.card })
 }

@@ -34,6 +34,12 @@ export function CardStatusActions({
       const payload = await response.json()
       if (!response.ok) {
         setError(payload.message ?? "The status change failed.")
+        // A rejected transition usually means someone else moved this card.
+        // The conflict carries the card, so show where it actually is.
+        if (payload.card) {
+          setStatus(payload.card.status)
+          setConfirmingCancel(false)
+        }
         return
       }
       setStatus(payload.card.status)

@@ -140,11 +140,13 @@ describe("transitionCard", () => {
     ])
   })
 
-  it("treats cancelled as terminal with a 409", () => {
+  it("treats cancelled as terminal with a 409 that says where the card is", () => {
     const card = issued()
     expect(transitionCard(card.id, "cancelled").ok).toBe(true)
     const revived = transitionCard(card.id, "active")
     expect(revived).toMatchObject({ ok: false, status: 409 })
+    // The conflict carries the card so a stale client can correct itself.
+    expect(revived.ok === false && revived.card?.status).toBe("cancelled")
     expect(card.status).toBe("cancelled")
   })
 

@@ -178,7 +178,8 @@ export function createCard(
 
 export type TransitionResult =
   | { ok: true; card: Card }
-  | { ok: false; status: 404 | 409 | 400; error: string }
+  /** On a conflict the card is included, so the client can correct itself. */
+  | { ok: false; status: 404 | 409 | 400; error: string; card?: Card }
 
 /** Apply a status change, guarded by the state machine. */
 export function transitionCard(id: string, to: unknown): TransitionResult {
@@ -194,6 +195,7 @@ export function transitionCard(id: string, to: unknown): TransitionResult {
       ok: false,
       status: 409,
       error: `A ${card.status} card cannot become ${to}.`,
+      card,
     }
   }
   const next = to as CardStatus
