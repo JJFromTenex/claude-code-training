@@ -4,6 +4,7 @@ import {
   MAX_SPEND_LIMIT,
   cardById,
   createCard,
+  listCards,
   parseCreateCard,
   transitionCard,
 } from "./cards"
@@ -106,6 +107,16 @@ describe("createCard", () => {
     expect(second.replayed).toBe(true)
     expect(second.card).toBe(first.card)
     expect("number" in second).toBe(false)
+  })
+})
+
+describe("listCards", () => {
+  it("returns newest first, so a just-issued card tops the list", () => {
+    const cards = listCards()
+    const sorted = [...cards].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    )
+    expect(cards.map((c) => c.id)).toEqual(sorted.map((c) => c.id))
   })
 })
 
