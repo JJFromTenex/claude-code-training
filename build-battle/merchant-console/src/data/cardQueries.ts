@@ -1,4 +1,5 @@
 import { generateCardNumber } from "@/lib/cardNumber"
+import { CARD_CATEGORIES } from "./cardCategories"
 import { merchantById } from "./merchants"
 import { paginate } from "./queries"
 import { store } from "./store"
@@ -27,12 +28,6 @@ function nextCardId(): string {
 }
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
-const CATEGORIES: readonly CardCategory[] = [
-  "subscriptions",
-  "advertising",
-  "contractor_tools",
-  "other",
-]
 const MAX_LIMIT = 5_000_000
 
 export interface IssueCardInput {
@@ -76,7 +71,7 @@ export function parseIssueCardInput(body: unknown): ParseIssueCardResult {
   }
 
   const category = input.category as CardCategory | undefined
-  if (category !== undefined && !CATEGORIES.includes(category)) {
+  if (category != null && !CARD_CATEGORIES.includes(category)) {
     fields.category = "Not a valid category."
   }
 
@@ -86,7 +81,7 @@ export function parseIssueCardInput(body: unknown): ParseIssueCardResult {
 
   return {
     ok: true,
-    value: { nickname, merchantId, limit, currency, category },
+    value: { nickname, merchantId, limit, currency, category: category ?? undefined },
   }
 }
 

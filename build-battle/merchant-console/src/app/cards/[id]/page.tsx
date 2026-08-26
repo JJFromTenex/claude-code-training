@@ -3,19 +3,13 @@ import { CardStatusToggle } from "@/components/ui/cards/CardStatusToggle"
 import { SpendProgress } from "@/components/ui/cards/SpendProgress"
 import { DetailField } from "@/components/ui/DetailField"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
+import { CARD_CATEGORY_LABELS } from "@/data/cardCategories"
 import { cardById } from "@/data/cardQueries"
 import { merchantById } from "@/data/merchants"
 import { maskCardNumber } from "@/lib/cardNumber"
 import { formatDate } from "@/lib/dates"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  subscriptions: "Vendor subscriptions",
-  advertising: "Ad spend",
-  contractor_tools: "Contractor tools",
-  other: "Other",
-}
 
 export default async function CardDetail({
   params,
@@ -53,7 +47,7 @@ export default async function CardDetail({
         <DetailField label="Merchant">{merchant?.name ?? "—"}</DetailField>
         <DetailField label="Currency">{card.currency}</DetailField>
         <DetailField label="Category">
-          {card.category ? CATEGORY_LABELS[card.category] : "—"}
+          {card.category ? CARD_CATEGORY_LABELS[card.category] : "—"}
         </DetailField>
         <DetailField label="Created">{formatDate(card.createdAt)}</DetailField>
       </dl>

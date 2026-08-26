@@ -56,6 +56,23 @@ describe("parseIssueCardInput", () => {
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.fields.currency).toBeDefined()
   })
+
+  it("rejects a missing nickname", () => {
+    const result = parseIssueCardInput({ ...validInput(), nickname: "" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.fields.nickname).toBeDefined()
+  })
+
+  it("rejects an invalid category", () => {
+    const result = parseIssueCardInput({ ...validInput(), category: "not_a_real_category" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.fields.category).toBeDefined()
+  })
+
+  it("accepts a valid category", () => {
+    const result = parseIssueCardInput({ ...validInput(), category: "advertising" })
+    expect(result.ok).toBe(true)
+  })
 })
 
 describe("createCard", () => {
@@ -106,5 +123,11 @@ describe("updateCardStatus", () => {
 
     expect(toActive.ok).toBe(false)
     expect(toFrozen.ok).toBe(false)
+  })
+
+  it("returns an error for a card that does not exist", () => {
+    const result = updateCardStatus("card_does_not_exist", "frozen")
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toBe("Card not found.")
   })
 })

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
+import { CARD_CATEGORIES, CARD_CATEGORY_LABELS } from "@/data/cardCategories"
 import { CardCategory, Currency } from "@/data/types"
 import { maskCardNumber } from "@/lib/cardNumber"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -25,12 +26,6 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
-const CATEGORIES: { value: CardCategory; label: string }[] = [
-  { value: "subscriptions", label: "Vendor subscriptions" },
-  { value: "advertising", label: "Ad spend" },
-  { value: "contractor_tools", label: "Contractor tools" },
-  { value: "other", label: "Other" },
-]
 
 interface Merchant {
   id: string
@@ -49,6 +44,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reveal, setReveal] = useState<{ number: string; last4: string } | null>(null)
+  const [copyFailed, setCopyFailed] = useState(false)
 
   const parsedLimit = parseAmountToMinorUnits(limitInput)
 
@@ -60,6 +56,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
     setCategory("")
     setErrors({})
     setReveal(null)
+    setCopyFailed(false)
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -131,10 +128,20 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
                 type="button"
                 variant="secondary"
                 className="w-full"
-                onClick={() => navigator.clipboard?.writeText(reveal.number)}
+                onClick={() => {
+                  setCopyFailed(false)
+                  navigator.clipboard
+                    ?.writeText(reveal.number)
+                    .catch(() => setCopyFailed(true))
+                }}
               >
                 Copy number
               </Button>
+              {copyFailed && (
+                <p className="text-sm text-red-600 dark:text-red-500">
+                  Couldn&apos;t copy automatically — select and copy the number above.
+                </p>
+              )}
             </DrawerBody>
             <DrawerFooter>
               <Button
@@ -259,9 +266,9 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
                     <SelectValue placeholder="Choose a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
+                    {CARD_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {CARD_CATEGORY_LABELS[c]}
                       </SelectItem>
                     ))}
                   </SelectContent>
