@@ -59,23 +59,12 @@ describe("isLuhnValid", () => {
 })
 
 describe("generateCardNumber", () => {
-  it("always starts on the 4242 test BIN, so nothing resembles a real PAN", () => {
+  it("is always 16 digits on the 4242 BIN with a valid check digit", () => {
+    const shape = new RegExp(`^${CARD_BIN}\\d{${CARD_NUMBER_LENGTH - 4}}$`)
     for (let i = 0; i < 500; i++) {
-      expect(generateCardNumber().startsWith(CARD_BIN)).toBe(true)
-    }
-  })
-
-  it("always passes a Luhn check", () => {
-    for (let i = 0; i < 500; i++) {
-      expect(isLuhnValid(generateCardNumber())).toBe(true)
-    }
-  })
-
-  it("is 16 digits and nothing else", () => {
-    for (let i = 0; i < 100; i++) {
-      expect(generateCardNumber()).toMatch(
-        new RegExp(`^\\d{${CARD_NUMBER_LENGTH}}$`),
-      )
+      const number = generateCardNumber()
+      expect(number).toMatch(shape)
+      expect(isLuhnValid(number)).toBe(true)
     }
   })
 
@@ -150,44 +139,37 @@ describe("validateIssueRequest", () => {
     expect(result.ok && result.value.nickname).toBe("Ads")
   })
 
-  it("rejects a missing nickname", () => {
-    expect(validateIssueRequest({ ...validIssue, nickname: "   " }).ok).toBe(false)
+  it("treats an absent category as unrestricted rather than invalid", () => {
+    const result = validateIssueRequest({ ...validIssue, category: undefined })
+    expect(result.ok && result.value.category).toBe(null)
   })
 
-  it("rejects a missing or unknown merchant", () => {
-    expect(validateIssueRequest({ ...validIssue, merchantId: "" }).ok).toBe(false)
-    expect(validateIssueRequest({ ...validIssue, merchantId: "mch_nope" }).ok).toBe(false)
+  // Each row is a request the server must refuse. The client's own checks are
+  // a convenience; these are the enforcement.
+  it.each([
+    ["a blank nickname", { nickname: "   " }],
+    ["a missing merchant", { merchantId: "" }],
+    ["an unknown merchant", { merchantId: "mch_nope" }],
+    ["a zero limit", { spendLimit: 0 }],
+    ["a negative limit", { spendLimit: -1 }],
+    ["a limit above the ceiling", { spendLimit: MAX_SPEND_LIMIT_MINOR + 1 }],
+    ["a float limit, because money is integer minor units", { spendLimit: 250.5 }],
+    ["a limit sent as a string", { spendLimit: "25000" }],
+    ["a currency outside the allowlist", { currency: "JPY" }],
+    ["a lowercased currency", { currency: "usd" }],
+    ["a currency the merchant does not settle in", { currency: "EUR" }],
+    ["a category outside the allowlist", { category: "weapons" }],
+  ])("rejects %s", (_label, patch) => {
+    expect(validateIssueRequest({ ...validIssue, ...patch }).ok).toBe(false)
   })
 
-  it("rejects a zero or negative limit", () => {
-    expect(validateIssueRequest({ ...validIssue, spendLimit: 0 }).ok).toBe(false)
-    expect(validateIssueRequest({ ...validIssue, spendLimit: -1 }).ok).toBe(false)
-  })
-
-  it("rejects a limit above the ceiling, and accepts the ceiling itself", () => {
-    expect(
-      validateIssueRequest({ ...validIssue, spendLimit: MAX_SPEND_LIMIT_MINOR + 1 }).ok,
-    ).toBe(false)
+  it("accepts the ceiling itself, not just below it", () => {
     expect(
       validateIssueRequest({ ...validIssue, spendLimit: MAX_SPEND_LIMIT_MINOR }).ok,
     ).toBe(true)
   })
 
-  it("rejects a float limit, because money is integer minor units", () => {
-    expect(validateIssueRequest({ ...validIssue, spendLimit: 250.5 }).ok).toBe(false)
-  })
-
-  it("rejects a limit sent as a string", () => {
-    expect(validateIssueRequest({ ...validIssue, spendLimit: "25000" }).ok).toBe(false)
-  })
-
-  it("rejects a currency outside the allowlist", () => {
-    expect(validateIssueRequest({ ...validIssue, currency: "JPY" }).ok).toBe(false)
-    expect(validateIssueRequest({ ...validIssue, currency: "usd" }).ok).toBe(false)
-  })
-
-  it("rejects a currency the merchant does not settle in", () => {
-    // mch_01 settles in USD; mch_04 settles in GBP.
+  it("names the merchant's currency when it refuses a mismatch", () => {
     const result = validateIssueRequest({ ...validIssue, currency: "EUR" })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.message).toContain("USD")
@@ -200,15 +182,6 @@ describe("validateIssueRequest", () => {
     expect(
       validateIssueRequest({ ...validIssue, merchantId: "mch_04", currency: "GBP" }).ok,
     ).toBe(true)
-  })
-
-  it("treats an absent category as unrestricted rather than invalid", () => {
-    const result = validateIssueRequest({ ...validIssue, category: undefined })
-    expect(result.ok && result.value.category).toBe(null)
-  })
-
-  it("rejects a category outside the allowlist", () => {
-    expect(validateIssueRequest({ ...validIssue, category: "weapons" }).ok).toBe(false)
   })
 
   it("rejects a body that is not an object", () => {

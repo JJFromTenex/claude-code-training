@@ -79,20 +79,17 @@ export default async function CardDetailPage({
         <div
           className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
           role="progressbar"
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
+          aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}
           aria-label={`${percent}% of the spend limit used`}
         >
           <div
-            className={cx(
-              "h-full rounded-full transition-all",
-              heavy ? "bg-amber-500 dark:bg-amber-400" : "bg-blue-500 dark:bg-blue-500",
-            )}
+            className={cx("h-full rounded-full transition-all",
+              heavy ? "bg-amber-500 dark:bg-amber-400" : "bg-blue-500 dark:bg-blue-500")}
             style={{ width: `${percent}%` }}
           />
         </div>
-        <p className={cx("mt-2 text-sm", heavy ? "text-amber-700 dark:text-amber-500" : "text-gray-500")}>
+        <p className={cx("mt-2 text-sm",
+          heavy ? "text-amber-700 dark:text-amber-500" : "text-gray-500")}>
           {percent}% used · {formatMoney(remaining, card.currency)} remaining
           {heavy && card.status !== "cancelled" ? " — close to the limit" : ""}
         </p>

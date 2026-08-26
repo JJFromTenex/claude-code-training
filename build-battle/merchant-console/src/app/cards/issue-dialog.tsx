@@ -140,10 +140,8 @@ export function IssueCardDialog({
             </DrawerHeader>
             <DrawerBody className="space-y-4">
               <p className="text-sm text-gray-500">{revealed.nickname}</p>
-              <p
-                className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 font-mono text-lg tracking-widest text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50"
-                aria-label="Full card number, shown once"
-              >
+              <p className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 font-mono text-lg tracking-widest text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50"
+                aria-label="Full card number, shown once">
                 {revealed.number.replace(/(\d{4})(?=\d)/g, "$1 ")}
               </p>
               <p className="text-sm text-gray-500">
@@ -177,18 +175,13 @@ export function IssueCardDialog({
               </Field>
 
               <Field id="merchant" label="Merchant">
+                {/* A card settles in its merchant's currency, so choosing the
+                    merchant chooses the currency. The server enforces the same
+                    rule; this stops ops reaching a rejection it can prevent. */}
                 <Select
                   value={form.merchantId}
-                  onValueChange={(merchantId) =>
-                    // A card settles in its merchant's currency, so choosing the
-                    // merchant chooses the currency. The server enforces the same
-                    // rule; this stops ops reaching a rejection it can prevent.
-                    set({
-                      merchantId,
-                      currency:
-                        merchants.find((m) => m.id === merchantId)?.currency ?? "",
-                    })
-                  }
+                  onValueChange={(merchantId) => set({ merchantId,
+                    currency: merchants.find((m) => m.id === merchantId)?.currency ?? "" })}
                 >
                   <SelectTrigger id="merchant" className="w-full">
                     <SelectValue placeholder="Choose a merchant" />
