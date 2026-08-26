@@ -1,11 +1,7 @@
 export type Currency = "USD" | "EUR" | "GBP"
 
 export type PaymentStatus =
-  | "authorized"
-  | "captured"
-  | "refunded"
-  | "failed"
-  | "disputed"
+  "authorized" | "captured" | "refunded" | "failed" | "disputed"
 
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
@@ -76,24 +72,9 @@ export type CardStatus = "active" | "frozen" | "cancelled"
 
 /** What a card is allowed to be spent on. `null` is no lock. */
 export type MerchantCategory =
-  | "advertising"
-  | "software"
-  | "travel"
-  | "contractors"
-  | "shipping"
+  "advertising" | "software" | "travel" | "contractors" | "shipping"
 
-/** One entry in a card's history. `from` is null for the issue event. */
-export interface CardEvent {
-  from: CardStatus | null
-  to: CardStatus
-  /** ISO 8601, always UTC. */
-  at: string
-}
-
-/**
- * A virtual card. There is deliberately no field for the full number:
- * it exists only in the creation response, so no route can leak one.
- */
+/** No field for the full number: it exists only in the creation response. */
 export interface Card {
   id: string
   nickname: string
@@ -110,8 +91,6 @@ export interface Card {
   category: MerchantCategory | null
   /** Integer minor units spent against the limit, same currency. */
   spend: number
-  /** Every status this card has held, oldest first. */
-  events: CardEvent[]
   /** ISO 8601, always UTC. */
   createdAt: string
 }

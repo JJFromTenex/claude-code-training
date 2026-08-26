@@ -3,29 +3,36 @@
 import { Button } from "@/components/Button"
 import { CardStatus } from "@/data/types"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-/**
- * Freeze, unfreeze, and cancel from wherever a card is shown, without a full
- * page reload. The server still decides whether the transition is legal — this
- * only hides the buttons that obviously are not.
- */
+/** Freeze and unfreeze without a page reload. The server still decides. */
 export function CardActions({
   cardId,
+  nickname,
   status,
-  allowCancel = false,
 }: {
   cardId: string
+  /** Named on every control, so a column of them is not eight "Freeze"s. */
+  nickname: string
   status: CardStatus
-  allowCancel?: boolean
 }) {
   const router = useRouter()
   const [pending, setPending] = useState<CardStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
-  /** Cancelling is terminal, so it asks first. Freezing is reversible. */
-  const [confirmingCancel, setConfirmingCancel] = useState(false)
+
+  // The button disables the element the user is standing on; put focus back.
+  const statusRef = useRef<HTMLButtonElement>(null)
+  const restoreTo = useRef(false)
+
+  useEffect(() => {
+    if (pending !== null) return
+    if (restoreTo.current) statusRef.current?.focus()
+    restoreTo.current = false
+  }, [pending, status])
 
   async function move(to: CardStatus) {
+    // Freeze/unfreeze swaps the same control; land back on it.
+    restoreTo.current = true
     setPending(to)
     setError(null)
     try {
@@ -39,7 +46,6 @@ export function CardActions({
         setError(body?.message ?? "That change could not be applied.")
         return
       }
-      setConfirmingCancel(false)
       router.refresh()
     } catch {
       setError("Could not reach the server. Retry in a moment.")
@@ -48,71 +54,29 @@ export function CardActions({
     }
   }
 
+  const next: CardStatus = status === "active" ? "frozen" : "active"
+  const verb = status === "active" ? "Freeze" : "Unfreeze"
+
   if (status === "cancelled") {
-    return <span className="text-sm text-gray-500">No actions</span>
+    return (
+      <span className="text-sm text-gray-500">
+        No actions<span className="sr-only"> for {nickname}</span>
+      </span>
+    )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {status === "active" ? (
-        <Button
-          variant="secondary"
-          className="py-1"
-          isLoading={pending === "frozen"}
-          onClick={() => move("frozen")}
-        >
-          Freeze
-        </Button>
-      ) : (
-        <Button
-          variant="secondary"
-          className="py-1"
-          isLoading={pending === "active"}
-          onClick={() => move("active")}
-        >
-          Unfreeze
-        </Button>
-      )}
-
-      {allowCancel &&
-        (confirmingCancel ? (
-          // Inline and non-modal, so not an alertdialog: that role promises
-          // focus is trapped. The question announces itself instead, and
-          // focus moves to the confirming button.
-          <div
-            role="group"
-            aria-label="Confirm cancelling this card"
-            className="flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900 dark:bg-red-950/40"
-          >
-            <p role="alert" className="text-sm text-red-900 dark:text-red-100">
-              Cancel this card for good? It cannot be brought back.
-            </p>
-            <Button
-              variant="destructive"
-              className="py-1"
-              isLoading={pending === "cancelled"}
-              onClick={() => move("cancelled")}
-              autoFocus
-            >
-              Yes, cancel it
-            </Button>
-            <Button
-              variant="secondary"
-              className="py-1"
-              onClick={() => setConfirmingCancel(false)}
-            >
-              Keep the card
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="destructive"
-            className="py-1"
-            onClick={() => setConfirmingCancel(true)}
-          >
-            Cancel card
-          </Button>
-        ))}
+      <Button
+        ref={statusRef}
+        variant="secondary"
+        className="py-1"
+        aria-label={`${verb} ${nickname}`}
+        isLoading={pending === next}
+        onClick={() => move(next)}
+      >
+        {verb}
+      </Button>
 
       {error && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">

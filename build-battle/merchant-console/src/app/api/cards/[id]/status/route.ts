@@ -4,10 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 const STATUSES: readonly CardStatus[] = ["active", "frozen", "cancelled"]
 
-/**
- * Moves a card through the state machine. The guard is here, on the server,
- * not only in the UI — a stale tab must not be able to revive a cancelled card.
- */
+/** Guarded on the server, not only in the UI. */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

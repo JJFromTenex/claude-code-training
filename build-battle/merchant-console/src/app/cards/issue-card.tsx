@@ -11,17 +11,22 @@ import {
 } from "@/components/Select"
 import { CATEGORY_LABELS } from "@/data/cards"
 import { Card, Currency, MerchantCategory } from "@/data/types"
-import {
-  MAX_SPEND_LIMIT,
-  formatCardNumber,
-  maskCardNumber,
-} from "@/lib/cards"
+import { MAX_SPEND_LIMIT, formatCardNumber, maskCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
-const NO_CATEGORY = "none"
+const NONE = "none"
+const BLANK = {
+  nickname: "",
+  merchantId: "",
+  limit: "",
+  currency: "USD" as Currency,
+  category: NONE as string,
+}
+const LABEL = "text-sm font-medium text-gray-900 dark:text-gray-50"
+const HINT = "mt-1 text-sm text-gray-500"
 
 const newKey = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -38,47 +43,45 @@ export function IssueCard({
   categories: readonly MerchantCategory[]
 }) {
   const router = useRouter()
-  const fieldId = useId()
+  const id = useId()
   const [open, setOpen] = useState(false)
-  const [nickname, setNickname] = useState("")
-  const [merchantId, setMerchantId] = useState("")
-  const [limit, setLimit] = useState("")
-  const [currency, setCurrency] = useState<Currency>("USD")
-  const [category, setCategory] = useState<string>(NO_CATEGORY)
+  const [form, setForm] = useState(BLANK)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  /**
-   * The one and only copy of a full card number. It lives in this state until
-   * the success screen is dismissed, and there is nowhere to read it back from.
-   */
+  /** The only copy of a full number; cleared on dismiss. */
   const [issued, setIssued] = useState<{
     card: Card
     cardNumber: string | null
   } | null>(null)
+  /** One key per form, so a retry cannot make a second card. */
+  const [key, setKey] = useState(newKey)
 
-  /**
-   * One key per filled-in form. A double-click or a retried request reuses it,
-   * so the server returns the card it already made instead of a second one.
-   */
-  const [idempotencyKey, setIdempotencyKey] = useState(() => newKey())
+  const set = (patch: Partial<typeof BLANK>) =>
+    setForm((f) => ({ ...f, ...patch }))
+  const merchant = merchants.find((m) => m.id === form.merchantId)
 
-  const selectedMerchant = merchants.find((m) => m.id === merchantId)
+  // components.md: focus in on open, back to the trigger on close, Escape
+  // closes — else the trigger unmounts under the user's focus.
+  const trigger = useRef<HTMLButtonElement>(null)
+  const firstField = useRef<HTMLInputElement>(null)
+  const returning = useRef(false)
 
-  const reset = () => {
-    setNickname("")
-    setMerchantId("")
-    setLimit("")
-    setCurrency("USD")
-    setCategory(NO_CATEGORY)
+  useEffect(() => {
+    if (open && !issued) firstField.current?.focus()
+    else if (!open && !issued && returning.current) {
+      trigger.current?.focus()
+      returning.current = false
+    }
+  }, [open, issued])
+
+  const leave = (clearIssued = false) => {
+    returning.current = true
+    if (clearIssued) setIssued(null)
+    setForm(BLANK)
     setError(null)
-  }
-
-  const dismiss = () => {
-    // Clears the number from client state. After this it exists nowhere.
-    setIssued(null)
     setOpen(false)
-    router.refresh()
+    if (clearIssued) router.refresh()
   }
 
   async function submit(event: React.FormEvent) {
@@ -86,232 +89,193 @@ export function IssueCard({
     setError(null)
 
     // A convenience so the round trip is not wasted. The server decides.
-    const spendLimit = parseAmountToMinorUnits(limit)
-    if (spendLimit === null) {
-      setError("Enter a spend limit like 250 or 250.00.")
-      return
-    }
+    const spendLimit = parseAmountToMinorUnits(form.limit)
+    if (spendLimit === null)
+      return setError("Enter a spend limit like 250 or 250.00.")
 
-    setSubmitting(true)
+    setBusy(true)
     try {
-      const response = await fetch("/api/cards", {
+      const res = await fetch("/api/cards", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": idempotencyKey,
-        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify({
-          nickname,
-          merchantId,
+          ...form,
           spendLimit,
-          currency,
-          category: category === NO_CATEGORY ? null : category,
+          category: form.category === NONE ? null : form.category,
         }),
       })
-      const body = await response.json()
+      const body = await res.json()
 
-      if (!response.ok) {
-        setError(body.message ?? "The card could not be issued.")
+      if (!res.ok) {
+        // 409: the key is spent on a different card — the earlier request
+        // landed though its response did not. Retire it, or every later edit
+        // gets 409 and only a reload escapes.
+        if (res.status === 409) {
+          setKey(newKey())
+          router.refresh()
+        }
+        setError(
+          res.status === 409
+            ? "An earlier attempt already created a card. Check the list below, then submit again."
+            : (body.message ?? "The card could not be issued."),
+        )
         return
       }
 
       setIssued({ card: body.card, cardNumber: body.cardNumber })
-      // The next card issued from this form is a different card.
-      setIdempotencyKey(newKey())
-      reset()
+      setKey(newKey())
+      setForm(BLANK)
       router.refresh()
     } catch {
       setError("Could not reach the server. Check your connection and retry.")
     } finally {
-      setSubmitting(false)
+      setBusy(false)
     }
   }
 
+  // The one screen allowed to show a full number, just after it is issued.
   if (issued) {
+    const { card, cardNumber } = issued
     return (
       <section
-        aria-labelledby={`${fieldId}-issued`}
-        className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40 sm:p-6"
+        aria-labelledby={`${id}-ok`}
+        className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 sm:p-6 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
       >
-        <h2
-          id={`${fieldId}-issued`}
-          className="text-sm font-semibold text-emerald-900 dark:text-emerald-100"
-        >
-          {issued.card.nickname} is issued
+        <h2 id={`${id}-ok`} className="font-semibold">
+          {card.nickname} is issued
         </h2>
-        {issued.cardNumber ? (
-          <>
-            <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
-              This is the only time the full number is shown. Copy it now — from
-              here on the card reads {maskCardNumber(issued.card.last4)}.
-            </p>
-            <p
-              className="mt-4 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50"
-              aria-label={`Card number ${issued.cardNumber.split("").join(" ")}`}
-            >
-              {formatCardNumber(issued.cardNumber)}
-            </p>
-          </>
-        ) : (
-          <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
-            This request had already been sent, so no second card was created.
-            The number was shown once when the card was first issued and cannot
-            be shown again — this card reads{" "}
-            {maskCardNumber(issued.card.last4)}.
+        <p className="mt-1">
+          {cardNumber
+            ? `This is the only time the full number is shown. Copy it now — from here on the card reads ${maskCardNumber(card.last4)}.`
+            : `This request had already been sent, so no second card was created. The number was shown once when the card was issued and cannot be shown again — this card reads ${maskCardNumber(card.last4)}.`}
+        </p>
+        {cardNumber && (
+          <p
+            className="mt-4 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50"
+            aria-label={`Card number ${cardNumber.split("").join(" ")}`}
+          >
+            {formatCardNumber(cardNumber)}
           </p>
         )}
-        <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
-          Limit {formatMoney(issued.card.spendLimit, issued.card.currency)}{" "}
-          {issued.card.currency} · reference {issued.card.reference}
+        <p className="mt-2">
+          Limit {formatMoney(card.spendLimit, card.currency)} {card.currency} ·
+          reference {card.reference}
         </p>
-        <Button className="mt-4 py-1.5" onClick={dismiss} autoFocus>
+        <Button className="mt-4 py-1.5" autoFocus onClick={() => leave(true)}>
           Done — hide the number
         </Button>
       </section>
     )
   }
 
-  if (!open) {
+  if (!open)
     return (
-      <Button className="w-full gap-2 py-1.5 sm:w-fit" onClick={() => setOpen(true)}>
+      <Button
+        ref={trigger}
+        className="w-full gap-2 py-1.5 sm:w-fit"
+        onClick={() => setOpen(true)}
+      >
         <Plus className="-ml-0.5 size-4 shrink-0" aria-hidden="true" />
         Issue a card
       </Button>
     )
-  }
+
+  // Currency follows the merchant because the server requires them to match.
+  const selects = [
+    {
+      name: "merchantId" as const,
+      label: "Merchant",
+      placeholder: "Choose a merchant",
+      options: merchants.map((m) => ({ value: m.id, label: m.name })),
+      onPick: (v: string) => ({
+        merchantId: v,
+        currency: merchants.find((m) => m.id === v)?.currency ?? form.currency,
+      }),
+    },
+    {
+      name: "currency" as const,
+      label: "Currency",
+      placeholder: "Currency",
+      hint: merchant && `${merchant.name} settles in ${merchant.currency}.`,
+      options: currencies.map((c) => ({ value: c, label: c })),
+      onPick: (v: string) => ({ currency: v as Currency }),
+    },
+    {
+      name: "category" as const,
+      label: "Category lock",
+      placeholder: "No lock",
+      options: [
+        { value: NONE, label: "No lock" },
+        ...categories.map((c) => ({ value: c, label: CATEGORY_LABELS[c] })),
+      ],
+      onPick: (v: string) => ({ category: v }),
+    },
+  ]
 
   return (
     <form
       onSubmit={submit}
-      aria-labelledby={`${fieldId}-heading`}
-      className="rounded-lg border border-gray-200 p-4 dark:border-gray-800 sm:p-6"
+      onKeyDown={(e) => e.key === "Escape" && leave()}
+      aria-labelledby={`${id}-heading`}
+      className="rounded-lg border border-gray-200 p-4 sm:p-6 dark:border-gray-800"
     >
-      <h2
-        id={`${fieldId}-heading`}
-        className="text-sm font-semibold text-gray-900 dark:text-gray-50"
-      >
+      <h2 id={`${id}-heading`} className={LABEL}>
         Issue a virtual card
       </h2>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <label
-            htmlFor={`${fieldId}-nickname`}
-            className="text-sm font-medium text-gray-900 dark:text-gray-50"
-          >
+          <label htmlFor={`${id}-nickname`} className={LABEL}>
             Nickname
           </label>
           <Input
-            id={`${fieldId}-nickname`}
-            name="nickname"
-            value={nickname}
-            onChange={(event) => setNickname(event.target.value)}
-            placeholder="Meta Ads"
+            ref={firstField}
+            id={`${id}-nickname`}
             className="mt-2"
+            placeholder="Meta Ads"
+            value={form.nickname}
+            onChange={(e) => set({ nickname: e.target.value })}
           />
         </div>
 
         <div>
-          <label
-            htmlFor={`${fieldId}-merchant`}
-            className="text-sm font-medium text-gray-900 dark:text-gray-50"
-          >
-            Merchant
-          </label>
-          <Select
-            value={merchantId}
-            onValueChange={(next) => {
-              setMerchantId(next)
-              // Default to how the merchant settles; still editable.
-              const merchant = merchants.find((m) => m.id === next)
-              if (merchant) setCurrency(merchant.currency)
-            }}
-          >
-            <SelectTrigger id={`${fieldId}-merchant`} className="mt-2">
-              <SelectValue placeholder="Choose a merchant" />
-            </SelectTrigger>
-            <SelectContent>
-              {merchants.map((merchant) => (
-                <SelectItem key={merchant.id} value={merchant.id}>
-                  {merchant.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label
-            htmlFor={`${fieldId}-limit`}
-            className="text-sm font-medium text-gray-900 dark:text-gray-50"
-          >
+          <label htmlFor={`${id}-limit`} className={LABEL}>
             Spend limit
           </label>
           <Input
-            id={`${fieldId}-limit`}
-            name="spendLimit"
-            inputMode="decimal"
-            value={limit}
-            onChange={(event) => setLimit(event.target.value)}
-            placeholder="250.00"
+            id={`${id}-limit`}
             className="mt-2"
-            aria-describedby={`${fieldId}-limit-hint`}
+            inputMode="decimal"
+            placeholder="250.00"
+            aria-describedby={`${id}-limit-hint`}
+            value={form.limit}
+            onChange={(e) => set({ limit: e.target.value })}
           />
-          <p id={`${fieldId}-limit-hint`} className="mt-1 text-sm text-gray-500">
-            Up to {formatMoney(MAX_SPEND_LIMIT, currency)}.
+          <p id={`${id}-limit-hint`} className={HINT}>
+            Up to {formatMoney(MAX_SPEND_LIMIT, form.currency)}.
           </p>
         </div>
 
-        <div>
-          <label
-            htmlFor={`${fieldId}-currency`}
-            className="text-sm font-medium text-gray-900 dark:text-gray-50"
-          >
-            Currency
-          </label>
-          <Select
-            value={currency}
-            onValueChange={(next) => setCurrency(next as Currency)}
-          >
-            <SelectTrigger id={`${fieldId}-currency`} className="mt-2">
-              <SelectValue placeholder="Currency" />
-            </SelectTrigger>
-            <SelectContent>
-              {currencies.map((code) => (
-                <SelectItem key={code} value={code}>
-                  {code}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedMerchant && (
-            <p className="mt-1 text-sm text-gray-500">
-              {selectedMerchant.name} settles in {selectedMerchant.currency}.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor={`${fieldId}-category`}
-            className="text-sm font-medium text-gray-900 dark:text-gray-50"
-          >
-            Category lock
-          </label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger id={`${fieldId}-category`} className="mt-2">
-              <SelectValue placeholder="No lock" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_CATEGORY}>No lock</SelectItem>
-              {categories.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {CATEGORY_LABELS[value]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {selects.map(({ name, label, placeholder, options, hint, onPick }) => (
+          <div key={name}>
+            <label htmlFor={`${id}-${name}`} className={LABEL}>
+              {label}
+            </label>
+            <Select value={form[name]} onValueChange={(v) => set(onPick(v))}>
+              <SelectTrigger id={`${id}-${name}`} className="mt-2">
+                <SelectValue placeholder={placeholder} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hint && <p className={HINT}>{hint}</p>}
+          </div>
+        ))}
       </div>
 
       {error && (
@@ -324,17 +288,14 @@ export function IssueCard({
       )}
 
       <div className="mt-4 flex gap-2">
-        <Button type="submit" className="py-1.5" isLoading={submitting}>
+        <Button type="submit" className="py-1.5" isLoading={busy}>
           Issue card
         </Button>
         <Button
           type="button"
           variant="secondary"
           className="py-1.5"
-          onClick={() => {
-            reset()
-            setOpen(false)
-          }}
+          onClick={() => leave()}
         >
           Cancel
         </Button>

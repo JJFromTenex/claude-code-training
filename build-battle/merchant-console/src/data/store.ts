@@ -20,10 +20,7 @@ interface Store {
   disputes: Dispute[]
   payouts: Payout[]
   cards: Card[]
-  /**
-   * Idempotency key → the card it made and what it asked for, so a retry
-   * returns the same card and a key reused for a different card is refused.
-   */
+  /** Key → the card it made, plus what it asked for, so a retry is safe. */
   cardIdempotency: Record<string, { cardId: string; fingerprint: string }>
 }
 
@@ -47,6 +44,9 @@ function createStore(): Store {
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__northwindStore = store
-}
+/**
+ * Pinned unconditionally: cards are the first feature that *writes*, so two
+ * module instances would mean issued cards never appearing and two cards
+ * minted with the same id. Not dev-only any more.
+ */
+globalThis.__northwindStore = store

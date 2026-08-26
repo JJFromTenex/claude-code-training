@@ -4,11 +4,7 @@ import { describe, expect, it } from "vitest"
 import { PATCH } from "./[id]/status/route"
 import { GET, POST } from "./route"
 
-/**
- * The route handlers, called the way a curl past the form calls them. The
- * client is not trusted, so every rejection is proven here rather than in the
- * component that happens to prevent it.
- */
+/** The handlers, called the way a curl past the form calls them. */
 
 const VALID = {
   nickname: "Meta Ads",
@@ -18,23 +14,20 @@ const VALID = {
   category: "advertising",
 }
 
-function post(body: unknown, idempotencyKey?: string) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  }
-  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey
-
-  return POST(
+const post = (body: unknown, key?: string) =>
+  POST(
     new NextRequest("http://localhost/api/cards", {
       method: "POST",
-      headers,
+      headers: {
+        "Content-Type": "application/json",
+        ...(key && { "Idempotency-Key": key }),
+      },
       body: JSON.stringify(body),
     }),
   )
-}
 
-function patch(id: string, body: unknown) {
-  return PATCH(
+const patch = (id: string, body: unknown) =>
+  PATCH(
     new NextRequest(`http://localhost/api/cards/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -42,123 +35,96 @@ function patch(id: string, body: unknown) {
     }),
     { params: Promise.resolve({ id }) },
   )
-}
+
+const cards = async () => (await (await GET()).json()).cards
+const named = async (n: string) =>
+  (await cards()).filter((c: { nickname: string }) => c.nickname === n)
+const issue = async (n: string) =>
+  (await (await post({ ...VALID, nickname: n })).json()).card.id as string
 
 describe("POST /api/cards", () => {
-  it("creates a card and returns the full number exactly once", async () => {
-    const response = await post({ ...VALID, nickname: "Route create" })
-    expect(response.status).toBe(201)
+  it("returns the full number exactly once, and never again", async () => {
+    const res = await post({ ...VALID, nickname: "Route create" })
+    expect(res.status).toBe(201)
+    expect(res.headers.get("Cache-Control")).toBe("no-store")
 
-    const body = await response.json()
-    expect(body.cardNumber.startsWith("4242")).toBe(true)
-    expect(isValidLuhn(body.cardNumber)).toBe(true)
-    expect(body.card.last4).toBe(body.cardNumber.slice(-4))
-    expect(body.card.spendLimit).toBe(25000)
+    const { card, cardNumber } = await res.json()
+    expect(cardNumber.startsWith("4242")).toBe(true)
+    expect(isValidLuhn(cardNumber)).toBe(true)
+    expect(card.last4).toBe(cardNumber.slice(-4))
+    expect(card.spendLimit).toBe(25000)
 
     // The list route can never hand the same number back.
-    const list = await (await GET()).json()
-    expect(JSON.stringify(list)).not.toContain(body.cardNumber)
-    const listed = list.cards.find((c: { id: string }) => c.id === body.card.id)
-    expect(listed.masked).toBe(`•••• ${body.card.last4}`)
+    const list = await cards()
+    expect(JSON.stringify(list)).not.toContain(cardNumber)
+    expect(list.find((c: { id: string }) => c.id === card.id).masked).toBe(
+      `•••• ${card.last4}`,
+    )
   })
 
-  it("rejects each invalid field with a 400 and a readable message", async () => {
-    const cases: [string, unknown][] = [
-      ["missing merchant", { ...VALID, merchantId: "" }],
-      ["unknown merchant", { ...VALID, merchantId: "mch_99" }],
-      ["zero limit", { ...VALID, spendLimit: 0 }],
-      ["negative limit", { ...VALID, spendLimit: -25000 }],
-      ["limit above the ceiling", { ...VALID, spendLimit: 5_000_001 }],
-      ["currency outside the allowlist", { ...VALID, currency: "JPY" }],
-      ["currency the merchant does not settle in", { ...VALID, currency: "GBP" }],
-      ["missing nickname", { ...VALID, nickname: "" }],
-    ]
-
-    for (const [label, body] of cases) {
-      const response = await post(body)
-      expect(response.status, label).toBe(400)
-      expect(typeof (await response.json()).message, label).toBe("string")
-    }
+  // The client is not trusted: each of these is proven at the handler.
+  it.each([
+    ["missing merchant", { merchantId: "" }],
+    ["unknown merchant", { merchantId: "mch_99" }],
+    ["missing nickname", { nickname: "" }],
+    ["zero limit", { spendLimit: 0 }],
+    ["negative limit", { spendLimit: -25000 }],
+    ["limit above the ceiling", { spendLimit: 5_000_001 }],
+    ["limit as a currency string", { spendLimit: "$250.00" }],
+    ["currency outside the allowlist", { currency: "JPY" }],
+    ["currency the merchant does not settle in", { currency: "GBP" }],
+  ])("rejects %s with a 400 and a readable message", async (label, body) => {
+    const res = await post({ ...VALID, ...body })
+    expect(res.status, label).toBe(400)
+    expect(typeof (await res.json()).message, label).toBe("string")
   })
-})
 
-describe("POST /api/cards idempotency", () => {
-  it("a replayed request returns the same card with 200, not a second card", async () => {
-    const key = "route-idem-key"
+  it("replays a retry, and refuses a key spent on a different card", async () => {
+    const key = "route-idem"
     const first = await post({ ...VALID, nickname: "Double click" }, key)
     expect(first.status).toBe(201)
-    const created = await first.json()
 
     const replay = await post({ ...VALID, nickname: "Double click" }, key)
     expect(replay.status).toBe(200)
-
     const body = await replay.json()
     expect(body.replayed).toBe(true)
-    expect(body.card.id).toBe(created.card.id)
-    // Reveal-once outranks a byte-identical response.
-    expect(body.cardNumber).toBeNull()
-
-    const list = await (await GET()).json()
-    const matches = list.cards.filter(
-      (c: { nickname: string }) => c.nickname === "Double click",
-    )
-    expect(matches).toHaveLength(1)
-  })
-
-  it("returns 409 when a key is reused for a genuinely different card", async () => {
-    const key = "route-idem-reuse"
-    expect((await post({ ...VALID, nickname: "First" }, key)).status).toBe(201)
+    expect(body.card.id).toBe((await first.json()).card.id)
+    expect(body.cardNumber).toBeNull() // reveal-once beats a byte-identical reply
+    expect(await named("Double click")).toHaveLength(1)
 
     const conflict = await post(
       {
+        ...VALID,
         nickname: "Different",
         merchantId: "mch_04",
-        spendLimit: 500000,
         currency: "GBP",
-        category: "travel",
       },
       key,
     )
     expect(conflict.status).toBe(409)
     expect((await conflict.json()).message).toContain("idempotency key")
-
-    const list = await (await GET()).json()
-    expect(
-      list.cards.filter((c: { nickname: string }) => c.nickname === "Different"),
-    ).toHaveLength(0)
+    expect(await named("Different")).toHaveLength(0)
   })
 })
 
 describe("PATCH /api/cards/[id]/status", () => {
-  async function issued() {
-    const body = await (await post({ ...VALID, nickname: "Route status" })).json()
-    return body.card.id as string
-  }
-
-  it("freezes and unfreezes", async () => {
-    const id = await issued()
+  it("moves active ⇄ frozen and refuses to revive a cancelled card", async () => {
+    const id = await issue("Route status")
     expect((await patch(id, { status: "frozen" })).status).toBe(200)
     const back = await patch(id, { status: "active" })
     expect(back.status).toBe(200)
     expect((await back.json()).card.status).toBe("active")
-  })
 
-  it("returns 409 when the transition is not one the machine allows", async () => {
-    const id = await issued()
     expect((await patch(id, { status: "cancelled" })).status).toBe(200)
-
     const revive = await patch(id, { status: "active" })
     expect(revive.status).toBe(409)
     expect((await revive.json()).message).toContain("cancelled")
   })
 
-  it("returns 400 for a status outside the allowlist", async () => {
-    const id = await issued()
+  it("returns 400 for an unknown status and 404 for an unknown card", async () => {
+    const id = await issue("Route guards")
     expect((await patch(id, { status: "expired" })).status).toBe(400)
     expect((await patch(id, {})).status).toBe(400)
-  })
-
-  it("returns 404 for a card that does not exist", async () => {
     expect((await patch("card_9999", { status: "frozen" })).status).toBe(404)
   })
 })

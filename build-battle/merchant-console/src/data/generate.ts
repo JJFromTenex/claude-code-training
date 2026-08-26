@@ -91,7 +91,8 @@ export function generate() {
       createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
 
       const status = statusFor()
-      const method = rand() < 0.82 ? "card" : rand() < 0.6 ? "wallet" : "bank_transfer"
+      const method =
+        rand() < 0.82 ? "card" : rand() < 0.6 ? "wallet" : "bank_transfer"
       const amount = between(450, 480_00)
 
       const payment: Payment = {
@@ -102,7 +103,9 @@ export function generate() {
         status,
         method,
         cardBrand:
-          method === "card" ? pick(["visa", "mastercard", "amex"] as const) : null,
+          method === "card"
+            ? pick(["visa", "mastercard", "amex"] as const)
+            : null,
         last4: method === "card" ? String(between(1000, 9999)) : null,
         createdAt: createdAt.toISOString(),
         description: pick(DESCRIPTIONS),
@@ -128,7 +131,9 @@ export function generate() {
       }
 
       if (status === "disputed") {
-        const openedAt = new Date(createdAt.getTime() + between(2, 10) * 86_400_000)
+        const openedAt = new Date(
+          createdAt.getTime() + between(2, 10) * 86_400_000,
+        )
         disputes.push({
           id: `dp_${pad(++disputeSeq)}`,
           paymentId: payment.id,
@@ -158,12 +163,9 @@ export function generate() {
 }
 
 /**
- * Cards already issued before the console could issue them, so `/cards` is not
- * empty on a fresh boot and spend has somewhere to show up.
- *
- * Deliberately on its own PRNG instance: drawing from the shared `rand` above
- * would shift every payment generated after it and quietly change the seed
- * data the rest of the suite asserts on.
+ * Cards issued before the console could issue them. On its own PRNG instance:
+ * drawing from the shared `rand` would shift every payment after it and change
+ * the seed data the rest of the suite asserts on.
  */
 const CARD_SEED = 20260814
 
@@ -197,11 +199,8 @@ function generateCards(payments: Payment[]): Card[] {
     createdAt.setUTCDate(createdAt.getUTCDate() - Math.floor(cardRand() * 90))
     const createdIso = createdAt.toISOString()
 
-    /**
-     * Spend is the sum of real captured payments for this merchant since the
-     * card existed, not a number invented to make the bar look interesting.
-     * Every one is in the merchant's own currency, so the sum is meaningful.
-     */
+    // Spend is a real sum of this merchant's captured payments since the card
+    // existed, not a number invented to make the bar look interesting.
     const chargeable = payments.filter(
       (p) =>
         p.merchantId === merchant.id &&
@@ -214,16 +213,17 @@ function generateCards(payments: Payment[]): Card[] {
     )
     const spend = sumMinorUnits(window.map((p) => p.amount))
 
-    /**
-     * The limit is the policy number ops would have asked for: a round figure
-     * comfortably above what the card has actually spent. Derived from spend
-     * so the ratios on screen vary, rather than both being made up.
-     */
+    // The round figure ops would have asked for, above spend. The MAX clamp
+    // lands last and could pin it below a large spend, so assert what holds.
     const headroom = 1.02 + cardRand() * 0.85
     const spendLimit = Math.max(
       5000,
       Math.min(MAX_SPEND_LIMIT, Math.ceil((spend * headroom) / 5000) * 5000),
     )
+    if (spend > spendLimit)
+      throw new Error(
+        `Seed card ${i + 1}: ${spend} spent against ${spendLimit}.`,
+      )
 
     const status: CardStatus =
       i === 5 ? "frozen" : i === 7 ? "cancelled" : "active"
@@ -237,14 +237,9 @@ function generateCards(payments: Payment[]): Card[] {
       status,
       last4: generateCardNumber(cardRand).slice(-4),
       reference: `cref_${pad(i + 1, 4)}`,
-      category: CARD_CATEGORIES[Math.floor(cardRand() * CARD_CATEGORIES.length)],
+      category:
+        CARD_CATEGORIES[Math.floor(cardRand() * CARD_CATEGORIES.length)],
       spend,
-      events: [
-        { from: null, to: "active" as CardStatus, at: createdIso },
-        ...(status === "active"
-          ? []
-          : [{ from: "active" as CardStatus, to: status, at: createdIso }]),
-      ],
       createdAt: createdIso,
     })
   }

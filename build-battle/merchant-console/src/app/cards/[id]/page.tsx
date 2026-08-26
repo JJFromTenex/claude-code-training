@@ -3,6 +3,7 @@ import { SpendProgress } from "@/components/ui/cards/SpendProgress"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { CATEGORY_LABELS, cardById, spendPercent } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CardStatus } from "@/data/types"
 import { maskCardNumber } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -10,10 +11,15 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardActions } from "../card-actions"
 
-const STATUS_VERB: Record<string, string> = {
-  active: "Unfrozen",
-  frozen: "Frozen",
-  cancelled: "Cancelled",
+const NOTICE: Partial<Record<CardStatus, [string, string]>> = {
+  frozen: [
+    "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100",
+    "This card is frozen. Authorisations are declined until it is unfrozen.",
+  ],
+  cancelled: [
+    "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300",
+    "This card is cancelled. Cancellation is permanent — issue a new card rather than trying to bring this one back.",
+  ],
 }
 
 export default async function CardDetail({
@@ -26,8 +32,8 @@ export default async function CardDetail({
   if (!card) notFound()
 
   const merchant = merchantById(card.merchantId)!
-  const percent = spendPercent(card)
   const remaining = Math.max(0, card.spendLimit - card.spend)
+  const notice = NOTICE[card.status]
 
   return (
     <div className="p-4 sm:p-6">
@@ -48,30 +54,21 @@ export default async function CardDetail({
         {maskCardNumber(card.last4)} · {card.id}
       </p>
 
-      {card.status === "frozen" && (
-        <p className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-          This card is frozen. Authorisations are declined until it is
-          unfrozen.
-        </p>
-      )}
-      {card.status === "cancelled" && (
-        <p className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-          This card is cancelled. Cancellation is permanent — issue a new card
-          rather than trying to bring this one back.
+      {notice && (
+        <p className={`mt-4 rounded-md border px-3 py-2 text-sm ${notice[0]}`}>
+          {notice[1]}
         </p>
       )}
 
       <Divider />
 
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-        Spend against limit
-      </h2>
+      <Heading>Spend against limit</Heading>
       <div className="mt-4 max-w-xl">
         <SpendProgress
           spend={card.spend}
           spendLimit={card.spendLimit}
           currency={card.currency}
-          percent={percent}
+          percent={spendPercent(card)}
         />
         <p className="mt-2 text-sm text-gray-500">
           {formatMoney(remaining, card.currency)} left to spend.
@@ -100,9 +97,6 @@ export default async function CardDetail({
         <Field label="Reference">
           <span className="font-mono text-sm">{card.reference}</span>
         </Field>
-        <Field label="Status">
-          <StatusBadge status={card.status} />
-        </Field>
         <Field label="Created (UTC)">
           <span className="font-mono text-sm">{card.createdAt}</span>
         </Field>
@@ -113,59 +107,36 @@ export default async function CardDetail({
 
       <Divider />
 
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-        History
-      </h2>
-      <ol className="mt-4 space-y-4">
-        {card.events.map((event, index) => (
-          <li key={index} className="flex gap-3">
-            <span
-              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
-              aria-hidden="true"
-            />
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-50">
-                {event.from === null
-                  ? `Card issued · limit ${formatMoney(card.spendLimit, card.currency)}`
-                  : `${STATUS_VERB[event.to]} — ${event.from} → ${event.to}`}
-              </p>
-              <p className="text-sm text-gray-500">
-                {formatInZone(event.at, merchant.timezone)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <Divider />
-
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-        Actions
-      </h2>
+      <Heading>Actions</Heading>
       <div className="mt-4">
-        <CardActions cardId={card.id} status={card.status} allowCancel />
+        <CardActions
+          cardId={card.id}
+          nickname={card.nickname}
+          status={card.status}
+        />
       </div>
       <p className="mt-3 text-sm text-gray-500">
-        A card moves between active and frozen as often as ops needs. Cancelling
-        is one way only.
+        A card moves between active and frozen as often as ops needs.
       </p>
     </div>
   )
 }
 
-function Field({
+const Heading = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+    {children}
+  </h2>
+)
+
+const Field = ({
   label,
   children,
 }: {
   label: string
   children: React.ReactNode
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-        {children}
-      </dd>
-    </div>
-  )
-}
+}) => (
+  <div>
+    <dt className="text-sm text-gray-500">{label}</dt>
+    <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">{children}</dd>
+  </div>
+)

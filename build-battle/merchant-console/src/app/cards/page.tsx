@@ -8,7 +8,12 @@ import {
   TableRow,
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
-import { CATEGORIES, CATEGORY_LABELS, CURRENCIES, listCards } from "@/data/cards"
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  CURRENCIES,
+  listCards,
+} from "@/data/cards"
 import { merchantById, merchants } from "@/data/merchants"
 import { maskCardNumber } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
@@ -103,7 +108,11 @@ export default async function CardsPage() {
                   </TableCell>
                   <TableCell>{formatDate(card.createdAt)}</TableCell>
                   <TableCell>
-                    <CardActions cardId={card.id} status={card.status} />
+                    <CardActions
+                      cardId={card.id}
+                      nickname={card.nickname}
+                      status={card.status}
+                    />
                   </TableCell>
                 </TableRow>
               )
@@ -112,12 +121,9 @@ export default async function CardsPage() {
         </Table>
       </TableRoot>
 
-      <div className="px-4 py-4 sm:px-6">
-        <p className="text-sm text-gray-500">
-          {cards.length.toLocaleString()}{" "}
-          {cards.length === 1 ? "card" : "cards"} issued
-        </p>
-      </div>
+      <p className="px-4 py-4 text-sm text-gray-500 sm:px-6">
+        {cards.length} {cards.length === 1 ? "card" : "cards"} issued
+      </p>
     </section>
   )
 }
