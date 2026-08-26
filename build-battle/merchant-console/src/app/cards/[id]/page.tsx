@@ -84,12 +84,12 @@ export default async function CardDetail({
         >
           <div
             className={cx(
-              "h-full rounded-full",
+              "h-full w-[var(--spend-pct)] rounded-full",
               amber
                 ? "bg-amber-500 dark:bg-amber-500"
                 : "bg-blue-500 dark:bg-blue-500",
             )}
-            style={{ width: `${percent}%` }}
+            style={{ "--spend-pct": `${percent}%` } as React.CSSProperties}
           />
         </div>
         {amber && (
