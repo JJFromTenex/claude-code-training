@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
+import { CARD_CATEGORIES } from "@/data/cards"
 import {
   CARD_BIN,
+  CARD_CATEGORY_LABELS,
   CARD_NUMBER_LENGTH,
   canTransition,
   generateCardNumber,
@@ -55,6 +57,16 @@ describe("generateCardNumber", () => {
 describe("maskCard", () => {
   it("shows only the last four", () => {
     expect(maskCard("4242")).toBe("•••• 4242")
+  })
+})
+
+describe("CARD_CATEGORY_LABELS", () => {
+  it("names every category the server accepts", () => {
+    // The form and the card detail both read this map; a category the server
+    // allows but the map omits would render as blank.
+    expect(Object.keys(CARD_CATEGORY_LABELS).sort()).toEqual(
+      [...CARD_CATEGORIES].sort(),
+    )
   })
 })
 
