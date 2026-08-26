@@ -1,4 +1,5 @@
 import { Divider } from "@/components/Divider"
+import { DetailField } from "@/components/ui/DetailField"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import {
@@ -58,25 +59,25 @@ export default async function PaymentDetail({
       <Divider />
 
       <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Merchant">
+        <DetailField label="Merchant">
           {merchant.name}
           <span className="ml-2 text-gray-500">{merchant.country}</span>
-        </Field>
-        <Field label="Description">{payment.description}</Field>
-        <Field label="Method">
+        </DetailField>
+        <DetailField label="Description">{payment.description}</DetailField>
+        <DetailField label="Method">
           {payment.method === "card"
             ? `${payment.cardBrand} •••• ${payment.last4}`
             : payment.method.replace("_", " ")}
-        </Field>
-        <Field label="Created (UTC)">
+        </DetailField>
+        <DetailField label="Created (UTC)">
           <span className="font-mono text-sm">{payment.createdAt}</span>
-        </Field>
-        <Field label={`Created (${merchant.timezone})`}>
+        </DetailField>
+        <DetailField label={`Created (${merchant.timezone})`}>
           {formatInZone(payment.createdAt, merchant.timezone)}
-        </Field>
-        <Field label="Refunded">
+        </DetailField>
+        <DetailField label="Refunded">
           {refunded > 0 ? formatMoney(refunded, payment.currency) : "—"}
-        </Field>
+        </DetailField>
       </dl>
 
       <Divider />
@@ -110,31 +111,16 @@ export default async function PaymentDetail({
             Dispute
           </h2>
           <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-3">
-            <Field label="Reason">{dispute.reasonCode}</Field>
-            <Field label="Status">
+            <DetailField label="Reason">{dispute.reasonCode}</DetailField>
+            <DetailField label="Status">
               <StatusBadge status={dispute.status} />
-            </Field>
-            <Field label="Evidence due">
+            </DetailField>
+            <DetailField label="Evidence due">
               {formatInZone(dispute.evidenceDueAt, merchant.timezone)}
-            </Field>
+            </DetailField>
           </dl>
         </>
       )}
-    </div>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">{children}</dd>
     </div>
   )
 }

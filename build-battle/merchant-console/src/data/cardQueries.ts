@@ -18,11 +18,12 @@ import { Card, CardCategory, CardFilters, CardStatus, Currency } from "./types"
 const pad = (n: number, width = 6) => String(n).padStart(width, "0")
 
 function nextCardId(): string {
-  const maxSeq = store.cards.reduce((max, card) => {
-    const seq = Number(card.id.slice("card_".length))
-    return Number.isFinite(seq) && seq > max ? seq : max
-  }, 0)
-  return `card_${pad(maxSeq + 1)}`
+  // store.cards is append-only and never reordered (status updates mutate a
+  // card in place), so the highest sequence number is always the last one.
+  const last = store.cards[store.cards.length - 1]
+  const lastSeq = last ? Number(last.id.slice("card_".length)) : 0
+  const seq = Number.isFinite(lastSeq) ? lastSeq : 0
+  return `card_${pad(seq + 1)}`
 }
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { CardCategory, Currency } from "@/data/types"
+import { maskCardNumber } from "@/lib/cardNumber"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -49,6 +50,8 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reveal, setReveal] = useState<{ number: string; last4: string } | null>(null)
 
+  const parsedLimit = parseAmountToMinorUnits(limitInput)
+
   function reset() {
     setNickname("")
     setMerchantId("")
@@ -63,8 +66,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
     event.preventDefault()
     setErrors({})
 
-    const limit = parseAmountToMinorUnits(limitInput)
-    if (limit === null) {
+    if (parsedLimit === null) {
       setErrors({ limit: "Enter a valid amount." })
       return
     }
@@ -77,7 +79,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
         body: JSON.stringify({
           nickname,
           merchantId,
-          limit,
+          limit: parsedLimit,
           currency,
           category: category || undefined,
         }),
@@ -120,7 +122,7 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
               <p className="text-sm text-gray-500">
                 This is the only time the full number is shown. Copy it now — after
                 you close this, it is masked everywhere as{" "}
-                <span className="font-mono">•••• {reveal.last4}</span>.
+                <span className="font-mono">{maskCardNumber(reveal.last4)}</span>.
               </p>
               <div className="rounded-md border border-gray-200 bg-gray-50 p-4 font-mono text-lg tracking-wider text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50">
                 {reveal.number}
@@ -214,9 +216,9 @@ export function IssueCardDrawer({ merchants }: { merchants: Merchant[] }) {
                   placeholder="250.00"
                   required
                 />
-                {limitInput && parseAmountToMinorUnits(limitInput) !== null && (
+                {limitInput && parsedLimit !== null && (
                   <p className="mt-1 text-sm text-gray-500">
-                    {formatMoney(parseAmountToMinorUnits(limitInput)!, currency)}
+                    {formatMoney(parsedLimit, currency)}
                   </p>
                 )}
                 {errors.limit && (

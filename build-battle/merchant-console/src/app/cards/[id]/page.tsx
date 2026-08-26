@@ -1,12 +1,12 @@
 import { Divider } from "@/components/Divider"
 import { CardStatusToggle } from "@/components/ui/cards/CardStatusToggle"
 import { SpendProgress } from "@/components/ui/cards/SpendProgress"
+import { DetailField } from "@/components/ui/DetailField"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cardQueries"
 import { merchantById } from "@/data/merchants"
 import { maskCardNumber } from "@/lib/cardNumber"
 import { formatDate } from "@/lib/dates"
-import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -50,15 +50,12 @@ export default async function CardDetail({
       <Divider />
 
       <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Merchant">{merchant?.name ?? "—"}</Field>
-        <Field label="Currency">{card.currency}</Field>
-        <Field label="Category">
+        <DetailField label="Merchant">{merchant?.name ?? "—"}</DetailField>
+        <DetailField label="Currency">{card.currency}</DetailField>
+        <DetailField label="Category">
           {card.category ? CATEGORY_LABELS[card.category] : "—"}
-        </Field>
-        <Field label="Created (UTC)">
-          <span className="font-mono text-sm">{card.createdAt}</span>
-        </Field>
-        <Field label="Created">{formatDate(card.createdAt)}</Field>
+        </DetailField>
+        <DetailField label="Created">{formatDate(card.createdAt)}</DetailField>
       </dl>
 
       <Divider />
@@ -73,21 +70,6 @@ export default async function CardDetail({
       <Divider />
 
       <CardStatusToggle id={card.id} status={card.status} />
-    </div>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">{children}</dd>
     </div>
   )
 }

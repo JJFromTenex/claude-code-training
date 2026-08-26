@@ -25,18 +25,7 @@ export function luhnCheckDigit(partial: string): string {
 
 /** True if a string of digits passes the Luhn checksum. */
 export function isValidLuhn(number: string): boolean {
-  let sum = 0
-  let double = false
-  for (let i = number.length - 1; i >= 0; i--) {
-    let digit = Number(number[i])
-    if (double) {
-      digit *= 2
-      if (digit > 9) digit -= 9
-    }
-    sum += digit
-    double = !double
-  }
-  return sum % 10 === 0
+  return luhnCheckDigit(number.slice(0, -1)) === number.slice(-1)
 }
 
 /** Generates a 16-digit card number on the 4242 test BIN with a valid Luhn check digit. */
