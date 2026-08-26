@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     )
   }
+  if (currency !== merchant.currency) {
+    return NextResponse.json(
+      {
+        message: `Currency must match ${merchant.name}'s currency (${merchant.currency}).`,
+      },
+      { status: 400 },
+    )
+  }
 
   const nickname = typeof body.nickname === "string" ? body.nickname.trim() : ""
 

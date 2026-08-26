@@ -1,6 +1,6 @@
 # EPIC · NWP-201 — Issue virtual cards from the console
 
-> Written before any code, informed by three Explore agents and one Plan agent that verified every claim below directly against the code. `/epic` isn't wired up as a runnable command in this repo (`.claude/skills/*.md` are flat files, missing the `SKILL.md`-in-a-directory format Claude Code discovers), so this was built and reviewed manually rather than via the slash command.
+> The planning this documents happened before any code was written — three Explore agents and one Plan agent verified every claim below directly against the code, and the resulting plan was reviewed before the build started. This file itself was written afterward, once it was confirmed `/epic` doesn't run as a command in this repo (`.claude/skills/*.md` are flat files, missing the `SKILL.md`-in-a-directory format Claude Code discovers) — so it also records what changed during the build and after grading, in Risks, rather than only what was planned going in.
 > Load it as context when you build: `@docs/epics/NWP-201-issue-cards.md`
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
@@ -38,6 +38,8 @@ Greenfield addition, dependency-ordered: data layer (`Card` type, `cards: []` in
 **Considered and rejected:** seeding `cards` through `generate()` like every other collection — rejected because `generate()` is a deterministic, boot-time-only PRNG seeded for historical fixtures, and a seeded card would have no `fullNumber` to have ever revealed, breaking the "reveal once" concept at the seed layer. Cards are issued at runtime via a real ops action; `cards: []` is initialized directly in `createStore()` instead.
 
 **Considered and rejected:** treating the mask as the literal constant `"•••• 4242"` (the BIN) rather than each card's own real last four. This reading came from the ticket's and `cards.md`'s repeated example text, and was deliberately chosen and confirmed during planning — but it was wrong. The grader caught it, and in hindsight the existing in-app precedent (`Payment.last4` masking a customer's real digits) should have settled the question before it was ever asked. Fixed post-grading: `maskCardNumber()` now derives from the actual generated number.
+
+**Added post-grading, not in the original plan:** a card's currency now always matches its merchant's own currency (`merchants.ts` already carries one `currency` per merchant — 6 USD, 2 EUR, 2 GBP in the seed data). The issue dialog derives currency from the selected merchant and displays it read-only rather than offering an independent choice; the route enforces the same match server-side, since the client's derived value is still just a client value. This wasn't asked for anywhere in the ticket text, and is a real product assumption (a merchant might conceivably want a card in a different currency, e.g. to pay a foreign vendor) rather than an obvious correctness fix — flagged here and in the PR rather than treated as self-evidently correct.
 
 ## File map
 

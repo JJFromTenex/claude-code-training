@@ -20,43 +20,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { Card, Currency } from "@/data/types"
-import { CURRENCIES, formatMoney, parseAmountToMinorUnits } from "@/lib/money"
+import { Card } from "@/data/types"
+import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { RiAddLine } from "@remixicon/react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-
-const CURRENCY_LABELS: Record<Currency, string> = {
-  USD: "USD",
-  EUR: "EUR",
-  GBP: "GBP",
-}
 
 interface IssueResult {
   card: Card
   fullNumber: string
 }
 
-export function IssueCardDialog({
-  merchants,
-}: {
-  merchants: { id: string; name: string }[]
-}) {
+interface MerchantOption {
+  id: string
+  name: string
+  currency: string
+}
+
+export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
 
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
   const [limitInput, setLimitInput] = useState("")
-  const [currency, setCurrency] = useState<Currency>("USD")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<IssueResult | null>(null)
+
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
     setLimitInput("")
-    setCurrency("USD")
     setSubmitting(false)
     setError(null)
     setResult(null)
@@ -75,7 +71,7 @@ export function IssueCardDialog({
       setError("Spend limit cannot exceed 5,000,000 minor units.")
       return
     }
-    if (!merchantId) {
+    if (!selectedMerchant) {
       setError("Choose a merchant.")
       return
     }
@@ -85,7 +81,12 @@ export function IssueCardDialog({
       const response = await fetch("/api/cards", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nickname, merchantId, limit, currency }),
+        body: JSON.stringify({
+          nickname,
+          merchantId,
+          limit,
+          currency: selectedMerchant.currency,
+        }),
       })
       const body = await response.json()
       if (!response.ok) {
@@ -200,29 +201,20 @@ export function IssueCardDialog({
                   />
                 </div>
                 <div className="flex w-28 flex-col gap-1.5">
-                  <label
-                    htmlFor="card-currency"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-50">
                     Currency
-                  </label>
-                  <Select
-                    value={currency}
-                    onValueChange={(value) => setCurrency(value as Currency)}
-                  >
-                    <SelectTrigger id="card-currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((code) => (
-                        <SelectItem key={code} value={code}>
-                          {CURRENCY_LABELS[code]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  </span>
+                  <div className="flex h-[38px] items-center rounded-md border border-gray-300 bg-gray-50 px-3 text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900">
+                    {selectedMerchant?.currency ?? "—"}
+                  </div>
                 </div>
               </div>
+              {selectedMerchant && (
+                <p className="text-xs text-gray-500">
+                  Cards always match their merchant's currency — {selectedMerchant.name}{" "}
+                  is {selectedMerchant.currency}.
+                </p>
+              )}
 
               {error && (
                 <p role="alert" className="text-sm text-red-600 dark:text-red-400">

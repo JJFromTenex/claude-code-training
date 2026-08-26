@@ -28,7 +28,11 @@ export default function CardsPage() {
           {cards.length.toLocaleString()} {cards.length === 1 ? "card" : "cards"} issued
         </p>
         <IssueCardDialog
-          merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
+          merchants={merchants.map((m) => ({
+            id: m.id,
+            name: m.name,
+            currency: m.currency,
+          }))}
         />
       </div>
 
