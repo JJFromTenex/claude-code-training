@@ -1,4 +1,4 @@
-import { CardStatus } from "@/data/types"
+import { CardCategory, CardStatus } from "@/data/types"
 
 /**
  * Card number generation and the status state machine.
@@ -48,6 +48,15 @@ export function generateCardNumber(random: () => number = Math.random): string {
 /** The only way a card number is ever shown outside the creation response. */
 export function maskCard(last4: string): string {
   return `•••• ${last4}`
+}
+
+/** Display names for the category lock. One copy, used by the form and the card. */
+export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
+  advertising: "Advertising",
+  software: "Software",
+  travel: "Travel",
+  office_supplies: "Office supplies",
+  professional_services: "Professional services",
 }
 
 export const CARD_STATUSES: readonly CardStatus[] = [

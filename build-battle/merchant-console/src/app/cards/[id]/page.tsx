@@ -2,7 +2,7 @@ import { Divider } from "@/components/Divider"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { maskCard } from "@/lib/cards"
+import { CARD_CATEGORY_LABELS, maskCard } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -18,13 +18,6 @@ const EVENT_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  professional_services: "Professional services",
-}
 
 export default async function CardDetail({
   params,
@@ -141,7 +134,9 @@ export default async function CardDetail({
           <span className="ml-2 text-gray-500">{card.currency}</span>
         </Field>
         <Field label="Category lock">
-          {card.categoryLock ? CATEGORY_LABELS[card.categoryLock] : "None"}
+          {card.categoryLock
+            ? CARD_CATEGORY_LABELS[card.categoryLock]
+            : "None"}
         </Field>
         <Field label="Created (UTC)">
           <span className="font-mono text-sm">{card.createdAt}</span>

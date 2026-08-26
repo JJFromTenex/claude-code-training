@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
+import { CARD_CATEGORY_LABELS } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -27,16 +28,56 @@ import { useState } from "react"
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
 
-const CATEGORY_LABELS: Record<CardCategory | "none", string> = {
-  none: "No category lock",
-  advertising: "Advertising",
-  software: "Software",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  professional_services: "Professional services",
-}
+const CATEGORY_OPTIONS: { value: CardCategory | "none"; label: string }[] = [
+  { value: "none", label: "No category lock" },
+  ...(Object.entries(CARD_CATEGORY_LABELS) as [CardCategory, string][]).map(
+    ([value, label]) => ({ value, label }),
+  ),
+]
 
 type Issued = { card: Card; number: string }
+
+/** A labelled Select. The label's id names the trigger, so it reads correctly. */
+function LabelledSelect({
+  id,
+  label,
+  hint,
+  options,
+  ...select
+}: {
+  id: string
+  label: string
+  hint?: string
+  options: { value: string; label: string }[]
+  value: string
+  onValueChange?: (value: string) => void
+  disabled?: boolean
+  placeholder?: string
+}) {
+  return (
+    <label
+      id={`${id}-label`}
+      className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50"
+    >
+      {label}
+      <Select {...select}>
+        <SelectTrigger aria-labelledby={`${id}-label`}>
+          <SelectValue placeholder={select.placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {hint && (
+        <span className="text-xs font-normal text-gray-500">{hint}</span>
+      )}
+    </label>
+  )
+}
 
 export function IssueCardDialog({
   merchants,
@@ -185,24 +226,14 @@ export function IssueCardDialog({
                 />
               </label>
 
-              <label
-                id="issue-merchant-label"
-                className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50"
-              >
-                Merchant
-                <Select value={merchantId} onValueChange={pickMerchant}>
-                  <SelectTrigger aria-labelledby="issue-merchant-label">
-                    <SelectValue placeholder="Choose a merchant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {merchants.map((merchant) => (
-                      <SelectItem key={merchant.id} value={merchant.id}>
-                        {merchant.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
+              <LabelledSelect
+                id="issue-merchant"
+                label="Merchant"
+                value={merchantId}
+                onValueChange={pickMerchant}
+                placeholder="Choose a merchant"
+                options={merchants.map((m) => ({ value: m.id, label: m.name }))}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50">
@@ -215,54 +246,28 @@ export function IssueCardDialog({
                     required
                   />
                 </label>
-                <label
-                  id="issue-currency-label"
-                  className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Currency
-                  <Select value={currency} disabled>
-                    <SelectTrigger aria-labelledby="issue-currency-label">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((code) => (
-                        <SelectItem key={code} value={code}>
-                          {code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-xs font-normal text-gray-500">
-                    Set by the merchant&apos;s settlement currency.
-                  </span>
-                </label>
+                <LabelledSelect
+                  id="issue-currency"
+                  label="Currency"
+                  value={currency}
+                  disabled
+                  hint="Set by the merchant's settlement currency."
+                  options={CURRENCIES.map((code) => ({
+                    value: code,
+                    label: code,
+                  }))}
+                />
               </div>
 
-              <label
-                id="issue-category-label"
-                className="flex flex-col gap-1 text-sm font-medium text-gray-900 dark:text-gray-50"
-              >
-                Merchant category lock
-                <Select
-                  value={category}
-                  onValueChange={(value) =>
-                    setCategory(value as CardCategory | "none")
-                  }
-                >
-                  <SelectTrigger aria-labelledby="issue-category-label">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(CATEGORY_LABELS) as (CardCategory | "none")[]).map(
-                      (value) => (
-                        <SelectItem key={value} value={value}>
-                          {CATEGORY_LABELS[value]}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </label>
+              <LabelledSelect
+                id="issue-category"
+                label="Merchant category lock"
+                value={category}
+                onValueChange={(value) =>
+                  setCategory(value as CardCategory | "none")
+                }
+                options={CATEGORY_OPTIONS}
+              />
 
               {error && (
                 <p
