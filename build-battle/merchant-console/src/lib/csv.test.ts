@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,85 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("leaves out the card last four when nobody has chosen", () => {
+    const columns = parseExportColumns(new URLSearchParams())
+    expect(columns).not.toContain("last4")
+    expect(columns).toEqual(EXPORT_COLUMNS.filter((c) => c !== "last4"))
+  })
+
+  it("keeps the requested subset in the order it was asked for", () => {
+    expect(
+      parseExportColumns(new URLSearchParams("columns=amount,id")),
+    ).toEqual(["amount", "id"])
+  })
+
+  it("includes the last four only when it is named explicitly", () => {
+    expect(parseExportColumns(new URLSearchParams("columns=id,last4"))).toEqual([
+      "id",
+      "last4",
+    ])
+  })
+
+  it("returns null for an empty selection, rather than a file with no columns", () => {
+    expect(parseExportColumns(new URLSearchParams("columns="))).toBeNull()
+  })
+
+  it("drops anything that is not a column, and gives up when none survive", () => {
+    expect(
+      parseExportColumns(new URLSearchParams("columns=id,cardholder_name")),
+    ).toEqual(["id"])
+    expect(
+      parseExportColumns(new URLSearchParams("columns=cardholder_name")),
+    ).toBeNull()
+  })
+
+  it("writes a repeated column once", () => {
+    expect(
+      parseExportColumns(new URLSearchParams("columns=id,amount,id")),
+    ).toEqual(["id", "amount"])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("stays on the current filter unless told otherwise, so the file matches the table", () => {
+    expect(parseExportScope(new URLSearchParams())).toBe("filtered")
+    expect(parseExportScope(new URLSearchParams("scope=everything"))).toBe(
+      "filtered",
+    )
+  })
+
+  it("widens to every payment only on the exact opt-in", () => {
+    expect(parseExportScope(new URLSearchParams("scope=all"))).toBe("all")
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("names the status that was filtered on", () => {
+    expect(
+      exportFilename(
+        new Date("2026-03-14T23:00:00.000Z"),
+        "filtered",
+        "disputed",
+      ),
+    ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("says all when the scope is every payment, whatever was filtered", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), "all", "disputed"),
+    ).toBe("payments-all-2026-03-14.csv")
+  })
+
+  it("stays unadorned when no status narrowed the table", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), "filtered", "all"),
+    ).toBe("payments-2026-03-14.csv")
   })
 })

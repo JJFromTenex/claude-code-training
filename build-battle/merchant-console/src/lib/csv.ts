@@ -1,13 +1,14 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentFilters } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops picks the columns and the scope; both arrive from the client, so both
+ * are resolved against the allowlist below before they reach a file or a
+ * filename. The card last four is left out unless it is asked for, because
+ * the file is usually on its way to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,59 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+export type ExportScope = "filtered" | "all"
+
+/** Everything except the card last four. What you get when nobody chooses. */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
+  id: "Payment ID",
+  created_at: "Created (UTC)",
+  merchant: "Merchant",
+  description: "Description",
+  status: "Status",
+  method: "Method",
+  card_brand: "Card brand",
+  last4: "Card last four",
+  amount: "Amount",
+  currency: "Currency",
+}
+
+const isExportColumn = (value: string): value is ExportColumn =>
+  (EXPORT_COLUMNS as readonly string[]).includes(value)
+
+/**
+ * Resolves the requested columns against the allowlist, keeping the order
+ * they were asked for and dropping anything unrecognised.
+ *
+ * No `columns` param and an empty one are different questions. Absent means
+ * nobody chose, so the default set applies. Empty means every box was
+ * unchecked, which returns null so the caller can reject it rather than hand
+ * back a file with a blank header and no data.
+ */
+export function parseExportColumns(
+  params: URLSearchParams,
+): ExportColumn[] | null {
+  const requested = params.get("columns")
+  if (requested === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const columns: ExportColumn[] = []
+  for (const name of requested.split(",")) {
+    const column = name.trim()
+    if (isExportColumn(column) && !columns.includes(column)) {
+      columns.push(column)
+    }
+  }
+
+  return columns.length > 0 ? columns : null
+}
+
+export function parseExportScope(params: URLSearchParams): ExportScope {
+  return params.get("scope") === "all" ? "all" : "filtered"
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +120,22 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Names the file after what is in it, so two exports taken minutes apart are
+ * still tellable apart on disk.
+ *
+ * Only the scope literal and the already-allowlisted status reach the name.
+ * Search text and merchant names deliberately do not: this string ends up in
+ * a Content-Disposition header.
+ */
+export function exportFilename(
+  date = new Date(),
+  scope: ExportScope = "filtered",
+  status: PaymentFilters["status"] = "all",
+): string {
+  const day = date.toISOString().slice(0, 10)
+  const descriptor = scope === "all" ? "all" : status === "all" ? null : status
+  return descriptor
+    ? `payments-${descriptor}-${day}.csv`
+    : `payments-${day}.csv`
 }
