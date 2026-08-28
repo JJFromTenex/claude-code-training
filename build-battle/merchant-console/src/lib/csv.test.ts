@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,81 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps the caller's order rather than the declared one", () => {
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "amount",
+      "id",
+      "status",
+    ])
+  })
+
+  it("renders the chosen subset in that same order", () => {
+    const columns = parseExportColumns("amount,id")
+    expect(toCsv([payment], columns)).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("withholds the card last four when no columns are named", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).not.toContain("last4")
+    expect(columns).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(columns).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  it("still exports the last four when it is asked for explicitly", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("returns nothing for an empty selection, so the route can refuse it", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns(",,")).toEqual([])
+  })
+
+  it("returns nothing when every name is unknown", () => {
+    expect(parseExportColumns("password,cvv")).toEqual([])
+  })
+
+  it("drops unknown names and keeps the valid ones beside them", () => {
+    expect(parseExportColumns("id,cardholder_pan,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("drops a name carrying path separators instead of passing it through", () => {
+    expect(parseExportColumns("id,../../etc/passwd")).toEqual(["id"])
+  })
+
+  it("collapses duplicates to one column", () => {
+    expect(parseExportColumns("id,id,amount,id")).toEqual(["id", "amount"])
+  })
+
+  it("tolerates the whitespace a hand-edited URL carries", () => {
+    expect(parseExportColumns(" id , amount ")).toEqual(["id", "amount"])
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
+    )
+  })
+
+  it("names the scope the file was taken at", () => {
+    const date = new Date("2026-03-14T23:00:00.000Z")
+    expect(exportFilename(date, "disputed")).toBe(
+      "payments-disputed-2026-03-14.csv",
+    )
+    expect(exportFilename(date, "all")).toBe("payments-all-2026-03-14.csv")
+  })
+
+  it("never lets a scope put a separator into the filename", () => {
+    const date = new Date("2026-03-14T23:00:00.000Z")
+    expect(exportFilename(date, "../../etc/passwd")).toBe(
+      "payments-etc-passwd-2026-03-14.csv",
     )
   })
 })
