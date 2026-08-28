@@ -1,4 +1,5 @@
 import { headlineMetrics } from "@/data/metrics"
+import { filterPayments } from "@/data/queries"
 import { store } from "@/data/store"
 
 type Category = "red" | "orange" | "emerald" | "gray"
@@ -60,8 +61,8 @@ const compact = (n: number) =>
 function buildMetrics(): Metric[] {
   const metrics = headlineMetrics()
   const total = store.payments.length
-  const captured = store.payments.filter((p) => p.status === "captured").length
-  const disputed = store.payments.filter((p) => p.status === "disputed").length
+  const captured = filterPayments({ status: "captured" }).length
+  const disputed = filterPayments({ status: "disputed" }).length
   const disputeHealth = 1 - (total ? disputed / total : 0)
 
   return [

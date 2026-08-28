@@ -1,5 +1,8 @@
 export type Currency = "USD" | "EUR" | "GBP"
 
+/** The closed set of currencies this codebase knows about, in display order. */
+export const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
+
 export type PaymentStatus =
   | "authorized"
   | "captured"

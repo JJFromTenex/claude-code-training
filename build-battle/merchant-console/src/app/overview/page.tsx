@@ -1,11 +1,23 @@
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import { dailyVolume, headlineMetrics } from "@/data/metrics"
+import { queryPayments } from "@/data/queries"
 import { store } from "@/data/store"
+import { CURRENCIES, Currency } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney, formatMoneyCompact } from "@/lib/money"
 import Link from "next/link"
 import { VolumeChart } from "./volume-chart"
+
+/** Currencies with a nonzero amount, each rendered with its own symbol. */
+function nonZeroAmounts(
+  amounts: Record<Currency, number>,
+  format: (minorUnits: number, currency: Currency) => string,
+): string[] {
+  return CURRENCIES.filter((currency) => amounts[currency] !== 0).map(
+    (currency) => format(amounts[currency], currency),
+  )
+}
 
 export default function OverviewPage() {
   const metrics = headlineMetrics()
@@ -13,20 +25,31 @@ export default function OverviewPage() {
 
   const chartData = volume.map((day) => ({
     date: day.date.slice(5),
-    Captured: day.captured / 100,
-    Refunded: day.refunded / 100,
+    captured: day.captured,
+    refunded: day.refunded,
   }))
 
-  const recent = [...store.payments]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 8)
+  const { rows: recent } = queryPayments({
+    sort: "createdAt",
+    direction: "desc",
+    pageSize: 8,
+  })
+
+  const grossVolumeLines = nonZeroAmounts(metrics.grossVolume, formatMoneyCompact)
+  const disputedAmountLines = nonZeroAmounts(metrics.disputedAmount, formatMoney)
 
   return (
     <div className="border-t border-gray-200 p-4 sm:p-6 dark:border-gray-800">
       <dl className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Stat
           label="Gross volume"
-          value={formatMoneyCompact(metrics.grossVolume, "USD")}
+          value={
+            grossVolumeLines.length > 0 ? (
+              <AmountStack amounts={grossVolumeLines} />
+            ) : (
+              formatMoneyCompact(0, "USD")
+            )
+          }
           sub="Last 120 days"
         />
         <Stat
@@ -37,7 +60,11 @@ export default function OverviewPage() {
         <Stat
           label="Open disputes"
           value={String(metrics.openDisputes)}
-          sub={`${formatMoney(metrics.disputedAmount, "USD")} at risk`}
+          sub={
+            disputedAmountLines.length > 0
+              ? `${disputedAmountLines.join(" · ")} at risk`
+              : "Nothing at risk"
+          }
         />
       </dl>
 
@@ -100,7 +127,7 @@ function Stat({
   sub,
 }: {
   label: string
-  value: string
+  value: React.ReactNode
   sub?: string
 }) {
   return (
@@ -110,6 +137,17 @@ function Stat({
         {value}
       </dd>
       {sub && <p className="mt-1 text-sm text-gray-500">{sub}</p>}
+    </div>
+  )
+}
+
+/** Stacks one amount per currency, for a stat that may hold more than one. */
+function AmountStack({ amounts }: { amounts: string[] }) {
+  return (
+    <div className="space-y-0.5">
+      {amounts.map((amount) => (
+        <div key={amount}>{amount}</div>
+      ))}
     </div>
   )
 }
