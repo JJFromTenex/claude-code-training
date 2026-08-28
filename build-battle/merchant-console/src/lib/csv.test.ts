@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,9 +82,99 @@ describe("toCsv", () => {
   })
 })
 
+/**
+ * NWP-101: ops picks the columns, so the column names arrive from the browser.
+ * These cover the serializer's half of that — the allowlist, the ordering, and
+ * the empty case the route turns into a 400 rather than a headerless file.
+ */
+describe("parseExportColumns", () => {
+  it("falls back to the default set when the caller picks nothing", () => {
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("leaves the card last four out of the default set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    // Still exportable — ops has to ask for it.
+    expect(EXPORT_COLUMNS).toContain("last4")
+  })
+
+  it("keeps every other column in the default set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
+
+  it("returns a subset in the order requested, not the declared order", () => {
+    expect(parseExportColumns("amount,id,merchant")).toEqual([
+      "amount",
+      "id",
+      "merchant",
+    ])
+  })
+
+  it("includes the last four when it is asked for explicitly", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("drops names that are not columns rather than trusting them", () => {
+    expect(parseExportColumns("id,not_a_column,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("drops an injection attempt instead of passing it through", () => {
+    expect(parseExportColumns("id,1;DROP TABLE payments,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("tolerates whitespace around names", () => {
+    expect(parseExportColumns(" id , amount ")).toEqual(["id", "amount"])
+  })
+
+  it("collapses duplicates, keeping the first position", () => {
+    expect(parseExportColumns("id,amount,id")).toEqual(["id", "amount"])
+  })
+
+  it("returns nothing for an empty selection, so the route can refuse it", () => {
+    expect(parseExportColumns("")).toEqual([])
+  })
+
+  it("returns nothing when no requested name is a real column", () => {
+    expect(parseExportColumns("bogus,alsobogus")).toEqual([])
+  })
+
+  it("would write blank lines if an empty selection ever reached toCsv", () => {
+    // Pinned to show why the route rejects this instead of serializing it: no
+    // header and one empty line per payment is a file ops cannot use and
+    // cannot easily tell is broken. The 400 is the feature.
+    expect(toCsv([payment], parseExportColumns(""))).toBe("\n")
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-2026-03-14.csv",
+    )
+  })
+
+  it("names the scope when given one, so exports do not collide", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("slugs a scope label rather than putting it in a filename raw", () => {
+    expect(exportFilename(new Date("2026-03-14T00:00:00.000Z"), "All Payments")).toBe(
+      "payments-all-payments-2026-03-14.csv",
+    )
+  })
+
+  it("ignores a label that slugs to nothing", () => {
+    expect(exportFilename(new Date("2026-03-14T00:00:00.000Z"), "///")).toBe(
       "payments-2026-03-14.csv",
     )
   })
