@@ -1,4 +1,4 @@
-import { lastUtcDays } from "@/lib/dates"
+import { lastUtcDays, utcDayKey } from "@/lib/dates"
 import { GENERATED_AT } from "./generate"
 import { store } from "./store"
 
@@ -10,7 +10,9 @@ import { store } from "./store"
 
 export interface DailyVolume {
   date: string
+  /** Integer minor units, like every other amount in the app. */
   captured: number
+  /** Integer minor units, like every other amount in the app. */
   refunded: number
 }
 
@@ -21,28 +23,20 @@ export function dailyVolume(days = 30): DailyVolume[] {
   )
 
   for (const payment of store.payments) {
-    // Bucket by calendar date.
-    const key = new Date(payment.createdAt).toLocaleDateString("en-CA")
-    const bucket = buckets.get(key)
+    // Bucket in UTC, the same way lastUtcDays built the keys above. Local time
+    // here would drop or misplace payments either side of midnight.
+    const bucket = buckets.get(utcDayKey(payment.createdAt))
     if (!bucket) continue
 
     if (payment.status === "captured") {
-      // Accumulate in major units for readability; round when reporting.
-      bucket.captured += payment.amount / 100
+      bucket.captured += payment.amount
     }
     if (payment.status === "refunded") {
-      bucket.refunded += payment.amount / 100
+      bucket.refunded += payment.amount
     }
   }
 
-  return keys.map((date) => {
-    const bucket = buckets.get(date)!
-    return {
-      date,
-      captured: Math.round(bucket.captured * 100),
-      refunded: Math.round(bucket.refunded * 100),
-    }
-  })
+  return keys.map((date) => buckets.get(date)!)
 }
 
 export function headlineMetrics() {
