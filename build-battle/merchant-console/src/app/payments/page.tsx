@@ -10,8 +10,8 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
-import { PaymentFilters, PaymentStatus } from "@/data/types"
+import { parseFilters, queryPayments } from "@/data/queries"
+import { PaymentStatus } from "@/data/types"
 import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS } from "@/lib/csv"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -34,22 +34,17 @@ export default async function PaymentsPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: PaymentFilters = {
-    status: (STATUSES.includes(params.status as PaymentStatus)
-      ? params.status
-      : "all") as PaymentFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
+  )
+  // Same parser the API routes use, so the table and the export it links to
+  // can never disagree about what a param meant.
+  const filters = parseFilters(query)
 
   const { rows, total, page, pageCount } = queryPayments(filters)
   // The export dialog shows both counts before you download; pageSize 1 keeps
   // this to a count rather than a second copy of every payment.
   const allTotal = queryPayments({ status: "all", pageSize: 1 }).total
-  const query = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
-  )
 
   const pageHref = (next: number) => {
     const q = new URLSearchParams(query)
