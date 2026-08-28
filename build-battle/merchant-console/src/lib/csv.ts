@@ -1,13 +1,14 @@
 import { merchantById } from "@/data/merchants"
 import { Payment } from "@/data/types"
-import { formatMoney } from "./money"
+import { formatMinorUnitsPlain } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns (NWP-101). EXPORT_COLUMNS is the allowlist every
+ * requested name is checked against; DEFAULT_EXPORT_COLUMNS is what ships when
+ * nobody asks for anything in particular, and it leaves the card last four out
+ * because most of these files go to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,36 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** The default file. Card last four is opt-in, never automatic. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+function isExportColumn(value: string): value is ExportColumn {
+  return (EXPORT_COLUMNS as readonly string[]).includes(value)
+}
+
+/**
+ * Column names arrive from the client, so they are checked against
+ * EXPORT_COLUMNS before they reach a file. Unknown names are dropped, the
+ * caller's order is kept, and duplicates collapse. An empty result means
+ * nothing valid was asked for; the caller decides what to do about that.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (!raw) return []
+
+  const seen = new Set<string>()
+  const columns: ExportColumn[] = []
+
+  for (const name of raw.split(",")) {
+    const column = name.trim()
+    if (!isExportColumn(column) || seen.has(column)) continue
+    seen.add(column)
+    columns.push(column)
+  }
+
+  return columns
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -49,7 +80,9 @@ function cell(payment: Payment, column: ExportColumn): string {
     case "last4":
       return payment.last4 ?? ""
     case "amount":
-      return formatMoney(payment.amount, payment.currency)
+      // The one place minor units become a decimal. No symbol: the currency
+      // column carries the code, so the number stays a number.
+      return formatMinorUnitsPlain(payment.amount)
     case "currency":
       return payment.currency
   }
@@ -57,7 +90,7 @@ function cell(payment: Payment, column: ExportColumn): string {
 
 export function toCsv(
   payments: Payment[],
-  columns: readonly ExportColumn[] = EXPORT_COLUMNS,
+  columns: readonly ExportColumn[] = DEFAULT_EXPORT_COLUMNS,
 ): string {
   const header = columns.join(",")
   const rows = payments.map((payment) =>
@@ -66,6 +99,14 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `payments-<scope>-<date>.csv`, so the name says which file this is rather
+ * than only when it was taken. The scope reaches here from the client, so it
+ * is stripped to the characters a filename may hold. Two exports of the same
+ * scope on the same UTC day still collide, by design.
+ */
+export function exportFilename(scope: string | null, date = new Date()): string {
+  const slug = (scope ?? "").replace(/[^a-z0-9-]/gi, "").toLowerCase()
+  const segment = slug ? `${slug}-` : ""
+  return `payments-${segment}${date.toISOString().slice(0, 10)}.csv`
 }

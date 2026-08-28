@@ -50,3 +50,17 @@ export function parseAmountToMinorUnits(input: string): number | null {
   const cents = (fraction + "00").slice(0, 2)
   return Number(whole) * 100 + Number(cents)
 }
+
+/**
+ * Minor units as a bare decimal, for machine-readable output like CSV.
+ * 25000 becomes "250.00" — no symbol and no thousands separator, so the value
+ * stays a number to whatever opens the file and the currency code travels in
+ * its own column beside it.
+ */
+export function formatMinorUnitsPlain(minorUnits: number): string {
+  const negative = minorUnits < 0
+  const units = Math.abs(minorUnits)
+  const whole = Math.floor(units / 100)
+  const cents = units % 100
+  return `${negative ? "-" : ""}${whole}.${String(cents).padStart(2, "0")}`
+}
