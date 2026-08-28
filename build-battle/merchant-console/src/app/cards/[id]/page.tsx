@@ -10,6 +10,35 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CancelCard } from "./cancel-card"
 
+/**
+ * Bar widths in five percent steps, written out so Tailwind's scanner finds
+ * each class. A template string would produce a class that is never generated,
+ * and the rules here rule out an inline style.
+ */
+const BAR_WIDTHS = [
+  "w-0",
+  "w-[5%]",
+  "w-[10%]",
+  "w-[15%]",
+  "w-[20%]",
+  "w-[25%]",
+  "w-[30%]",
+  "w-[35%]",
+  "w-[40%]",
+  "w-[45%]",
+  "w-[50%]",
+  "w-[55%]",
+  "w-[60%]",
+  "w-[65%]",
+  "w-[70%]",
+  "w-[75%]",
+  "w-[80%]",
+  "w-[85%]",
+  "w-[90%]",
+  "w-[95%]",
+  "w-full",
+]
+
 const CATEGORY_LABELS: Record<string, string> = {
   advertising: "Advertising",
   software: "Software",
@@ -115,11 +144,11 @@ export default async function CardDetailPage({
               <div
                 className={cx(
                   "h-full rounded-full",
+                  BAR_WIDTHS[Math.round(spend.percent / 5)],
                   spend.warn
                     ? "bg-amber-500 dark:bg-amber-400"
                     : "bg-blue-500 dark:bg-blue-500",
                 )}
-                style={{ width: `${spend.percent}%` }}
               />
             </div>
             <p className="mt-2 text-sm text-gray-500">

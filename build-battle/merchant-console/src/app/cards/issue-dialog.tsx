@@ -17,7 +17,7 @@ import { CARD_CATEGORIES, SPEND_LIMIT_MAX } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const CATEGORY_LABELS: Record<CardCategory, string> = {
   advertising: "Advertising",
@@ -50,6 +50,7 @@ type Issued = { last4: string; number: string; nickname: string }
 export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [merchantId, setMerchantId] = useState("")
   const [nickname, setNickname] = useState("")
   const [limit, setLimit] = useState("")
@@ -76,12 +77,19 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
     setRequestId(crypto.randomUUID())
   }
 
-  const close = () => {
-    setOpen(false)
-    // The full number must not survive the dialog closing.
+  // Clearing runs after the close settles rather than inside Radix's own
+  // handler. Doing it inline fought the exit transition, so Escape landed
+  // sometimes and not others.
+  useEffect(() => {
+    if (open) return
     reset()
-    router.refresh()
-  }
+    // Radix restores focus on unmount, but the reset above re-renders while it
+    // is doing so and focus lands on the body. Putting it back is explicit
+    // rather than a race.
+    triggerRef.current?.focus()
+    // reset only touches setState, which is stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -143,12 +151,9 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   }
 
   return (
-    <Drawer
-      open={open}
-      onOpenChange={(next) => (next ? setOpen(true) : close())}
-    >
+    <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button className="w-full gap-2 py-1.5 sm:w-fit">
+        <Button ref={triggerRef} className="w-full gap-2 py-1.5 sm:w-fit">
           <Plus className="-ml-0.5 size-4 shrink-0" aria-hidden="true" />
           Issue card
         </Button>
@@ -176,7 +181,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
               </p>
             </DrawerBody>
             <DrawerFooter>
-              <Button onClick={close}>Done</Button>
+              <Button onClick={() => setOpen(false)}>Done</Button>
             </DrawerFooter>
           </>
         ) : (
