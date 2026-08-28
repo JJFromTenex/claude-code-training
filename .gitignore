@@ -2,3 +2,4 @@
 # Local database and build output for the merchant console
 *.db
 *.db-journal
+.gstack/

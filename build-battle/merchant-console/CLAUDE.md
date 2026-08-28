@@ -13,6 +13,37 @@ npm run dev
 
 No database, no seed step, no Docker.
 
+## Commands
+
+```bash
+npm run dev      # dev server, http://localhost:3000
+npm run build    # production build
+npm run start    # run the production build
+npm run lint     # eslint
+npm test         # vitest run — full suite, run before every push
+npm run test:watch
+```
+
+Run a single test file or a name filter directly with vitest, bypassing the `test` script:
+
+```bash
+npx vitest run src/lib/csv.test.ts
+npx vitest run -t "formats amounts"
+```
+
+Tests are Node-environment, no jsdom (`vitest.config.ts`) — everything under test is money math, date bucketing, and serialization, none of which needs a DOM.
+
+## Architecture
+
+A request for payment data crosses four layers, in the same order whether it's a page load, the JSON API, or the CSV export:
+
+1. **`src/app/**`** — App Router pages (server components) and `src/app/api/**` route handlers. Neither owns filtering logic; both call into `src/data/queries.ts`.
+2. **`src/data/queries.ts`** — the one query builder. `parseFilters()` allowlists every value from the client (status, sort, direction, page, …) before anything downstream sees it; `filterPayments()` / `sortPayments()` / `paginate()` do the actual work and are shared by the payments table, `GET /api/payments`, and `GET /api/payments/export`.
+3. **`src/data/store.ts`** — the in-memory array those functions read from, generated once at boot by `src/data/generate.ts` and pinned to `globalThis` so Next's dev-server module reloads don't hand out a fresh copy.
+4. **`src/lib/**`** — pure formatting helpers (`money.ts`, `dates.ts`, `csv.ts`) called at the edge, once, when a value is about to be displayed or serialized. Nothing upstream of this layer formats a value.
+
+Route-scoped detail beyond this (validation specifics, card state machine, component conventions) lives in `.claude/rules/*.md` and loads automatically when you open a matching file — see the table below.
+
 ## Data lives in memory
 
 Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.
