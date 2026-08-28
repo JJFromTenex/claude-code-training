@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,12 +74,29 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("writes a chosen subset of columns, in the order requested", () => {
+    expect(toCsv([payment], ["amount", "id"])).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("excludes card last four from the default column set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    const [header] = toCsv([payment], DEFAULT_EXPORT_COLUMNS).split("\n")
+    expect(header.split(",")).not.toContain("last4")
+  })
+
+  it("produces no columns for an empty selection, leaving the row untouched", () => {
+    const lines = toCsv([payment], []).split("\n")
+    expect(lines).toEqual(["", ""])
+  })
 })
 
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+  it("stamps the label and the UTC date, so two exports on the same day collide by design", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-03-14.csv")
   })
 })
