@@ -3,3 +3,4 @@
 *.db
 *.db-journal
 .gstack/
+.DS_Store
