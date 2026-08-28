@@ -35,6 +35,16 @@ export function formatDate(iso: string): string {
   }).format(new Date(iso))
 }
 
+/**
+ * Widen an inclusive upper bound so a date-only value covers its whole UTC day.
+ * Filters compare against full ISO instants, so a bare "2026-08-13" would
+ * otherwise exclude every payment made on the 13th. Full timestamps pass
+ * through untouched.
+ */
+export function utcRangeEnd(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T23:59:59.999Z` : value
+}
+
 /** Inclusive list of UTC day keys, oldest first. */
 export function lastUtcDays(days: number, from: Date): string[] {
   const keys: string[] = []

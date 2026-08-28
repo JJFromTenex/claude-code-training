@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { daysUntil, dayKeyInZone, lastUtcDays, utcDayKey } from "./dates"
+import {
+  daysUntil,
+  dayKeyInZone,
+  lastUtcDays,
+  utcDayKey,
+  utcRangeEnd,
+} from "./dates"
 
 /**
  * Bucketing is UTC and display is per-merchant. These tests exist because the
@@ -53,5 +59,22 @@ describe("daysUntil", () => {
 
   it("goes negative once the date has passed", () => {
     expect(daysUntil("2026-03-13T12:00:00.000Z", now)).toBe(-2)
+  })
+})
+
+describe("utcRangeEnd", () => {
+  it("stretches a date-only bound to the end of that UTC day", () => {
+    expect(utcRangeEnd("2026-08-13")).toBe("2026-08-13T23:59:59.999Z")
+  })
+
+  it("leaves a full instant alone", () => {
+    expect(utcRangeEnd("2026-08-13T09:22:00.000Z")).toBe(
+      "2026-08-13T09:22:00.000Z",
+    )
+  })
+
+  it("keeps a payment made that day inside the bound", () => {
+    // The whole point: a bare date used to exclude its own day.
+    expect("2026-08-13T09:22:00.000Z" <= utcRangeEnd("2026-08-13")).toBe(true)
   })
 })

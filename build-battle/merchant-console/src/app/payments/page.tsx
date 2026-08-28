@@ -10,22 +10,12 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { parseFilters, queryPayments } from "@/data/queries"
-import { PaymentStatus } from "@/data/types"
+import { STATUSES, parseFilters, queryPayments } from "@/data/queries"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { Download } from "lucide-react"
 import Link from "next/link"
 import { PaymentsFilterBar } from "./filter-bar"
-
-const STATUSES: (PaymentStatus | "all")[] = [
-  "all",
-  "captured",
-  "authorized",
-  "refunded",
-  "disputed",
-  "failed",
-]
 
 export default async function PaymentsPage({
   searchParams,
@@ -57,7 +47,7 @@ export default async function PaymentsPage({
 
       <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:px-6">
         <PaymentsFilterBar
-          statuses={STATUSES}
+          statuses={[...STATUSES]}
           merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
           current={{
             status: (filters.status as string) ?? "all",

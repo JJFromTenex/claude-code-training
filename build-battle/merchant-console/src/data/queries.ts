@@ -1,8 +1,10 @@
+import { utcRangeEnd } from "@/lib/dates"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Payment, PaymentFilters, PaymentStatus } from "./types"
 
-const STATUSES: readonly (PaymentStatus | "all")[] = [
+/** The one status allowlist. Imported by the filter bar so the UI cannot drift from it. */
+export const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
   "authorized",
   "captured",
@@ -10,6 +12,18 @@ const STATUSES: readonly (PaymentStatus | "all")[] = [
   "failed",
   "disputed",
 ]
+
+/** A merchant id is only accepted if it resolves to a known merchant. */
+function merchant(value: string | null): string | undefined {
+  if (!value) return undefined
+  return merchantById(value) ? value : undefined
+}
+
+/** A date bound is either a UTC day or a full ISO instant. Anything else is dropped. */
+function bound(value: string | null): string | undefined {
+  if (!value) return undefined
+  return /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(value) ? value : undefined
+}
 
 /**
  * Anything from the client is checked against an allowlist before it reaches
@@ -20,15 +34,18 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   const sort = params.get("sort")
   const direction = params.get("direction")
   const page = Number(params.get("page") ?? "1")
+  const from = bound(params.get("from"))
+  const to = bound(params.get("to"))
 
   return {
     status: STATUSES.includes(status as PaymentStatus)
       ? (status as PaymentStatus)
       : "all",
-    merchantId: params.get("merchantId") ?? undefined,
+    merchantId: merchant(params.get("merchantId")),
     search: params.get("search") ?? undefined,
-    from: params.get("from") ?? undefined,
-    to: params.get("to") ?? undefined,
+    from,
+    // Inclusive: a date-only bound has to reach the end of its UTC day.
+    to: to ? utcRangeEnd(to) : undefined,
     page: Number.isFinite(page) && page > 0 ? page : 1,
     sort: sort === "amount" ? "amount" : "createdAt",
     direction: direction === "asc" ? "asc" : "desc",
@@ -77,8 +94,9 @@ export function sortPayments(
   const factor = direction === "asc" ? 1 : -1
   return [...payments].sort((a, b) => {
     if (sort === "amount") {
-      // Sort by the formatted amount so the order matches what the table shows.
-      return String(a.amount).localeCompare(String(b.amount)) * factor
+      // Minor units are integers, so compare them numerically. Comparing their
+      // string forms puts $9.00 above $100.00.
+      return (a.amount - b.amount) * factor
     }
     return a.createdAt.localeCompare(b.createdAt) * factor
   })
