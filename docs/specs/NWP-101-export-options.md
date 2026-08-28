@@ -60,6 +60,8 @@ Two query params on the existing export route, `columns` and `scope`, both parse
 | `src/app/api/payments/export/route.ts` | Change | Parse and validate both params, refuse an empty selection with 400, honour scope, name the file |
 | `src/app/payments/export-dialog.tsx` | Add | Client component: scope radios, column checkboxes, live row count, Download that disables |
 | `src/app/payments/page.tsx` | Change | Compute the all-payments total, replace the anchor with the dialog |
+| `src/app/payments/query.ts` | Add | The one serializer for the page's three filters, shared by the filter bar and the dialog (added after the org-standards review) |
+| `src/app/payments/filter-bar.tsx` | Change | Use the shared serializer instead of its own copy |
 
 ## Plan
 

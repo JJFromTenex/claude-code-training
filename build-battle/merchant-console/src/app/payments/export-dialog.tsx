@@ -21,6 +21,7 @@ import {
 import { cx, focusRing } from "@/lib/utils"
 import { Download } from "lucide-react"
 import { useState } from "react"
+import { PaymentsPageFilters, paymentsQuery } from "./query"
 
 const COLUMN_LABELS: Record<ExportColumn, string> = {
   id: "Payment ID",
@@ -50,7 +51,7 @@ export function ExportDialog({
   filteredCount,
   totalCount,
 }: {
-  current: { status: string; merchantId: string; search: string }
+  current: PaymentsPageFilters
   filteredCount: number
   totalCount: number
 }) {
@@ -71,17 +72,17 @@ export function ExportDialog({
     })
 
   const href = () => {
-    const query = new URLSearchParams()
+    // Same serializer the filter bar navigates with, so the rows in the file
+    // are the rows the table is showing. "All" sends no filters at all.
+    const query =
+      scope === "current"
+        ? paymentsQuery(current)
+        : new URLSearchParams()
     query.set("scope", scope)
     query.set(
       "columns",
       EXPORT_COLUMNS.filter((column) => selected.has(column)).join(","),
     )
-    if (scope === "current") {
-      if (current.status && current.status !== "all") query.set("status", current.status)
-      if (current.merchantId) query.set("merchantId", current.merchantId)
-      if (current.search) query.set("search", current.search)
-    }
     return `/api/payments/export?${query.toString()}`
   }
 
@@ -150,21 +151,21 @@ export function ExportDialog({
             <legend className="text-sm font-medium text-gray-900 dark:text-gray-50">
               Columns
             </legend>
-            <div className="mb-1 flex gap-3 text-xs">
-              <button
-                type="button"
+            <div className="mb-1 flex gap-2">
+              <Button
+                variant="ghost"
+                className="px-2 py-1 text-xs"
                 onClick={() => setSelected(new Set(EXPORT_COLUMNS))}
-                className={cx("text-blue-600 hover:underline dark:text-blue-500", focusRing)}
               >
                 Select all
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                className="px-2 py-1 text-xs"
                 onClick={() => setSelected(new Set(DEFAULT_EXPORT_COLUMNS))}
-                className={cx("text-blue-600 hover:underline dark:text-blue-500", focusRing)}
               >
                 Reset to default
-              </button>
+              </Button>
             </div>
             {EXPORT_COLUMNS.map((column) => (
               <label
@@ -211,12 +212,10 @@ export function ExportDialog({
             </Button>
           ) : (
             <Button className="w-full gap-2 sm:w-fit" asChild>
-              <DrawerClose asChild>
-                <a href={href()}>
-                  <Download className="size-4 shrink-0" aria-hidden="true" />
-                  Download
-                </a>
-              </DrawerClose>
+              <a href={href()}>
+                <Download className="size-4 shrink-0" aria-hidden="true" />
+                Download
+              </a>
             </Button>
           )}
         </DrawerFooter>

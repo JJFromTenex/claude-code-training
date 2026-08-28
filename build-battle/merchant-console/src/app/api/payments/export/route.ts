@@ -27,19 +27,16 @@ export function GET(request: NextRequest) {
     )
   }
 
+  // "All payments" keeps the sort and drops every filter. Re-parsing a
+  // reduced param set keeps the allowlist in one place and means a filter
+  // added to PaymentFilters later cannot leak into the all-payments file.
   const scope = parseExportScope(params.get("scope"))
-  const requested = parseFilters(params)
-  const filters =
-    scope === "all"
-      ? {
-          ...requested,
-          status: "all" as const,
-          merchantId: undefined,
-          search: undefined,
-          from: undefined,
-          to: undefined,
-        }
-      : requested
+  const unfiltered = new URLSearchParams()
+  for (const key of ["sort", "direction"]) {
+    const value = params.get(key)
+    if (value !== null) unfiltered.set(key, value)
+  }
+  const filters = parseFilters(scope === "all" ? unfiltered : params)
 
   const rows = sortPayments(
     filterPayments(filters),

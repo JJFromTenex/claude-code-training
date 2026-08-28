@@ -10,6 +10,7 @@ import {
 } from "@/components/Select"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { PaymentsPageFilters, paymentsQuery } from "./query"
 
 const LABELS: Record<string, string> = {
   all: "All statuses",
@@ -27,17 +28,13 @@ export function PaymentsFilterBar({
 }: {
   statuses: string[]
   merchants: { id: string; name: string }[]
-  current: { status: string; merchantId: string; search: string }
+  current: PaymentsPageFilters
 }) {
   const router = useRouter()
   const [search, setSearch] = useState(current.search)
 
-  const apply = (changes: Record<string, string>) => {
-    const next = new URLSearchParams()
-    const merged = { ...current, ...changes }
-    if (merged.status && merged.status !== "all") next.set("status", merged.status)
-    if (merged.merchantId) next.set("merchantId", merged.merchantId)
-    if (merged.search) next.set("search", merged.search)
+  const apply = (changes: Partial<PaymentsPageFilters>) => {
+    const next = paymentsQuery({ ...current, ...changes })
     router.push(`/payments?${next.toString()}`)
   }
 
