@@ -14,8 +14,8 @@ import { queryPayments } from "@/data/queries"
 import { PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
 import Link from "next/link"
+import { ExportDialog } from "./export-dialog"
 import { PaymentsFilterBar } from "./filter-bar"
 
 const STATUSES: (PaymentStatus | "all")[] = [
@@ -43,6 +43,8 @@ export default async function PaymentsPage({
   }
 
   const { rows, total, page, pageCount } = queryPayments(filters)
+  // The count for "all payments" in the export dialog. Same builder, no filters.
+  const { total: totalCount } = queryPayments({})
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
@@ -53,27 +55,25 @@ export default async function PaymentsPage({
     return `/payments?${q.toString()}`
   }
 
+  const current = {
+    status: (filters.status as string) ?? "all",
+    merchantId: filters.merchantId ?? "",
+    search: filters.search ?? "",
+  }
+
   return (
     <section aria-label="Payments">
       <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:p-6">
         <PaymentsFilterBar
           statuses={STATUSES}
           merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
-          current={{
-            status: (filters.status as string) ?? "all",
-            merchantId: filters.merchantId ?? "",
-            search: filters.search ?? "",
-          }}
+          current={current}
         />
-        <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
-          <a href={`/api/payments/export?${query.toString()}`}>
-            <Download
-              className="-ml-0.5 size-4 shrink-0 text-gray-400 dark:text-gray-600"
-              aria-hidden="true"
-            />
-            Export
-          </a>
-        </Button>
+        <ExportDialog
+          current={current}
+          filteredCount={total}
+          totalCount={totalCount}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
