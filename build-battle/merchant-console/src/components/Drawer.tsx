@@ -113,6 +113,7 @@ const DrawerHeader = React.forwardRef<
         <Button
           variant="ghost"
           className="aspect-square p-1 hover:bg-gray-100 hover:dark:bg-gray-400/10"
+          aria-label="Close"
         >
           <RiCloseLine className="size-6" aria-hidden="true" />
         </Button>
