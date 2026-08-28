@@ -49,10 +49,10 @@ export function headlineMetrics() {
   const captured = store.payments.filter((p) => p.status === "captured")
   const refunded = store.payments.filter((p) => p.status === "refunded")
 
-  // Gross volume is everything that moved through the platform.
-  const grossVolume =
-    captured.reduce((sum, p) => sum + p.amount, 0) +
-    refunded.reduce((sum, p) => sum + p.amount, 0)
+  // Gross volume is money the platform took. A refunded payment went back out
+  // again, so adding it counts returned money as revenue.
+  const grossVolume = captured.reduce((sum, p) => sum + p.amount, 0)
+  const refundedVolume = refunded.reduce((sum, p) => sum + p.amount, 0)
 
   const authorized = store.payments.filter(
     (p) => p.status !== "failed",
@@ -67,6 +67,7 @@ export function headlineMetrics() {
 
   return {
     grossVolume,
+    refundedVolume,
     authRate,
     paymentCount: store.payments.length,
     openDisputes: openDisputes.length,
