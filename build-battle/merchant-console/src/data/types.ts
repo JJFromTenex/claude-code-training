@@ -7,6 +7,15 @@ export type PaymentStatus =
   | "failed"
   | "disputed"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
@@ -34,6 +43,36 @@ export interface Payment {
   /** ISO 8601, always UTC. */
   createdAt: string
   description: string
+}
+
+/** One status transition, kept so the detail page can show what happened when. */
+export interface CardEvent {
+  at: string
+  from: CardStatus | null
+  to: CardStatus
+}
+
+/**
+ * A virtual card. The full number is never a field here: it exists only in the
+ * creation response, so a leak would have to be a type error first.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  categoryLock: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  history: CardEvent[]
+  /** The client's request id, kept so a retry cannot mint a second card. */
+  requestId: string | null
 }
 
 export interface Refund {

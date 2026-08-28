@@ -1,6 +1,6 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Card, Dispute, Payment, Payout, Refund } from "./types"
 
 /**
  * In-memory store.
@@ -15,6 +15,7 @@ import { Dispute, Payment, Payout, Refund } from "./types"
 
 interface Store {
   merchants: typeof merchants
+  cards: Card[]
   payments: Payment[]
   refunds: Refund[]
   disputes: Dispute[]
@@ -28,7 +29,8 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  // Cards start empty. Ops issues them; nothing seeds them.
+  return { merchants, cards: [], payments, refunds, disputes, payouts }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
