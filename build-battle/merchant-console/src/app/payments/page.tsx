@@ -10,8 +10,8 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
-import { PaymentFilters, PaymentStatus } from "@/data/types"
+import { parseFilters, queryPayments } from "@/data/queries"
+import { PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { Download } from "lucide-react"
@@ -33,19 +33,13 @@ export default async function PaymentsPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: PaymentFilters = {
-    status: (STATUSES.includes(params.status as PaymentStatus)
-      ? params.status
-      : "all") as PaymentFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
-
-  const { rows, total, page, pageCount } = queryPayments(filters)
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
+
+  // The same allowlist GET /api/payments uses. A second one here would drift.
+  const filters = parseFilters(query)
+  const { rows, total, page, pageCount } = queryPayments(filters)
 
   const pageHref = (next: number) => {
     const q = new URLSearchParams(query)
@@ -55,7 +49,13 @@ export default async function PaymentsPage({
 
   return (
     <section aria-label="Payments">
-      <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:p-6">
+      <div className="px-4 pt-6 sm:px-6">
+        <h1 className="text-lg font-semibold text-gray-900 sm:text-xl dark:text-gray-50">
+          Payments
+        </h1>
+      </div>
+
+      <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:px-6">
         <PaymentsFilterBar
           statuses={STATUSES}
           merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}

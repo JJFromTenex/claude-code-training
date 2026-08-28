@@ -6,9 +6,21 @@ Northwind Payments is fictional. Every merchant, cardholder, amount, and card in
 
 ## Run it
 
+Every script below runs from `build-battle/merchant-console/`, not from the repository root where you open Claude Code.
+
 ```bash
 npm install
-npm run dev
+npm run dev      # dev server on :3000, redirects to /overview
+npm test         # vitest, one pass
+npm run lint     # next lint
+npm run build    # production build
+```
+
+One file, or one test by name:
+
+```bash
+npx vitest run src/lib/csv.test.ts
+npx vitest run -t "quotes cells containing a comma"
 ```
 
 No database, no seed step, no Docker.
@@ -56,6 +68,18 @@ These four explain most of the code, and breaking them is how bugs get in here.
 | `src/data/` | Seed JSON, the in-memory store, and types |
 | `src/components/` | Tremor-based primitives and the console's own components |
 | `src/lib/` | Money, date, and CSV helpers, each with a `.test.ts` beside it. Read these before touching an amount |
+
+`@/*` resolves to `./src/*`.
+
+## How a request actually flows
+
+Worth knowing before you add a route or a page, because the two paths are not the same one.
+
+- **Pages read the store directly.** Console pages are async Server Components that call `queryPayments()` from `src/data/queries.ts` themselves. They do not fetch their own API.
+- **`src/app/api/` exists for JSON and file downloads**, not to feed the UI. Adding a route to render a page is the wrong layer.
+- **Filter state lives in the URL.** `searchParams` is the state; there is no client store. On `/payments`, `filter-bar.tsx` is the only client component, and all it does is push a new query string.
+- **`parseFilters()` is the single validation point.** Route handlers never read search params themselves — they hand them to the query layer, which allowlists them.
+- **The export route skips `paginate()` on purpose.** `GET /api/payments` filters, sorts, and paginates; `GET /api/payments/export` filters and sorts and stops there, so a file covers every matching row rather than the visible page. Compare the two before changing either.
 
 ## Before you push
 
