@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,53 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("puts the scope in the name when one is given", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T12:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename(new Date("2026-08-13T12:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
+    )
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("defaults to every column but the card last four when nothing is chosen", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).not.toContain("last4")
+    expect(columns).toEqual(EXPORT_COLUMNS.filter((c) => c !== "last4"))
+  })
+
+  it("returns a subset in the order requested, not EXPORT_COLUMNS order", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("returns an empty list for an empty selection, rather than the default", () => {
+    expect(parseExportColumns("")).toEqual([])
+  })
+
+  it("drops names that are not export columns, keeping the valid ones", () => {
+    expect(parseExportColumns("id,bogus,last4")).toEqual(["id", "last4"])
+  })
+
+  it("collapses a column requested more than once", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter", () => {
+    expect(parseExportScope(null)).toBe("filtered")
+    expect(parseExportScope(undefined)).toBe("filtered")
+  })
+
+  it("accepts all payments as the only other scope", () => {
+    expect(parseExportScope("all")).toBe("all")
+  })
+
+  it("falls back to filtered for anything not on the allowlist", () => {
+    expect(parseExportScope("everything")).toBe("filtered")
   })
 })
