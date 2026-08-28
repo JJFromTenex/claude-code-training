@@ -1,13 +1,14 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentStatus } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops chooses the columns and the scope; both arrive from the client, so both
+ * are checked against the allowlists here before they reach the serializer or
+ * the filename. The card last four is off unless it is asked for by name — a
+ * file bound for a merchant should need no hand editing.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,55 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** Every column except the card last four, which is opt-in. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+export const EXPORT_SCOPES = ["filtered", "all"] as const
+
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
+
+/**
+ * Column names arrive from the client. Anything not in EXPORT_COLUMNS is
+ * dropped rather than rejected, the way a bad status falls back in
+ * parseFilters, so a stale link still exports something sensible. An empty
+ * result stays empty: falling back to the defaults here would ship columns ops
+ * had deliberately deselected. The caller decides what to do with nothing.
+ */
+export function parseExportColumns(
+  raw: string | null | undefined,
+): readonly ExportColumn[] {
+  if (raw == null) return DEFAULT_EXPORT_COLUMNS
+
+  const seen = new Set<ExportColumn>()
+  for (const name of raw.split(",")) {
+    const column = name.trim()
+    if (EXPORT_COLUMNS.includes(column as ExportColumn)) {
+      seen.add(column as ExportColumn)
+    }
+  }
+  return [...seen]
+}
+
+/** Anything but the exact word widens nothing — a mangled link stays scoped. */
+export function parseExportScope(raw: string | null | undefined): ExportScope {
+  return raw === "all" ? "all" : "filtered"
+}
+
+/**
+ * The middle of the filename. Scope wins over status: an all-payments file
+ * labelled "disputed" would misdescribe itself. Both inputs are already
+ * allowlisted, so no client string reaches the filename.
+ */
+export function exportSegment(
+  scope: ExportScope,
+  status?: PaymentStatus | "all",
+): string {
+  if (scope === "all") return "all"
+  return status && status !== "all" ? status : "filtered"
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -59,6 +109,9 @@ export function toCsv(
   payments: Payment[],
   columns: readonly ExportColumn[] = EXPORT_COLUMNS,
 ): string {
+  // No columns is no file. Without this every row would be a blank line.
+  if (columns.length === 0) return ""
+
   const header = columns.join(",")
   const rows = payments.map((payment) =>
     columns.map((column) => escapeCell(cell(payment, column))).join(","),
@@ -66,6 +119,10 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(
+  date = new Date(),
+  segment?: string | null,
+): string {
+  const day = date.toISOString().slice(0, 10)
+  return segment ? `payments-${segment}-${day}.csv` : `payments-${day}.csv`
 }

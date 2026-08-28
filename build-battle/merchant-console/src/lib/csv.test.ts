@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportSegment,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,6 +82,76 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("follows the caller's column order rather than the canonical one", () => {
+    expect(toCsv([payment], ["currency", "amount", "id"])).toBe(
+      ["currency,amount,id", "USD,$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("returns nothing at all for an empty selection, rather than a file of blank lines", () => {
+    expect(toCsv([payment], [])).toBe("")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("leaves out the card last four by default, so a merchant file needs no hand editing", () => {
+    expect(parseExportColumns(null)).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(parseExportColumns(null)).not.toContain("last4")
+  })
+
+  it("includes the last four only when it is named explicitly", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("keeps the order ops asked for, because that is the order of the file", () => {
+    expect(parseExportColumns("currency,id")).toEqual(["currency", "id"])
+    expect(toCsv([payment], parseExportColumns("currency,id"))).toBe(
+      ["currency,id", "USD,pay_0001"].join("\n"),
+    )
+  })
+
+  it("drops a name that is not a column, so a stale link still exports something", () => {
+    expect(parseExportColumns("id,merchant_email,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+  })
+
+  it("collapses a repeated column so the header has no duplicate", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+
+  it("returns an empty selection rather than falling back, so the route can refuse it", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("not_a_column")).toEqual([])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("stays on the current filter unless the scope says otherwise, so a link never widens an export", () => {
+    expect(parseExportScope(null)).toBe("filtered")
+    expect(parseExportScope("everything")).toBe("filtered")
+  })
+
+  it("widens to every payment only for the exact scope name", () => {
+    expect(parseExportScope("all")).toBe("all")
+  })
+})
+
+describe("exportSegment", () => {
+  it("labels an all-payments export 'all' even while a status filter is on screen", () => {
+    expect(exportSegment("all", "disputed")).toBe("all")
+  })
+
+  it("uses the status when the export follows the current filter", () => {
+    expect(exportSegment("filtered", "disputed")).toBe("disputed")
+  })
+
+  it("says filtered when the current filter is every status", () => {
+    expect(exportSegment("filtered", "all")).toBe("filtered")
+    expect(exportSegment("filtered", undefined)).toBe("filtered")
+  })
 })
 
 describe("exportFilename", () => {
@@ -81,5 +159,13 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("names the scope in the file, so a downloads folder stays readable", () => {
+    const date = new Date("2026-08-13T09:00:00.000Z")
+    expect(exportFilename(date, "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+    expect(exportFilename(date, "all")).toBe("payments-all-2026-08-13.csv")
   })
 })
