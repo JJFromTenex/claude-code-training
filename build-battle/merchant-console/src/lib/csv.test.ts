@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,45 @@ describe("toCsv", () => {
   })
 })
 
+describe("column selection", () => {
+  it("writes the chosen subset in the order it was requested", () => {
+    const columns = parseExportColumns("status,merchant,id")
+    expect(columns).toEqual(["status", "merchant", "id"])
+    expect(toCsv([payment], columns)).toBe(
+      [
+        "status,merchant,id",
+        "captured,Lumen Coffee Roasters,pay_0001",
+      ].join("\n"),
+    )
+  })
+
+  it("leaves the card last four out by default, so merchant files are clean", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+    expect(toCsv([payment], parseExportColumns(null))).not.toContain("4242")
+  })
+
+  it("returns nothing for an empty selection rather than falling back to every column", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("  ,  ")).toEqual([])
+  })
+
+  it("drops a column name that is not on the allowlist", () => {
+    expect(parseExportColumns("id,'; drop table payments--,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+    expect(parseExportColumns("last4,last4")).toEqual(["last4"])
+  })
+})
+
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+  it("names the scope and stamps the UTC date", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-08-13T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename("all", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-all-2026-03-14.csv",
     )
   })
 })
