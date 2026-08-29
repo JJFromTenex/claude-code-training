@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportLabel,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +84,72 @@ describe("toCsv", () => {
   })
 })
 
+/**
+ * Column names arrive from the client, so the parse layer is where the
+ * allowlist has to hold. `toCsv` above is trusted to receive valid columns;
+ * these tests are what makes that true.
+ */
+describe("parseExportColumns", () => {
+  it("leaves the card last four out of the default selection", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).toEqual([...DEFAULT_EXPORT_COLUMNS])
+    expect(columns).not.toContain("last4")
+  })
+
+  it("keeps a requested subset, in the order requested", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("includes the card last four only when it is asked for", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("drops names that are not columns rather than trusting them", () => {
+    expect(parseExportColumns("id,drop_table,../../etc/passwd")).toEqual(["id"])
+  })
+
+  it("returns an empty selection when nothing valid was asked for", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("nonsense")).toEqual([])
+  })
+
+  it("collapses duplicates, keeping the first position", () => {
+    expect(parseExportColumns("amount,id,amount")).toEqual(["amount", "id"])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter, and only widens when asked", () => {
+    expect(parseExportScope(null)).toBe("filtered")
+    expect(parseExportScope("everything")).toBe("filtered")
+    expect(parseExportScope("all")).toBe("all")
+  })
+})
+
+describe("exportLabel", () => {
+  it("names the status when the export is scoped to one", () => {
+    expect(exportLabel("filtered", "disputed")).toBe("disputed")
+  })
+
+  it("falls back to the scope when no single status applies", () => {
+    expect(exportLabel("filtered", "all")).toBe("filtered")
+    expect(exportLabel("filtered", undefined)).toBe("filtered")
+    expect(exportLabel("all", "disputed")).toBe("all")
+  })
+})
+
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+  it("stamps the label and the UTC date", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("distinguishes a filtered export from an everything export", () => {
+    const date = new Date("2026-03-14T23:00:00.000Z")
+    expect(exportFilename("all", date)).toBe("payments-all-2026-03-14.csv")
+    expect(exportFilename("filtered", date)).toBe(
+      "payments-filtered-2026-03-14.csv",
     )
   })
 })
