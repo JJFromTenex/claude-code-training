@@ -33,6 +33,11 @@ Taking ticket NWP-201 end to end in a codebase you did not write, in 40 minutes,
 - Never edit seed data to make a failing case disappear
 - No database, no ORM, no migrations. The store is in memory on purpose and persistence is a different ticket
 
+## Release Requirements 
+- All changes need test evidence before merging
+- No direct commits to main
+- Every PR must include a one-line business impact summar
+
 ## Definition of done
 
 A pull request that states what changed, how it was verified, and which acceptance criteria it meets.

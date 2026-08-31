@@ -7,6 +7,8 @@ export type PaymentStatus =
   | "failed"
   | "disputed"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
@@ -34,6 +36,21 @@ export interface Payment {
   /** ISO 8601, always UTC. */
   createdAt: string
   description: string
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  currency: Currency
+  last4: string
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** Cumulative spend against the limit in minor units. */
+  spend: number
 }
 
 export interface Refund {
