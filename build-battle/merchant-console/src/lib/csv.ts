@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Callers pick the column set (NWP-101). Card metadata is off by default
+ * so a file bound for a merchant never carries the last four unless ops
+ * opts in.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,29 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((c) => c !== "last4" && c !== "card_brand")
+
+/**
+ * Allowlist gate for client-supplied column names. Absent means the
+ * defaults; an empty or unknown selection is rejected outright rather
+ * than silently dropped.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] | null {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+  const requested = raw
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean)
+  if (requested.length === 0) return null
+  const columns: ExportColumn[] = []
+  for (const c of requested) {
+    if (!EXPORT_COLUMNS.includes(c as ExportColumn)) return null
+    if (!columns.includes(c as ExportColumn)) columns.push(c as ExportColumn)
+  }
+  return columns
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +89,8 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/** The slug must come from an allowlisted value, never raw client input. */
+export function exportFilename(date = new Date(), slug?: string): string {
+  const middle = slug ? `${slug}-` : ""
+  return `payments-${middle}${date.toISOString().slice(0, 10)}.csv`
 }

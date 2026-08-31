@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,40 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("puts the scope slug between the prefix and the date", () => {
+    expect(exportFilename(new Date("2026-08-13T00:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+    expect(exportFilename(new Date("2026-08-13T00:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
+    )
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("returns the requested subset in the requested order", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("excludes card fields by default when no columns are requested", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).not.toContain("last4")
+    expect(columns).not.toContain("card_brand")
+    expect(columns).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("rejects an empty selection so the export is never an empty file", () => {
+    expect(parseExportColumns("")).toBeNull()
+  })
+
+  it("rejects any column not on the allowlist", () => {
+    expect(parseExportColumns("id,ssn")).toBeNull()
+    expect(parseExportColumns("id;drop table")).toBeNull()
+  })
+
+  it("dedupes repeated columns, keeping the first occurrence", () => {
+    expect(parseExportColumns("id,amount,id")).toEqual(["id", "amount"])
   })
 })
