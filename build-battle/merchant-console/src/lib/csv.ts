@@ -25,6 +25,37 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/** Every column except card last-four — the safe default for a file that might reach a merchant. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+/**
+ * Validates a client-supplied column list against the allowlist.
+ *
+ * No `columns` param at all means the caller didn't ask, so it gets the safe
+ * default. A `columns` param that resolves to nothing valid means the caller
+ * asked for zero columns, and that is returned as an empty array rather than
+ * silently falling back — the route rejects that case instead of shipping an
+ * empty file.
+ */
+export function parseColumns(raw: string | null): ExportColumn[] {
+  if (raw === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const allowed = new Set(EXPORT_COLUMNS)
+  const seen = new Set<ExportColumn>()
+  const columns: ExportColumn[] = []
+
+  for (const token of raw.split(",")) {
+    if (allowed.has(token as ExportColumn) && !seen.has(token as ExportColumn)) {
+      seen.add(token as ExportColumn)
+      columns.push(token as ExportColumn)
+    }
+  }
+
+  return columns
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +97,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), descriptor?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  return descriptor ? `payments-${descriptor}-${stamp}.csv` : `payments-${stamp}.csv`
 }

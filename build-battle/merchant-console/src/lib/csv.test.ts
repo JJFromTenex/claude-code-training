@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import { DEFAULT_EXPORT_COLUMNS, EXPORT_COLUMNS, exportFilename, parseColumns, toCsv } from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +81,27 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("folds a scope descriptor into the name ahead of the date", () => {
+    expect(exportFilename(new Date("2026-08-13T12:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+  })
+})
+
+describe("parseColumns", () => {
+  it("defaults to every column except last4 when none are requested", () => {
+    expect(parseColumns(null)).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(parseColumns(null)).not.toContain("last4")
+  })
+
+  it("keeps only allowlisted columns, deduped, in the order requested", () => {
+    expect(parseColumns("amount,bogus,id,amount")).toEqual(["amount", "id"])
+  })
+
+  it("returns no columns when everything requested is invalid or empty", () => {
+    expect(parseColumns("")).toEqual([])
+    expect(parseColumns("nonsense,also-bogus")).toEqual([])
   })
 })
