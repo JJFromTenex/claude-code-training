@@ -16,7 +16,11 @@ import { Card, CardFilters, CardStatus, Currency } from "./types"
  * store. The route handlers stay thin and call into this.
  */
 
-const CARD_STATUSES: readonly (CardStatus | "all")[] = [
+/**
+ * The status allowlist. Exported so the filter UI and the validator cannot
+ * drift apart — a status the buttons offer is a status the server accepts.
+ */
+export const CARD_STATUSES: readonly (CardStatus | "all")[] = [
   "all",
   "active",
   "frozen",

@@ -9,9 +9,8 @@ import {
   TableRow,
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
-import { queryCards } from "@/data/cards"
+import { CARD_STATUSES, parseCardFilters, queryCards } from "@/data/cards"
 import { merchantById, merchants } from "@/data/merchants"
-import { CardFilters, CardStatus } from "@/data/types"
 import { maskCardNumber } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -19,27 +18,20 @@ import Link from "next/link"
 import { IssueCardDialog } from "./issue-dialog"
 import { CardStatusActions } from "./status-actions"
 
-const STATUSES: (CardStatus | "all")[] = ["all", "active", "frozen", "cancelled"]
-
 export default async function CardsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: CardFilters = {
-    status: (STATUSES.includes(params.status as CardStatus)
-      ? params.status
-      : "all") as CardFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
-
-  const { rows, total, page, pageCount } = queryCards(filters)
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
+
+  // The same parser the route handler uses, so the page cannot accept a
+  // filter the API would reject.
+  const filters = parseCardFilters(query)
+  const { rows, total, page, pageCount } = queryCards(filters)
 
   const statusHref = (status: string) => {
     const q = new URLSearchParams(query)
@@ -66,7 +58,7 @@ export default async function CardsPage({
           role="group"
           aria-label="Filter by status"
         >
-          {STATUSES.map((status) => (
+          {CARD_STATUSES.map((status) => (
             <Button
               key={status}
               variant={activeStatus === status ? "primary" : "secondary"}
