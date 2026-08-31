@@ -36,6 +36,30 @@ export interface Payment {
   description: string
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /** Last four digits of the generated number. The full PAN is never stored. */
+  last4: string
+  /** Opaque reference for the issued number. Not reversible into a PAN. */
+  numberRef: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units spent against the limit. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  /** Merchant category the card is locked to, or null for no lock. */
+  categoryLock: string | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  /** Status history, oldest first. Starts with issuance. */
+  history: { at: string; label: string }[]
+}
+
 export interface Refund {
   id: string
   paymentId: string

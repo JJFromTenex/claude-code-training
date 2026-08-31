@@ -1,5 +1,8 @@
+import { generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,65 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * Seeded after everything else so the card draws do not shift the payment
+ * sequence. Spend ratios are chosen so the detail page has something to
+ * show: one card near its limit, one frozen, one cancelled.
+ */
+const CARD_SEEDS: {
+  nickname: string
+  daysAgo: number
+  spentRatio: number
+  status: CardStatus
+  categoryLock: string | null
+}[] = [
+  { nickname: "Search ads", daysAgo: 84, spentRatio: 0.62, status: "active", categoryLock: "advertising" },
+  { nickname: "Vendor subscriptions", daysAgo: 60, spentRatio: 0.91, status: "active", categoryLock: "software" },
+  { nickname: "Contractor tools", daysAgo: 45, spentRatio: 0.35, status: "frozen", categoryLock: null },
+  { nickname: "Team travel", daysAgo: 30, spentRatio: 0.12, status: "active", categoryLock: "travel" },
+  { nickname: "Legacy ad account", daysAgo: 110, spentRatio: 0.78, status: "cancelled", categoryLock: "advertising" },
+]
+
+function generateCards(): Card[] {
+  return CARD_SEEDS.map((seed, index) => {
+    const merchant = pick(merchants)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
+
+    // The full number exists only inside this scope; the last four survive.
+    const number = generateCardNumber(rand)
+    const spendLimit = between(500, 45_000) * 100
+
+    const history = [{ at: createdAt.toISOString(), label: "Card issued" }]
+    if (seed.status !== "active") {
+      history.push({
+        at: new Date(
+          createdAt.getTime() + between(3, 20) * 86_400_000,
+        ).toISOString(),
+        label: seed.status === "frozen" ? "Frozen" : "Cancelled",
+      })
+    }
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      merchantId: merchant.id,
+      nickname: seed.nickname,
+      last4: number.slice(-4),
+      numberRef: `ref_seed_${pad(index + 1, 4)}`,
+      spendLimit,
+      spent: Math.floor(spendLimit * seed.spentRatio),
+      currency: merchant.currency as Currency,
+      status: seed.status,
+      categoryLock: seed.categoryLock,
+      createdAt: createdAt.toISOString(),
+      history,
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
