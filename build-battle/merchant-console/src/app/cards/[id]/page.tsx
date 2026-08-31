@@ -96,6 +96,26 @@ export default async function CardDetail({
           </p>
         )}
       </div>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={index} className="flex items-center gap-3">
+            <span
+              className="size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <StatusBadge status={entry.status} />
+            <span className="text-sm text-gray-500">
+              {formatInZone(entry.at, merchant.timezone)}
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

@@ -52,13 +52,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unrecognized merchant category." }, { status: 400 })
   }
 
-  const { card, number } = createCard({
+  const idempotencyKey =
+    typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+      ? body.idempotencyKey.trim()
+      : undefined
+
+  const { card, number, duplicate } = createCard({
     nickname,
     merchantId: merchant.id,
     limit,
     currency: body.currency,
     category: body.category,
+    idempotencyKey,
   })
 
-  return NextResponse.json({ card, number }, { status: 201 })
+  // A retried request returns the card already issued, not a second one —
+  // 200 because nothing new was created, 201 the one time something was.
+  return NextResponse.json({ card, number, duplicate }, { status: duplicate ? 200 : 201 })
 }

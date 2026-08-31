@@ -22,6 +22,7 @@ export function CardStatusActions({
   const router = useRouter()
   const [pending, setPending] = useState<CardStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   const transition = async (next: CardStatus) => {
     setPending(next)
@@ -37,6 +38,7 @@ export function CardStatusActions({
         setError(body.error ?? "Couldn't update this card.")
         return
       }
+      setConfirmingCancel(false)
       router.refresh()
     } catch {
       setError("Couldn't reach the server.")
@@ -47,6 +49,38 @@ export function CardStatusActions({
 
   if (status === "cancelled") {
     return <span className="text-sm text-gray-500">—</span>
+  }
+
+  if (confirmingCancel) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          Cancel this card? This can&rsquo;t be undone.
+        </span>
+        <Button
+          variant="destructive"
+          className="py-1.5"
+          isLoading={pending === "cancelled"}
+          loadingText="Cancelling…"
+          onClick={() => transition("cancelled")}
+        >
+          Yes, cancel
+        </Button>
+        <Button
+          variant="secondary"
+          className="py-1.5"
+          type="button"
+          onClick={() => setConfirmingCancel(false)}
+        >
+          Keep card
+        </Button>
+        {error && (
+          <p className="w-full text-sm text-red-600 dark:text-red-500" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -76,9 +110,8 @@ export function CardStatusActions({
         <Button
           variant="destructive"
           className="py-1.5"
-          isLoading={pending === "cancelled"}
-          loadingText="Cancelling…"
-          onClick={() => transition("cancelled")}
+          type="button"
+          onClick={() => setConfirmingCancel(true)}
         >
           Cancel card
         </Button>

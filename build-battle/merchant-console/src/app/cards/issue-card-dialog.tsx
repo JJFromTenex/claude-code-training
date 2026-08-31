@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
-import { CARD_CATEGORIES, CARD_CATEGORY_LABELS } from "@/lib/cards"
+import { CARD_CATEGORIES, CARD_CATEGORY_LABELS, maskNumber } from "@/lib/cards"
 import { formatMoney } from "@/lib/money"
 import { Check, CirclePlus, Copy } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -31,13 +31,14 @@ const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
 
 interface CreateCardResponse {
   card: Card
-  number: string
+  number: string | null
+  duplicate: boolean
 }
 
 export function IssueCardDialog({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: { id: string; name: string; currency: Currency }[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -45,30 +46,46 @@ export function IssueCardDialog({
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
   const [currency, setCurrency] = useState<Currency>("USD")
+  const [currencyTouched, setCurrencyTouched] = useState(false)
   const [category, setCategory] = useState<CardCategory | "">("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<CreateCardResponse | null>(null)
   const [copied, setCopied] = useState(false)
+  // One key per issue attempt in this dialog session. A retried submit (the
+  // user clicking again after a dropped response) reuses it on purpose, so
+  // the server can tell "same request again" from "a second card" — see
+  // src/data/cards.ts's createCard(). A fresh session gets a fresh key.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
     setLimit("")
     setCurrency("USD")
+    setCurrencyTouched(false)
     setCategory("")
     setError(null)
     setSubmitting(false)
     setResult(null)
     setCopied(false)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
     if (!next) {
-      const created = result !== null
+      const created = result !== null && !result.duplicate
       reset()
       if (created) router.refresh()
+    }
+  }
+
+  const selectMerchant = (id: string) => {
+    setMerchantId(id)
+    if (!currencyTouched) {
+      const merchant = merchants.find((m) => m.id === id)
+      if (merchant) setCurrency(merchant.currency)
     }
   }
 
@@ -86,6 +103,7 @@ export function IssueCardDialog({
           limit,
           currency,
           category: category || undefined,
+          idempotencyKey,
         }),
       })
       const body = await response.json()
@@ -102,7 +120,7 @@ export function IssueCardDialog({
   }
 
   const copyNumber = async () => {
-    if (!result) return
+    if (!result?.number) return
     try {
       await navigator.clipboard.writeText(result.number)
       setCopied(true)
@@ -153,7 +171,7 @@ export function IssueCardDialog({
                 >
                   Merchant
                 </label>
-                <Select value={merchantId} onValueChange={setMerchantId}>
+                <Select value={merchantId} onValueChange={selectMerchant}>
                   <SelectTrigger id="card-merchant" className="py-1.5">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
@@ -194,7 +212,10 @@ export function IssueCardDialog({
                   </label>
                   <Select
                     value={currency}
-                    onValueChange={(value) => setCurrency(value as Currency)}
+                    onValueChange={(value) => {
+                      setCurrency(value as Currency)
+                      setCurrencyTouched(true)
+                    }}
                   >
                     <SelectTrigger id="card-currency" className="py-1.5">
                       <SelectValue />
@@ -209,6 +230,12 @@ export function IssueCardDialog({
                   </Select>
                 </div>
               </div>
+              {!currencyTouched && merchantId && (
+                <p className="-mt-2 text-xs text-gray-500">
+                  Defaulted to this merchant&rsquo;s currency — change it above if this card
+                  should be issued in a different one.
+                </p>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <label
@@ -259,13 +286,44 @@ export function IssueCardDialog({
               </Button>
             </DialogFooter>
           </form>
+        ) : result.duplicate ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Already issued</DialogTitle>
+              <DialogDescription>
+                This request already went through — a duplicate submit doesn&rsquo;t create a
+                second card. The number was only ever shown the first time.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody className="flex flex-col gap-4">
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {result.card.nickname}
+                </p>
+                <p className="mt-1 font-mono text-lg text-gray-900 dark:text-gray-50">
+                  {maskNumber(result.card.last4)}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {formatMoney(result.card.limit, result.card.currency)} limit
+                </p>
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="primary" className="py-1.5" type="button">
+                  Done
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </>
         ) : (
           <>
             <DialogHeader>
               <DialogTitle>Card issued</DialogTitle>
               <DialogDescription>
                 This is the only time the full number is shown. After you close this, it
-                reads <span className="font-mono">•••• {result.card.last4}</span> everywhere.
+                reads <span className="font-mono">{maskNumber(result.card.last4)}</span>{" "}
+                everywhere.
               </DialogDescription>
             </DialogHeader>
             <DialogBody className="flex flex-col gap-4">
@@ -274,7 +332,7 @@ export function IssueCardDialog({
                   {result.card.nickname}
                 </p>
                 <p className="mt-1 font-mono text-lg tabular-nums text-gray-900 dark:text-gray-50">
-                  {result.number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                  {result.number?.replace(/(\d{4})(?=\d)/g, "$1 ")}
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
                   {formatMoney(result.card.limit, result.card.currency)} limit

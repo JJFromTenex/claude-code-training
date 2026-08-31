@@ -80,6 +80,12 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export interface CardStatusEvent {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
 export interface Card {
   id: string
   nickname: string
@@ -93,6 +99,13 @@ export interface Card {
   /** Last four of the generated number. The full number is never stored. */
   last4: string
   category?: CardCategory
+  /** Every status this card has held, oldest first. Seeded with "active" at issue. */
+  history: CardStatusEvent[]
+  /**
+   * Client-supplied dedup key for the issue request that created this card.
+   * Internal bookkeeping only — never shown in the UI.
+   */
+  idempotencyKey?: string
   /** ISO 8601, always UTC. */
   createdAt: string
 }
