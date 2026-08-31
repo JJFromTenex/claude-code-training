@@ -27,7 +27,13 @@ export function PaymentsFilterBar({
 }: {
   statuses: string[]
   merchants: { id: string; name: string }[]
-  current: { status: string; merchantId: string; search: string }
+  current: {
+    status: string
+    merchantId: string
+    search: string
+    sort: string
+    direction: string
+  }
 }) {
   const router = useRouter()
   const [search, setSearch] = useState(current.search)
@@ -38,6 +44,11 @@ export function PaymentsFilterBar({
     if (merged.status && merged.status !== "all") next.set("status", merged.status)
     if (merged.merchantId) next.set("merchantId", merged.merchantId)
     if (merged.search) next.set("search", merged.search)
+    // Carry the active sort forward — changing a filter shouldn't silently
+    // reset it back to the default.
+    if (merged.sort && merged.sort !== "createdAt") next.set("sort", merged.sort)
+    if (merged.direction && merged.direction !== "desc")
+      next.set("direction", merged.direction)
     router.push(`/payments?${next.toString()}`)
   }
 

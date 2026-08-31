@@ -10,11 +10,11 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
-import { PaymentFilters, PaymentStatus } from "@/data/types"
+import { parseFilters, queryPayments } from "@/data/queries"
+import { PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Download } from "lucide-react"
 import Link from "next/link"
 import { PaymentsFilterBar } from "./filter-bar"
 
@@ -27,29 +27,58 @@ const STATUSES: (PaymentStatus | "all")[] = [
   "failed",
 ]
 
+function SortIndicator({
+  active,
+  direction,
+}: {
+  active: boolean
+  direction: "asc" | "desc"
+}) {
+  if (!active) {
+    return (
+      <ChevronsUpDown
+        className="size-3.5 text-gray-400 dark:text-gray-600"
+        aria-hidden="true"
+      />
+    )
+  }
+  const Icon = direction === "desc" ? ArrowDown : ArrowUp
+  return (
+    <Icon
+      className="size-3.5 text-gray-900 dark:text-gray-50"
+      aria-hidden="true"
+    />
+  )
+}
+
 export default async function PaymentsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const filters: PaymentFilters = {
-    status: (STATUSES.includes(params.status as PaymentStatus)
-      ? params.status
-      : "all") as PaymentFilters["status"],
-    merchantId: params.merchantId || undefined,
-    search: params.search || undefined,
-    page: Number(params.page ?? "1") || 1,
-  }
-
-  const { rows, total, page, pageCount } = queryPayments(filters)
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
+  const filters = parseFilters(query)
+  const sort = filters.sort ?? "createdAt"
+  const direction = filters.direction ?? "desc"
+
+  const { rows, total, page, pageCount } = queryPayments(filters)
 
   const pageHref = (next: number) => {
     const q = new URLSearchParams(query)
     q.set("page", String(next))
+    return `/payments?${q.toString()}`
+  }
+
+  const sortHref = (column: "createdAt" | "amount") => {
+    const q = new URLSearchParams(query)
+    const nextDirection =
+      sort === column ? (direction === "desc" ? "asc" : "desc") : "desc"
+    q.set("sort", column)
+    q.set("direction", nextDirection)
+    q.delete("page")
     return `/payments?${q.toString()}`
   }
 
@@ -63,6 +92,8 @@ export default async function PaymentsPage({
             status: (filters.status as string) ?? "all",
             merchantId: filters.merchantId ?? "",
             search: filters.search ?? "",
+            sort,
+            direction,
           }}
         />
         <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
@@ -84,8 +115,24 @@ export default async function PaymentsPage({
               <TableHeaderCell>Merchant</TableHeaderCell>
               <TableHeaderCell>Description</TableHeaderCell>
               <TableHeaderCell>Method</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
-              <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+              <TableHeaderCell>
+                <Link
+                  href={sortHref("createdAt")}
+                  className="inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  Date
+                  <SortIndicator active={sort === "createdAt"} direction={direction} />
+                </Link>
+              </TableHeaderCell>
+              <TableHeaderCell className="text-right">
+                <Link
+                  href={sortHref("amount")}
+                  className="inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  Amount
+                  <SortIndicator active={sort === "amount"} direction={direction} />
+                </Link>
+              </TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
             </TableRow>
           </TableHead>
