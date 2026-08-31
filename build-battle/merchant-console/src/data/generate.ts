@@ -1,5 +1,8 @@
+import { generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatusEvent,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,119 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * A handful of example cards, issued before this session, so /cards opens
+ * onto something real instead of an empty room. Hand-authored rather than
+ * randomized: the spend figures are chosen to exercise a specific state
+ * (near-limit for the amber threshold, a frozen card, a cancelled one with
+ * real history) that a random loop can't reliably hit deterministically.
+ * Anything issued live through the app starts at spent: 0 — there's no
+ * transaction feed here to make a nonzero starting spend honest.
+ */
+function generateCards(): Card[] {
+  const daysBefore = (days: number) =>
+    new Date(GENERATED_AT.getTime() - days * 86_400_000).toISOString()
+
+  const history = (
+    events: { status: "active" | "frozen" | "cancelled"; daysBefore: number }[],
+  ): CardStatusEvent[] =>
+    events.map((e) => ({ status: e.status, at: daysBefore(e.daysBefore) }))
+
+  const cardNumber = () => generateCardNumber(rand).last4
+
+  const cards: Card[] = [
+    {
+      id: "card_0001",
+      nickname: "Ad platform subscriptions",
+      merchantId: "mch_01",
+      last4: cardNumber(),
+      limit: 50_000,
+      spent: 6_120,
+      currency: "USD",
+      category: "vendor_subscriptions",
+      status: "active",
+      createdAt: daysBefore(40),
+      history: history([{ status: "active", daysBefore: 40 }]),
+    },
+    {
+      id: "card_0002",
+      nickname: "Paid social",
+      merchantId: "mch_02",
+      last4: cardNumber(),
+      limit: 200_000,
+      spent: 174_300,
+      currency: "USD",
+      category: "ad_spend",
+      status: "active",
+      createdAt: daysBefore(25),
+      history: history([{ status: "active", daysBefore: 25 }]),
+    },
+    {
+      id: "card_0003",
+      nickname: "Freelance designer",
+      merchantId: "mch_04",
+      last4: cardNumber(),
+      limit: 80_000,
+      spent: 36_400,
+      currency: "GBP",
+      category: "contractor_tools",
+      status: "frozen",
+      createdAt: daysBefore(60),
+      history: history([
+        { status: "active", daysBefore: 60 },
+        { status: "frozen", daysBefore: 10 },
+      ]),
+    },
+    {
+      id: "card_0004",
+      nickname: "Legacy vendor tool",
+      merchantId: "mch_05",
+      last4: cardNumber(),
+      limit: 30_000,
+      spent: 27_950,
+      currency: "EUR",
+      category: "vendor_subscriptions",
+      status: "cancelled",
+      createdAt: daysBefore(90),
+      history: history([
+        { status: "active", daysBefore: 90 },
+        { status: "frozen", daysBefore: 50 },
+        { status: "cancelled", daysBefore: 20 },
+      ]),
+    },
+    {
+      id: "card_0005",
+      nickname: "Influencer ad spend",
+      merchantId: "mch_07",
+      last4: cardNumber(),
+      limit: 150_000,
+      spent: 12_000,
+      currency: "USD",
+      category: "ad_spend",
+      status: "active",
+      createdAt: daysBefore(5),
+      history: history([{ status: "active", daysBefore: 5 }]),
+    },
+    {
+      id: "card_0006",
+      nickname: "New contractor tool",
+      merchantId: "mch_10",
+      last4: cardNumber(),
+      limit: 60_000,
+      spent: 0,
+      currency: "USD",
+      category: "contractor_tools",
+      status: "active",
+      createdAt: daysBefore(1),
+      history: history([{ status: "active", daysBefore: 1 }]),
+    },
+  ]
+
+  return cards
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

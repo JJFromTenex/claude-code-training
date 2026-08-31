@@ -11,6 +11,11 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** active ⇄ frozen; either can move to cancelled; cancelled is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory = "vendor_subscriptions" | "ad_spend" | "contractor_tools"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +74,34 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface CardStatusEvent {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /**
+   * The full number is never stored. It exists only in the creation
+   * response, once. This record only ever carries the last four.
+   */
+  last4: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  /** Integer minor units. Never exceeds limit. */
+  spent: number
+  /** Always the issuing merchant's own currency — see NWP-201 spec. */
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  history: CardStatusEvent[]
 }
 
 export interface PaymentFilters {
