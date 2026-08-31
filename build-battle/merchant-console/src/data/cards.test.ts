@@ -58,6 +58,34 @@ describe("createCard", () => {
     expect(JSON.stringify(store.cards)).not.toContain(number)
   })
 
+  it("stores a reference to the number, so the card can be reconciled later", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+    expect(result.value.card.reference).toMatch(/^cref_[0-9a-f]{32}$/)
+  })
+
+  it("keeps the reference independent of the number it references", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+
+    const { card, number } = result.value
+    // A reference that encodes the number is a number in disguise: the BIN is
+    // fixed and the last four are stored, so anything derived is brute-forceable.
+    expect(card.reference).not.toContain(number)
+    expect(card.reference).not.toContain(number.slice(4, 12))
+    expect(card.reference).not.toContain(card.last4)
+  })
+
+  it("gives every card a distinct reference", () => {
+    const references = new Set<string>()
+    for (let i = 0; i < 25; i++) {
+      const result = issue()
+      if (!result.ok) throw new Error("expected the card to be issued")
+      references.add(result.value.card.reference)
+    }
+    expect(references.size).toBe(25)
+  })
+
   it("starts a card active, unspent, and stamped in UTC", () => {
     const result = issue()
     if (!result.ok) throw new Error("expected the card to be issued")

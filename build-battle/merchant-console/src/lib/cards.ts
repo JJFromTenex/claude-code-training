@@ -63,6 +63,18 @@ export function generateCardNumber(): string {
   return partial + luhnCheckDigit(partial)
 }
 
+/**
+ * An opaque reference to a generated number, so a card can be discussed and
+ * reconciled after the number is gone.
+ *
+ * Deliberately random rather than a hash of the number: the BIN is fixed at
+ * 4242 and the last four are stored beside it, so a hash would leave eight
+ * unknown digits — around a hundred million candidates, which is nothing.
+ */
+export function generateNumberReference(): string {
+  return `cref_${crypto.randomUUID().replace(/-/g, "")}`
+}
+
 /** The masked form shown everywhere except the creation response. */
 export function maskCardNumber(last4: string): string {
   return `•••• ${last4}`

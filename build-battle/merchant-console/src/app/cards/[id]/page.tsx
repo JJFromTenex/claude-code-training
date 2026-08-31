@@ -74,6 +74,9 @@ export default async function CardDetail({
           </span>
         </Field>
         <Field label="Category lock">{card.category ?? "Unrestricted"}</Field>
+        <Field label="Number reference">
+          <span className="font-mono text-xs">{card.reference}</span>
+        </Field>
         <Field label="Created (UTC)">{formatDate(card.createdAt)}</Field>
         {merchant && (
           <Field label={`Created (${merchant.timezone})`}>

@@ -1,5 +1,6 @@
 import {
   generateCardNumber,
+  generateNumberReference,
   isValidCardTransition,
   last4Of,
 } from "@/lib/cards"
@@ -216,6 +217,7 @@ export function createCard(
     nickname: validated.value.nickname,
     merchantId: validated.value.merchantId,
     last4: last4Of(number),
+    reference: generateNumberReference(),
     limit: validated.value.limit,
     spent: 0,
     currency: validated.value.currency,

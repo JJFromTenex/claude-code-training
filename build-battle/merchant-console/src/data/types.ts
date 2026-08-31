@@ -86,6 +86,12 @@ export interface Card {
   nickname: string
   merchantId: string
   last4: string
+  /**
+   * Opaque handle for the generated number, for support and reconciliation.
+   * Random, never derived from the number: with the BIN and last four already
+   * known, a hash would leave only eight unknown digits to brute-force.
+   */
+  reference: string
   /** Integer minor units. Never a float. */
   limit: number
   /** Integer minor units, spent against the limit. */

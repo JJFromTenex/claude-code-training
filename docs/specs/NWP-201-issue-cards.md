@@ -38,6 +38,7 @@ Also worth noting: `merchant-console/CLAUDE.md` says "Seed data is JSON, loaded 
 | "Every generated number starts `4242` and carries a valid Luhn check digit. Nothing here may resemble a real PAN, ever, including in tests and fixtures" | `.claude/rules/cards.md` | A repository full of things that look like real card numbers |
 | "Generate on the server. A card number produced in the browser is a bug" | `.claude/rules/cards.md` | Number generation sitting in a client bundle |
 | "Reveal once. The full number appears in the creation response and nowhere else: not on the card record, not in a list or detail payload, not left in client state after the success screen closes" | `.claude/rules/cards.md` | Card data leaking from any later read |
+| "Store the last four **and the generated number's reference**" / "Stored records carry the last four **and a reference**, never the number" | ticket rule 2, ORG-STANDARDS #8 | No way to reconcile or discuss a card once its number is gone |
 | "Mask everywhere else as `•••• 4242`" | `.claude/rules/cards.md` | Inconsistent, untrustworthy display |
 | "Status is a state machine. `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. Guard the transition on the server, not only in the UI" | `.claude/rules/cards.md` | A cancelled card comes back to life via a crafted request |
 | "Validate on the server. Anything from the client — column names, currencies, limits, statuses — is checked against an allowlist before it reaches a query, a filename, or the store" | `merchant-console/CLAUDE.md` | The incident this ticket exists to prevent, in a new form |
@@ -55,7 +56,7 @@ Build the server completely before any UI exists, and check it with `curl` and u
 
 | File | Add or change | Why |
 | --- | --- | --- |
-| `src/data/types.ts` | change | `CardStatus`, `Card` (no `number` field, by design), `CardFilters` |
+| `src/data/types.ts` | change | `CardStatus`, `Card` (no `number` field, by design; `last4` plus an opaque `reference`), `CardFilters` |
 | `src/lib/cards.ts` | add | Luhn check digit, 4242 generation, masking, transition table — pure, no store |
 | `src/lib/cards.test.ts` | add | BIN and Luhn over many generated numbers; every transition pair |
 | `src/data/store.ts` | change | `cards: Card[]` on the `Store`, empty at boot |
