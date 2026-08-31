@@ -1,3 +1,4 @@
+import { Badge } from "@/components/Badge"
 import {
   Table,
   TableBody,
@@ -13,17 +14,46 @@ import { merchantById } from "@/data/merchants"
 import { store } from "@/data/store"
 import { daysUntil, formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { cx } from "@/lib/utils"
 import Link from "next/link"
 
-export default function DisputesPage() {
-  const disputes = [...store.disputes].sort((a, b) =>
-    a.evidenceDueAt.localeCompare(b.evidenceDueAt),
-  )
+function isOpen(status: string) {
+  return status === "needs_response" || status === "under_review"
+}
 
-  const open = disputes.filter(
-    (d) => d.status === "needs_response" || d.status === "under_review",
-  )
+/**
+ * Only a dispute still waiting on evidence has a deadline anyone can act on
+ * — once it's under_review the evidence is already in. Three tiers, reusing
+ * the Badge variants the rest of the app already uses for severity:
+ * overdue/within 48h is the same "error" red as a failed payment, the
+ * five-day heads-up is "warning" amber, anything further out gets no badge
+ * so the table isn't flagging things nobody needs to act on yet.
+ */
+function DeadlineBadge({ remaining }: { remaining: number }) {
+  if (remaining <= 0) {
+    return <Badge variant="error">Overdue</Badge>
+  }
+  if (remaining <= 2) {
+    return <Badge variant="error">Due in {remaining}d</Badge>
+  }
+  if (remaining <= 5) {
+    return <Badge variant="warning">Due in {remaining}d</Badge>
+  }
+  return null
+}
+
+export default function DisputesPage() {
+  // Open disputes first — sorting the whole list by evidenceDueAt put
+  // long-resolved cases (their deadline is in the past) ahead of the ones
+  // that still need action, which defeated the point of sorting by deadline
+  // at all.
+  const disputes = [...store.disputes].sort((a, b) => {
+    const aOpen = isOpen(a.status)
+    const bOpen = isOpen(b.status)
+    if (aOpen !== bOpen) return aOpen ? -1 : 1
+    return a.evidenceDueAt.localeCompare(b.evidenceDueAt)
+  })
+
+  const open = disputes.filter((d) => isOpen(d.status))
 
   return (
     <section aria-label="Disputes">
@@ -32,7 +62,8 @@ export default function DisputesPage() {
           Disputes
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {open.length} open of {disputes.length}. Sorted by evidence deadline.
+          {open.length} open of {disputes.length}. Open disputes shown first,
+          soonest deadline at top.
         </p>
       </div>
 
@@ -69,25 +100,12 @@ export default function DisputesPage() {
                   </TableCell>
                   <TableCell>{formatDate(dispute.openedAt)}</TableCell>
                   <TableCell>
-                    <span className="text-gray-900 dark:text-gray-50">
-                      {formatDate(dispute.evidenceDueAt)}
-                    </span>
-                    {needsAction && (
-                      <span
-                        className={cx(
-                          "ml-2 text-xs font-medium",
-                          remaining <= 0
-                            ? "text-red-600 dark:text-red-500"
-                            : remaining <= 3
-                              ? "text-orange-600 dark:text-orange-500"
-                              : "text-gray-500",
-                        )}
-                      >
-                        {remaining <= 0
-                          ? "overdue"
-                          : `${remaining} day${remaining === 1 ? "" : "s"} left`}
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-900 dark:text-gray-50">
+                        {formatDate(dispute.evidenceDueAt)}
                       </span>
-                    )}
+                      {needsAction && <DeadlineBadge remaining={remaining} />}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">
                     {formatMoney(dispute.amount, dispute.currency)}
