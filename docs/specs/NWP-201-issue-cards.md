@@ -93,11 +93,11 @@ Sequenced so each step ends somewhere verifiable. Steps 1-5 are the server; no U
 | Card detail shows the full record and spend against the limit | `src/app/cards/[id]/page.tsx` rendered in-browser; asserts `Spend against limit` present |
 | Numbers generated server-side on the 4242 BIN with a valid Luhn digit | `src/lib/cards.test.ts` over 200 samples, plus an independent Luhn implementation in the Playwright check on the revealed number |
 | Reveal once, mask forever | `data/cards.test.ts` asserts the serialized record never contains the number; Playwright asserts it is gone from the DOM after close and does not return on reopen; `grep -cE '4242[0-9]{12}'` on the list and detail HTML is 0 |
-| Server-side validation: missing merchant, zero/negative limit, limit above 5,000,000, currency outside USD/EUR/GBP | 31 cases in `src/data/cards.test.ts`, plus `curl` against each route confirming 400 and not 500 |
+| Server-side validation: missing merchant, zero/negative limit, limit above 5,000,000, currency outside USD/EUR/GBP | One case per rejection in `src/data/cards.test.ts` — missing and unknown merchant, zero, negative, float, string and over-cap limits, non-allowlisted currency, a currency the merchant does not settle in, blank nickname — plus `curl` against each route confirming 400 and not 500 |
 | *Stretch* freeze/unfreeze without a full reload | Playwright clicks Freeze and asserts a Frozen badge and an Unfreeze control appear without navigation |
 | *Stretch* spend progress, amber past 80% | `role="progressbar"` with `aria-valuenow` on the detail page; amber class applied at ≥80% |
 | *Stretch* merchant category lock | Chosen in the dialog, asserted on the record in `data/cards.test.ts`, shown on the list row and detail page |
-| *Stretch* tests | `npm test` — 79 passing |
+| *Stretch* tests | `npm test` — 88 passing, counted on a clean detached checkout of the branch so unrelated in-tree work cannot inflate it |
 | *Stretch* written empty and error states | Two distinct empty states asserted in-browser on a fresh store vs. a filter matching nothing; the dialog's inline error asserted on an empty submit |
 
 Commands: `npm test`, `npx tsc --noEmit`, `npm run lint`, then `npm run dev` with the `curl` checkpoint and the Playwright walk.
@@ -121,3 +121,17 @@ Commands: `npm test`, `npx tsc --noEmit`, `npm run lint`, then `npm run dev` wit
 
 - Should `spent` ever be writable before a transactions feature exists, e.g. seeded with a plausible amount so the progress bar has something to show in a demo? Recommendation: no — a fabricated spend figure in an ops tool is worse than a truthful zero.
 - Should issuing a card be blocked for an `elevated` risk-tier merchant? `Merchant.riskTier` exists in `src/data/types.ts:21` and nothing in the ticket mentions it. Recommendation: leave it alone until Ops asks.
+
+## Added after the first review
+
+This spec was written against the ticket; these landed after review feedback,
+and are recorded here so the plan and the code do not disagree.
+
+| Change | Why |
+| --- | --- |
+| `reference` on `Card`, populated in `createCard` | Ticket rule 2 and ORG-STANDARDS #8 both require storing the number's reference. The rules table above originally quoted only the reveal-once half of that rule, which is why it was missed — the table is now corrected |
+| Merchant↔currency enforced in `validateCreate` | A card settles in the merchant's own currency. The form defaulted to it, but nothing enforced it, so a stale or crafted client could mismatch the pair |
+| Idempotency key on `POST /api/cards`, `store.cardIssueKeys` | An ops tool gets double-clicked. A repeat returns the card already issued, with no number — a retry is not a second reveal |
+| `Card.history`, rendered on the detail page | Answers "what happened to this card last Tuesday" without a separate log |
+| Confirm step before cancelling | Cancellation is terminal; a single click on a destructive action in a table row is a mistake waiting to happen |
+| `Select` component instead of native `<select>`; `field`-targeted form errors | `components.md` "use what is here"; the dialog was discarding the field the server names, so every error rendered identically |
