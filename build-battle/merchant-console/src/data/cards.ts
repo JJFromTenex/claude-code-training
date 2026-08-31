@@ -3,12 +3,7 @@ import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { merchantById } from "./merchants"
 import { paginate } from "./queries"
 import { store } from "./store"
-import {
-  CardCategory,
-  CardStatus,
-  Currency,
-  VirtualCard,
-} from "./types"
+import { CardCategory, CardStatus, Currency, VirtualCard } from "./types"
 
 /** The largest limit ops may set, in minor units. Above this is rejected. */
 export const MAX_CARD_LIMIT = 5_000_000
@@ -74,8 +69,7 @@ export function parseCardInput(
     return { error: { status: 400, message: "Send a JSON body." } }
   }
 
-  const nickname =
-    typeof body.nickname === "string" ? body.nickname.trim() : ""
+  const nickname = typeof body.nickname === "string" ? body.nickname.trim() : ""
   if (!nickname) {
     return { error: { status: 400, message: "Give the card a nickname." } }
   }

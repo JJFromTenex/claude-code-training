@@ -74,11 +74,7 @@ export interface Payout {
 export type CardStatus = "active" | "frozen" | "cancelled"
 
 export type CardCategory =
-  | "advertising"
-  | "software"
-  | "travel"
-  | "contractors"
-  | "utilities"
+  "advertising" | "software" | "travel" | "contractors" | "utilities"
 
 /** One recorded status change. `from` is null for the issue event. */
 export interface CardAuditEntry {

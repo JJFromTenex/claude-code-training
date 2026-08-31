@@ -7,7 +7,9 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export function GET(request: NextRequest) {
   const page = Number(request.nextUrl.searchParams.get("page") ?? "1")
-  return NextResponse.json(listCards(Number.isFinite(page) && page > 0 ? page : 1))
+  return NextResponse.json(
+    listCards(Number.isFinite(page) && page > 0 ? page : 1),
+  )
 }
 
 /**

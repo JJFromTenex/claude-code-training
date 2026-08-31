@@ -88,9 +88,7 @@ export function CardStatusActions({
         <DrawerContent className="sm:max-w-md">
           <DrawerHeader>
             <DrawerTitle>Cancel this card?</DrawerTitle>
-            <DrawerDescription>
-              Cancelling is permanent.
-            </DrawerDescription>
+            <DrawerDescription>Cancelling is permanent.</DrawerDescription>
           </DrawerHeader>
           <DrawerBody>
             <p className="text-sm text-gray-500">
