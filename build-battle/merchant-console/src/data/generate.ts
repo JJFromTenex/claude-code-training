@@ -1,5 +1,7 @@
+import { generateCardNumber, lastFour } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -64,6 +66,44 @@ function statusFor(): PaymentStatus {
   if (roll < 0.93) return "refunded"
   if (roll < 0.98) return "failed"
   return "disputed"
+}
+
+/**
+ * Four issued cards so the list, the detail page and the spend bar have
+ * something to show before anyone issues one. Explicit rather than rolled:
+ * the 88% card is the amber case, and the currencies spread across USD, GBP
+ * and EUR by way of their merchants.
+ */
+const SEED_CARDS = [
+  { nickname: "Ad spend \u2014 Meta", merchantId: "mch_01", spendLimit: 250_000, used: 0.12, status: "active", category: "advertising", daysAgo: 61 },
+  { nickname: "Contractor tools", merchantId: "mch_04", spendLimit: 120_000, used: 0.47, status: "active", category: "contractors", daysAgo: 34 },
+  { nickname: "Vendor subscriptions", merchantId: "mch_05", spendLimit: 80_000, used: 0.88, status: "active", category: "software", daysAgo: 12 },
+  { nickname: "Cloud hosting", merchantId: "mch_02", spendLimit: 500_000, used: 0.64, status: "frozen", category: "software", daysAgo: 5 },
+] as const
+
+function generateCards(): Card[] {
+  return SEED_CARDS.map((seed, index) => {
+    const merchant = merchants.find((m) => m.id === seed.merchantId)!
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+
+    // Only the last four survives. The generated number is not stored.
+    const number = generateCardNumber(rand)
+
+    return {
+      id: `card_${pad(index + 1)}`,
+      nickname: seed.nickname,
+      merchantId: merchant.id,
+      last4: lastFour(number),
+      numberRef: `cn_${pad(index + 1)}`,
+      spendLimit: seed.spendLimit,
+      spent: Math.round(seed.spendLimit * seed.used),
+      currency: merchant.currency as Currency,
+      status: seed.status,
+      categoryLock: seed.category,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 export function generate() {
@@ -148,7 +188,9 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  // Last, so adding cards does not shift any of the payment draws above.
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
