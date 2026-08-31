@@ -58,7 +58,8 @@ export function parseCardInput(body: unknown): {
 
   const merchantId =
     typeof raw.merchantId === "string" ? raw.merchantId : ""
-  if (!merchantId || !merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchantId || !merchant) {
     errors.merchantId = "Choose a valid merchant."
   }
 
@@ -72,6 +73,10 @@ export function parseCardInput(body: unknown): {
   const currency = raw.currency as Currency
   if (!CURRENCIES.includes(currency)) {
     errors.currency = "Currency must be USD, EUR, or GBP."
+  } else if (merchant && currency !== merchant.currency) {
+    // A card can't settle in a currency the merchant doesn't operate in —
+    // the client should never offer the choice, but this is the real gate.
+    errors.currency = `Currency must match the merchant's currency (${merchant.currency}).`
   }
 
   const categoryRaw = raw.category

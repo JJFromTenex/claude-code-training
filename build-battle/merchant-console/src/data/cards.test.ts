@@ -59,6 +59,27 @@ describe("parseCardInput", () => {
     expect(errors.currency).toBeTruthy()
   })
 
+  it("rejects a currency that doesn't match the merchant's own currency", () => {
+    const gbpMerchant = merchants.find((m) => m.currency === "GBP")!
+    const { data, errors } = parseCardInput({
+      ...validInput,
+      merchantId: gbpMerchant.id,
+      currency: "USD",
+    })
+    expect(data).toBeNull()
+    expect(errors.currency).toContain("GBP")
+  })
+
+  it("accepts a currency that matches a non-USD merchant", () => {
+    const eurMerchant = merchants.find((m) => m.currency === "EUR")!
+    const { errors } = parseCardInput({
+      ...validInput,
+      merchantId: eurMerchant.id,
+      currency: "EUR",
+    })
+    expect(errors.currency).toBeUndefined()
+  })
+
   it("never trusts a formatted limit string", () => {
     const { errors } = parseCardInput({ ...validInput, limit: "500.00" })
     expect(errors.limit).toBeTruthy()

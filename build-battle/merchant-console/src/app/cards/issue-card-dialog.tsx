@@ -24,18 +24,8 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { merchants } from "@/data/merchants"
-import { CARD_CATEGORIES, CardCategory, Currency } from "@/data/types"
+import { CARD_CATEGORIES, CARD_CATEGORY_LABELS, CardCategory } from "@/data/types"
 import { parseAmountToMinorUnits } from "@/lib/money"
-
-const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
-
-const CATEGORY_LABELS: Record<CardCategory, string> = {
-  advertising: "Advertising",
-  software: "Software subscriptions",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  other: "Other",
-}
 
 type FieldErrors = Partial<
   Record<"nickname" | "merchantId" | "limit" | "currency" | "category" | "form", string>
@@ -45,7 +35,6 @@ const emptyForm = {
   nickname: "",
   merchantId: "",
   limitInput: "",
-  currency: "USD" as Currency,
   category: "" as CardCategory | "",
 }
 
@@ -56,6 +45,8 @@ export function IssueCardDialog() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ number: string; last4: string } | null>(null)
+
+  const selectedMerchant = merchants.find((m) => m.id === form.merchantId) ?? null
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -72,7 +63,7 @@ export function IssueCardDialog() {
     const limit = parseAmountToMinorUnits(form.limitInput)
     const clientErrors: FieldErrors = {}
     if (!form.nickname.trim()) clientErrors.nickname = "Nickname is required."
-    if (!form.merchantId) clientErrors.merchantId = "Choose a merchant."
+    if (!selectedMerchant) clientErrors.merchantId = "Choose a merchant."
     if (limit == null || limit <= 0) {
       clientErrors.limit = "Enter a limit greater than zero, like 250.00."
     }
@@ -91,7 +82,7 @@ export function IssueCardDialog() {
           nickname: form.nickname.trim(),
           merchantId: form.merchantId,
           limit,
-          currency: form.currency,
+          currency: selectedMerchant?.currency,
           category: form.category || null,
         }),
       })
@@ -192,23 +183,21 @@ export function IssueCardDialog() {
                   />
                 </Field>
                 <Field label="Currency" htmlFor="card-currency" error={errors.currency}>
-                  <Select
-                    value={form.currency}
-                    onValueChange={(currency) =>
-                      setForm({ ...form, currency: currency as Currency })
-                    }
-                  >
+                  <Select value={selectedMerchant?.currency ?? ""} disabled>
                     <SelectTrigger id="card-currency">
-                      <SelectValue />
+                      <SelectValue placeholder="Set by merchant" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CURRENCIES.map((currency) => (
-                        <SelectItem key={currency} value={currency}>
-                          {currency}
+                      {selectedMerchant && (
+                        <SelectItem value={selectedMerchant.currency}>
+                          {selectedMerchant.currency}
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Matches the merchant&apos;s own currency.
+                  </p>
                 </Field>
               </div>
 
@@ -225,7 +214,7 @@ export function IssueCardDialog() {
                   <SelectContent>
                     {CARD_CATEGORIES.map((category) => (
                       <SelectItem key={category} value={category}>
-                        {CATEGORY_LABELS[category]}
+                        {CARD_CATEGORY_LABELS[category]}
                       </SelectItem>
                     ))}
                   </SelectContent>

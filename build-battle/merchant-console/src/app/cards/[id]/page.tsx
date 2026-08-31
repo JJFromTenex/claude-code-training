@@ -1,20 +1,13 @@
 import { Divider } from "@/components/Divider"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CARD_CATEGORY_LABELS } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardStatusActions } from "../card-status-actions"
 import { SpendBar } from "../spend-bar"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  advertising: "Advertising",
-  software: "Software subscriptions",
-  travel: "Travel",
-  office_supplies: "Office supplies",
-  other: "Other",
-}
 
 export default async function CardDetail({
   params,
@@ -62,7 +55,7 @@ export default async function CardDetail({
         <Field label="Limit">{formatMoney(card.limit, card.currency)}</Field>
         <Field label="Currency">{card.currency}</Field>
         <Field label="Category">
-          {card.category ? CATEGORY_LABELS[card.category] : "—"}
+          {card.category ? CARD_CATEGORY_LABELS[card.category] : "—"}
         </Field>
         <Field label="Created (UTC)">
           <span className="font-mono text-sm">{card.createdAt}</span>

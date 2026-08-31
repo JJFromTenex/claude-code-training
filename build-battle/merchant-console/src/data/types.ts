@@ -70,6 +70,14 @@ export const CARD_CATEGORIES = [
 
 export type CardCategory = (typeof CARD_CATEGORIES)[number]
 
+export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
+  advertising: "Advertising",
+  software: "Software subscriptions",
+  travel: "Travel",
+  office_supplies: "Office supplies",
+  other: "Other",
+}
+
 export interface Card {
   id: string
   nickname: string
