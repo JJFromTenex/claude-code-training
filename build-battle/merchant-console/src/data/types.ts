@@ -58,6 +58,35 @@ export interface Dispute {
   evidenceDueAt: string
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export const CARD_CATEGORIES = [
+  "advertising",
+  "software",
+  "travel",
+  "office_supplies",
+  "other",
+] as const
+
+export type CardCategory = (typeof CARD_CATEGORIES)[number]
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  currency: Currency
+  status: CardStatus
+  /** Last four of the generated number. The full number is never stored. */
+  last4: string
+  /** Integer minor units spent against the limit so far. */
+  spend: number
+  category: CardCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface Payout {
   id: string
   merchantId: string
