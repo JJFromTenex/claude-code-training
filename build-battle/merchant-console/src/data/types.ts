@@ -13,6 +13,14 @@ export type PayoutStatus = "paid" | "in_transit" | "pending"
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
+/** One entry in a card's status history. `from: null` is the issuance. */
+export interface CardStatusChange {
+  from: CardStatus | null
+  to: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
+}
+
 /** What a card may be spent on. `any` is the unrestricted default. */
 export type CardCategory =
   | "any"
@@ -66,6 +74,8 @@ export interface Card {
   status: CardStatus
   /** Chosen at issue time and fixed thereafter. */
   categoryLock: CardCategory
+  /** Every status the card has held, oldest first. Append-only. */
+  history: CardStatusChange[]
   /** ISO 8601, always UTC. */
   createdAt: string
 }

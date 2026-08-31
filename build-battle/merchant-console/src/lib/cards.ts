@@ -68,6 +68,12 @@ export function lastFour(cardNumber: string): string {
 
 export const CARD_STATUSES = ["active", "frozen", "cancelled"] as const
 
+export const CARD_STATUS_LABELS: Record<CardStatus, string> = {
+  active: "Active",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
+}
+
 export const CARD_CATEGORIES: readonly CardCategory[] = [
   "any",
   "advertising",

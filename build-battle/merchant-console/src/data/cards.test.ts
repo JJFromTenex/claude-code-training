@@ -4,7 +4,9 @@ import {
   CARD_CURRENCIES,
   MAX_NICKNAME_LENGTH,
   MAX_SPEND_LIMIT,
+  issueCard,
   parseCardInput,
+  setCardStatus,
 } from "./cards"
 
 /**
@@ -90,12 +92,33 @@ describe("parseCardInput", () => {
   })
 
   describe("currency", () => {
-    it("accepts every allowed code and rejects the rest", () => {
+    /** A merchant that actually settles in each allowed currency. */
+    const settlesIn: Record<string, string> = {
+      USD: "mch_01",
+      GBP: "mch_04",
+      EUR: "mch_05",
+    }
+
+    it("accepts each allowed code against a merchant that settles in it", () => {
       for (const code of CARD_CURRENCIES) {
-        expect(parse({ currency: code }).ok).toBe(true)
+        const result = parse({ currency: code, merchantId: settlesIn[code] })
+        expect(result.ok, code).toBe(true)
       }
-      for (const code of ["JPY", "usd", "", "US"]) {
+    })
+
+    it("rejects a code that is not on the allowlist", () => {
+      for (const code of ["JPY", "usd", "", "US", 840]) {
         expect(parse({ currency: code }).ok).toBe(false)
+      }
+    })
+
+    it("rejects a currency the merchant does not settle in", () => {
+      // mch_04 is a GBP merchant; the dialog derives this field, so a mismatch
+      // can only arrive from something that is not the dialog.
+      const result = parse({ merchantId: "mch_04", currency: "USD" })
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error).toContain("GBP")
       }
     })
   })
@@ -119,5 +142,48 @@ describe("parseCardInput", () => {
       expect(parse({ categoryLock: "crypto" }).ok).toBe(false)
       expect(parse({ categoryLock: 3 }).ok).toBe(false)
     })
+  })
+})
+
+describe("card history", () => {
+  const issue = (nickname: string, at?: Date) => {
+    const parsed = parseCardInput({ ...valid, nickname })
+    if (!parsed.ok) throw new Error(`fixture rejected: ${parsed.error}`)
+    return issueCard(parsed.value, at)
+  }
+
+  it("records the issuance, then every accepted transition", () => {
+    const { card } = issue("History probe", new Date("2026-08-01T00:00:00.000Z"))
+    expect(card.history).toEqual([
+      { from: null, to: "active", at: "2026-08-01T00:00:00.000Z" },
+    ])
+
+    setCardStatus(card.id, "frozen", new Date("2026-08-02T00:00:00.000Z"))
+    setCardStatus(card.id, "active", new Date("2026-08-03T00:00:00.000Z"))
+    setCardStatus(card.id, "cancelled", new Date("2026-08-04T00:00:00.000Z"))
+
+    expect(card.history.map((h) => `${h.from ?? "issued"}->${h.to}`)).toEqual([
+      "issued->active",
+      "active->frozen",
+      "frozen->active",
+      "active->cancelled",
+    ])
+  })
+
+  it("does not record a transition the server refused", () => {
+    const { card } = issue("Refused probe")
+    setCardStatus(card.id, "cancelled")
+    const before = card.history.length
+
+    expect(setCardStatus(card.id, "active").ok).toBe(false)
+    expect(setCardStatus(card.id, "frozen").ok).toBe(false)
+    expect(card.history).toHaveLength(before)
+  })
+
+  it("does not record a same-status no-op", () => {
+    const { card } = issue("No-op probe")
+    const before = card.history.length
+    expect(setCardStatus(card.id, "active").ok).toBe(true)
+    expect(card.history).toHaveLength(before)
   })
 })

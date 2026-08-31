@@ -101,6 +101,20 @@ function generateCards(): Card[] {
       currency: merchant.currency as Currency,
       status: seed.status,
       categoryLock: seed.category,
+      // Issuance, plus the freeze for whichever card is seeded frozen.
+      history:
+        seed.status === "active"
+          ? [{ from: null, to: "active" as const, at: createdAt.toISOString() }]
+          : [
+              { from: null, to: "active" as const, at: createdAt.toISOString() },
+              {
+                from: "active" as const,
+                to: seed.status,
+                at: new Date(
+                  createdAt.getTime() + 2 * 86_400_000,
+                ).toISOString(),
+              },
+            ],
       createdAt: createdAt.toISOString(),
     }
   })

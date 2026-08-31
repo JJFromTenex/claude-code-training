@@ -67,7 +67,9 @@ export function parseCardInput(body: unknown): ParsedCardInput {
     }
   }
 
-  if (typeof raw.merchantId !== "string" || !merchantById(raw.merchantId)) {
+  const merchant =
+    typeof raw.merchantId === "string" ? merchantById(raw.merchantId) : undefined
+  if (!merchant) {
     return { ok: false, error: "Choose a merchant that exists." }
   }
 
@@ -81,6 +83,16 @@ export function parseCardInput(body: unknown): ParsedCardInput {
     }
   }
   const currency = raw.currency as Currency
+
+  // A card is single-merchant, so it settles in that merchant's currency.
+  // The dialog derives this field, which makes the mismatch unreachable from
+  // the UI — this is the check that makes it unreachable from anywhere.
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `${merchant.name} settles in ${merchant.currency}, so a card for them cannot be issued in ${currency}.`,
+    }
+  }
 
   if (typeof raw.spendLimit !== "string") {
     return {
@@ -122,7 +134,7 @@ export function parseCardInput(body: unknown): ParsedCardInput {
     ok: true,
     value: {
       nickname,
-      merchantId: raw.merchantId,
+      merchantId: merchant.id,
       spendLimit,
       currency,
       categoryLock: categoryLock as CardCategory,
@@ -164,6 +176,7 @@ export function issueCard(
     currency: input.currency,
     status: "active",
     categoryLock: input.categoryLock,
+    history: [{ from: null, to: "active", at: now.toISOString() }],
     createdAt: now.toISOString(),
   }
   store.cards.push(card)
@@ -174,8 +187,15 @@ export type StatusChange =
   | { ok: true; card: Card }
   | { ok: false; status: 400 | 404; error: string }
 
-/** Guarded on the server, not only in the UI. `cancelled` is terminal. */
-export function setCardStatus(id: string, next: CardStatus): StatusChange {
+/**
+ * Guarded on the server, not only in the UI. `cancelled` is terminal, and every
+ * accepted move is appended to the card's history.
+ */
+export function setCardStatus(
+  id: string,
+  next: CardStatus,
+  now = new Date(),
+): StatusChange {
   const card = cardById(id)
   if (!card) return { ok: false, status: 404, error: "No card with that id." }
   if (card.status === next) return { ok: true, card }
@@ -186,6 +206,7 @@ export function setCardStatus(id: string, next: CardStatus): StatusChange {
       error: `A ${card.status} card cannot become ${next}.`,
     }
   }
+  card.history.push({ from: card.status, to: next, at: now.toISOString() })
   card.status = next
   return { ok: true, card }
 }

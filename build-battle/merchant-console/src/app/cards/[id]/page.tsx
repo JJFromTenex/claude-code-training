@@ -2,7 +2,11 @@ import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { CARD_CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
+import {
+  CARD_CATEGORY_LABELS,
+  CARD_STATUS_LABELS,
+  maskCardNumber,
+} from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -160,6 +164,34 @@ export default async function CardDetail({
           <span className="font-mono text-sm">{card.numberRef}</span>
         </Field>
       </dl>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {entry.from === null
+                  ? "Card issued"
+                  : `${CARD_STATUS_LABELS[entry.from]} → ${CARD_STATUS_LABELS[entry.to]}`}
+              </p>
+              <p className="text-sm text-gray-500">
+                {merchant
+                  ? formatInZone(entry.at, merchant.timezone)
+                  : entry.at}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

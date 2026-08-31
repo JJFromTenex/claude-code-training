@@ -72,7 +72,10 @@ export function IssueCardDialog({
     router.refresh()
   }
 
-  /** Picking a merchant moves the currency to theirs; it stays overridable. */
+  /**
+   * A card settles in its merchant's currency, so picking a merchant sets it.
+   * The server enforces the same rule; this only keeps the field truthful.
+   */
   const chooseMerchant = (id: string) => {
     setMerchantId(id)
     const merchant = merchants.find((m) => m.id === id)
@@ -223,7 +226,7 @@ export function IssueCardDialog({
                   >
                     Currency
                   </label>
-                  <Select value={currency} onValueChange={setCurrency}>
+                  <Select value={currency} disabled>
                     <SelectTrigger id="card-currency" className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -235,6 +238,9 @@ export function IssueCardDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Set by the merchant.
+                  </p>
                 </div>
               </div>
 
