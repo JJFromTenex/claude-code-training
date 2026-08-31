@@ -77,8 +77,10 @@ export function sortPayments(
   const factor = direction === "asc" ? 1 : -1
   return [...payments].sort((a, b) => {
     if (sort === "amount") {
-      // Sort by the formatted amount so the order matches what the table shows.
-      return String(a.amount).localeCompare(String(b.amount)) * factor
+      // Numeric compare. Amounts are integer minor units, and comparing them as
+      // strings sorted 500 after 123456789. Fixed alongside NWP-101, which
+      // exports whatever order this returns.
+      return (a.amount - b.amount) * factor
     }
     return a.createdAt.localeCompare(b.createdAt) * factor
   })

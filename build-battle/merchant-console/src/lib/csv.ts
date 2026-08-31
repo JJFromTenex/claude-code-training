@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * EXPORT_COLUMNS is both the full column set and the allowlist: a name that is
+ * not in it never reaches a file or a filename. Ops chooses the subset
+ * (NWP-101), and the card last four is opt-in rather than always present.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,45 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What an export contains when nobody has chosen. Everything except the card
+ * last four — the one column that forces ops to hand-edit a file before it can
+ * go to a merchant.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+function isExportColumn(value: string): value is ExportColumn {
+  return (EXPORT_COLUMNS as readonly string[]).includes(value)
+}
+
+/**
+ * Check a client-supplied column list against the allowlist.
+ *
+ * Order is the caller's: ops asked for columns in the order they pick them.
+ * Duplicates collapse to their first position. Returns null when the list is
+ * unusable — empty, or naming a column that does not exist — so the caller
+ * rejects the request rather than quietly exporting something else.
+ */
+export function parseExportColumns(
+  raw: string | null,
+): readonly ExportColumn[] | null {
+  if (raw === null) return DEFAULT_EXPORT_COLUMNS
+
+  const requested = raw
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+
+  const columns: ExportColumn[] = []
+  for (const name of requested) {
+    if (!isExportColumn(name)) return null
+    if (!columns.includes(name)) columns.push(name)
+  }
+
+  return columns.length > 0 ? columns : null
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +105,16 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `payments-disputed-2026-08-13.csv`, or `payments-2026-08-13.csv` when the
+ * export is not scoped. The segment is slugged rather than trusted: it derives
+ * from client input, and this is a filename.
+ */
+export function exportFilename(date = new Date(), scope?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  const slug = scope
+    ?.toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return slug ? `payments-${slug}-${stamp}.csv` : `payments-${stamp}.csv`
 }
