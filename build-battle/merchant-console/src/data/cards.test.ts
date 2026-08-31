@@ -32,26 +32,34 @@ const valid = {
 beforeEach(() => {
   // The store is a module singleton; each test starts with no cards.
   store.cards.length = 0
+  store.cardIssueKeys.clear()
 })
 
 function issue(overrides: Record<string, unknown> = {}) {
   return createCard({ ...valid, ...overrides })
 }
 
+/**
+ * A first issue always reveals a number — only a repeated idempotency key
+ * returns null. Narrows that away so the assertions below stay readable.
+ */
+function issueRevealing(overrides: Record<string, unknown> = {}) {
+  const result = issue(overrides)
+  if (!result.ok) throw new Error("expected the card to be issued")
+  const { card, number } = result.value
+  if (number === null) throw new Error("expected a first issue to reveal a number")
+  return { card, number }
+}
+
 describe("createCard", () => {
   it("issues a card on the test BIN with a valid Luhn digit", () => {
-    const result = issue()
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.value.number).toMatch(/^4242\d{12}$/)
-    expect(isValidLuhn(result.value.number)).toBe(true)
+    const { number } = issueRevealing()
+    expect(number).toMatch(/^4242\d{12}$/)
+    expect(isValidLuhn(number)).toBe(true)
   })
 
   it("returns the full number once and never stores it", () => {
-    const result = issue()
-    if (!result.ok) throw new Error("expected the card to be issued")
-
-    const { card, number } = result.value
+    const { card, number } = issueRevealing()
     expect(card.last4).toBe(number.slice(-4))
     // The record has no field holding the number, under any name.
     expect(JSON.stringify(card)).not.toContain(number)
@@ -65,10 +73,7 @@ describe("createCard", () => {
   })
 
   it("keeps the reference independent of the number it references", () => {
-    const result = issue()
-    if (!result.ok) throw new Error("expected the card to be issued")
-
-    const { card, number } = result.value
+    const { card, number } = issueRevealing()
     // A reference that encodes the number is a number in disguise: the BIN is
     // fixed and the last four are stored, so anything derived is brute-forceable.
     expect(card.reference).not.toContain(number)
@@ -136,10 +141,22 @@ describe("createCard", () => {
     expect(issue({ currency: undefined }).ok).toBe(false)
   })
 
-  it("accepts each allowed currency", () => {
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(issue({ currency }).ok).toBe(true)
-    }
+  it("accepts each allowed currency, against a merchant who settles in it", () => {
+    // mch_01 USD, mch_05 EUR, mch_04 GBP.
+    expect(issue({ merchantId: "mch_01", currency: "USD" }).ok).toBe(true)
+    expect(issue({ merchantId: "mch_05", currency: "EUR" }).ok).toBe(true)
+    expect(issue({ merchantId: "mch_04", currency: "GBP" }).ok).toBe(true)
+  })
+
+  it("rejects a currency the merchant does not settle in", () => {
+    // The form defaults this correctly; a mismatch here is a stale or crafted
+    // client, and a card that settles in the wrong currency is a real mess.
+    const result = issue({ merchantId: "mch_04", currency: "USD" })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.field).toBe("currency")
+    expect(result.error.message).toContain("GBP")
+    expect(store.cards).toHaveLength(0)
   })
 
   it("rejects a blank nickname, whitespace included", () => {
@@ -168,13 +185,108 @@ describe("createCard", () => {
     const numbers = new Set<string>()
     const ids = new Set<string>()
     for (let i = 0; i < 25; i++) {
-      const result = issue()
-      if (!result.ok) throw new Error("expected the card to be issued")
-      numbers.add(result.value.number)
-      ids.add(result.value.card.id)
+      const { card, number } = issueRevealing()
+      numbers.add(number)
+      ids.add(card.id)
     }
     expect(numbers.size).toBe(25)
     expect(ids.size).toBe(25)
+  })
+})
+
+describe("createCard idempotency", () => {
+  it("issues one card when the same submit arrives twice", () => {
+    const first = issue({ idempotencyKey: "key-1" })
+    const second = issue({ idempotencyKey: "key-1" })
+    if (!first.ok || !second.ok) throw new Error("expected both to succeed")
+
+    expect(store.cards).toHaveLength(1)
+    expect(second.value.card.id).toBe(first.value.card.id)
+    expect(second.value.duplicate).toBe(true)
+    expect(first.value.duplicate).toBe(false)
+  })
+
+  it("does not reveal the number a second time on a repeat", () => {
+    const first = issue({ idempotencyKey: "key-2" })
+    const second = issue({ idempotencyKey: "key-2" })
+    if (!first.ok || !second.ok) throw new Error("expected both to succeed")
+
+    expect(first.value.number).toMatch(/^4242\d{12}$/)
+    // Repeating a request is not a second chance to see the number.
+    expect(second.value.number).toBeNull()
+  })
+
+  it("treats a different key as a different card", () => {
+    issue({ idempotencyKey: "key-3" })
+    issue({ idempotencyKey: "key-4" })
+    expect(store.cards).toHaveLength(2)
+  })
+
+  it("still issues when no key is supplied", () => {
+    issue()
+    issue()
+    expect(store.cards).toHaveLength(2)
+  })
+})
+
+describe("card history", () => {
+  it("records the issue as the first event", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+    expect(result.value.card.history).toEqual([
+      { status: "active", at: result.value.card.createdAt },
+    ])
+  })
+
+  it("appends one event per accepted transition, in order", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+    const { id } = result.value.card
+
+    transitionCardStatus(id, "frozen")
+    transitionCardStatus(id, "active")
+    transitionCardStatus(id, "cancelled")
+
+    expect(cardById(id)?.history.map((e) => e.status)).toEqual([
+      "active",
+      "frozen",
+      "active",
+      "cancelled",
+    ])
+  })
+
+  it("records nothing for a rejected transition", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+    const { id } = result.value.card
+
+    transitionCardStatus(id, "cancelled")
+    transitionCardStatus(id, "active") // illegal, terminal
+    transitionCardStatus(id, "melted") // not a status
+
+    expect(cardById(id)?.history).toHaveLength(2)
+  })
+
+  it("stamps every event in UTC", () => {
+    const result = issue()
+    if (!result.ok) throw new Error("expected the card to be issued")
+    transitionCardStatus(result.value.card.id, "frozen")
+    for (const event of cardById(result.value.card.id)!.history) {
+      expect(event.at).toMatch(/Z$/)
+    }
+  })
+})
+
+describe("card ids", () => {
+  it("does not reuse an id after a card is removed", () => {
+    const first = issue()
+    if (!first.ok) throw new Error("expected the card to be issued")
+    // Nothing deletes cards today, but an id that repeats when something
+    // eventually does is a trap worth closing now.
+    store.cards.length = 0
+    const second = issue()
+    if (!second.ok) throw new Error("expected the card to be issued")
+    expect(second.value.card.id).not.toBe(first.value.card.id)
   })
 })
 

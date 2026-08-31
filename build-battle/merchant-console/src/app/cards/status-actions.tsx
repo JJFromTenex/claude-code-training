@@ -32,6 +32,8 @@ export function CardStatusActions({
   const router = useRouter()
   const [pending, setPending] = useState<CardStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** Cancelling is terminal, so it takes a second, deliberate click. */
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   const transitions = allowedTransitions(status)
   if (transitions.length === 0) {
@@ -65,21 +67,63 @@ export function CardStatusActions({
     }
   }
 
+  const cancelClickHandler = () => {
+    if (!confirmingCancel) {
+      setConfirmingCancel(true)
+      return
+    }
+    setConfirmingCancel(false)
+    transitionClickHandler("cancelled")
+  }
+
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="flex gap-2">
-        {transitions.map((to) => (
-          <Button
-            key={to}
-            variant={to === "cancelled" ? "destructive" : "secondary"}
-            className="py-1"
-            disabled={pending !== null}
-            onClick={() => transitionClickHandler(to)}
-          >
-            {pending === to ? "Working…" : LABELS[to]}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        {transitions
+          .filter((to) => to !== "cancelled")
+          .map((to) => (
+            <Button
+              key={to}
+              variant="secondary"
+              className="py-1"
+              disabled={pending !== null}
+              onClick={() => transitionClickHandler(to)}
+            >
+              {pending === to ? "Working…" : LABELS[to]}
+            </Button>
+          ))}
+
+        {transitions.includes("cancelled") && (
+          <>
+            <Button
+              variant="destructive"
+              className="py-1"
+              disabled={pending !== null}
+              onClick={cancelClickHandler}
+            >
+              {pending === "cancelled"
+                ? "Working…"
+                : confirmingCancel
+                  ? "Confirm — cannot be undone"
+                  : LABELS.cancelled}
+            </Button>
+            {confirmingCancel && pending === null && (
+              <Button
+                variant="ghost"
+                className="py-1"
+                onClick={() => setConfirmingCancel(false)}
+              >
+                Keep card
+              </Button>
+            )}
+          </>
+        )}
       </div>
+      {confirmingCancel && pending === null && (
+        <p className="text-xs text-gray-500">
+          Cancelling is permanent — the card cannot be reactivated.
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {error}

@@ -21,6 +21,11 @@ interface Store {
   payouts: Payout[]
   /** Issued virtual cards. Starts empty: every card here was issued by ops. */
   cards: Card[]
+  /**
+   * Idempotency key -> card id, so a double-submitted form issues one card
+   * rather than two. Lives beside the cards it guards.
+   */
+  cardIssueKeys: Map<string, string>
 }
 
 declare global {
@@ -30,7 +35,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards: [] }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardIssueKeys: new Map(),
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

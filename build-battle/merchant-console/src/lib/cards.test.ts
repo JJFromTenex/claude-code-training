@@ -23,11 +23,16 @@ describe("luhnCheckDigit", () => {
     expect(luhnCheckDigit("424242424242424")).toBe("2")
   })
 
-  it("agrees with isValidLuhn for any partial it is given", () => {
-    const partials = ["4242", "42424242", "424242424242424", "4000056655665"]
-    for (const partial of partials) {
-      expect(isValidLuhn(partial + luhnCheckDigit(partial))).toBe(true)
-    }
+  it("produces check digits computed by hand, not by the same code path", () => {
+    // Worked out independently: doubling runs right-to-left from the digit
+    // left of the check position. If the doubling parity or the -9 wrap breaks,
+    // these fail — which asserting against isValidLuhn would not, since both
+    // read the same implementation.
+    expect(luhnCheckDigit("4242")).toBe("4")
+    expect(luhnCheckDigit("42424242")).toBe("8")
+    expect(luhnCheckDigit("4000056655665")).toBe("2")
+    // 79927398713 is the textbook Luhn example; its check digit is 3.
+    expect(luhnCheckDigit("7992739871")).toBe("3")
   })
 })
 
@@ -105,14 +110,10 @@ describe("allowedTransitions", () => {
     expect(allowedTransitions("cancelled")).toEqual([])
   })
 
-  it("agrees with isValidCardTransition", () => {
-    const statuses: CardStatus[] = ["active", "frozen", "cancelled"]
-    for (const from of statuses) {
-      for (const to of statuses) {
-        expect(allowedTransitions(from).includes(to)).toBe(
-          isValidCardTransition(from, to),
-        )
-      }
-    }
+  it("offers exactly the moves the state machine allows, spelled out", () => {
+    // Written out rather than compared against isValidCardTransition: both
+    // read the same table, so that comparison passes even with the table wrong.
+    expect(allowedTransitions("active")).toEqual(["frozen", "cancelled"])
+    expect(allowedTransitions("frozen")).toEqual(["active", "cancelled"])
   })
 })

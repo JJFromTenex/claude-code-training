@@ -102,6 +102,17 @@ export interface Card {
   createdAt: string
   /** Merchant category the card is locked to, or null for unrestricted. */
   category: string | null
+  /**
+   * Every state this card has been in, oldest first, stamped in UTC. Answers
+   * "what happened to this card last Tuesday" without a separate log.
+   */
+  history: CardEvent[]
+}
+
+export interface CardEvent {
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  at: string
 }
 
 export interface CardFilters {

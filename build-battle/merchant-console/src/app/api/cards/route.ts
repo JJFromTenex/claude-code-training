@@ -32,8 +32,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // A repeat of an idempotency key is not a creation, so it is not a 201 —
+  // and it carries no number, because the one reveal already happened.
   return NextResponse.json(
-    { card: result.value.card, number: result.value.number },
-    { status: 201 },
+    {
+      card: result.value.card,
+      number: result.value.number,
+      duplicate: result.value.duplicate,
+    },
+    { status: result.value.duplicate ? 200 : 201 },
   )
 }

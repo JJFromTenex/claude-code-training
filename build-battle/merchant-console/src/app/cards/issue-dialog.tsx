@@ -2,6 +2,13 @@
 
 import { Button } from "@/components/Button"
 import { Input } from "@/components/Input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/Select"
 import { Card, Currency } from "@/data/types"
 import { maskCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -22,7 +29,7 @@ import { useState } from "react"
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
 
-/** Categories a card can be locked to. Empty means unrestricted. */
+/** Categories a card can be locked to. NO_CATEGORY means unrestricted. */
 const CATEGORIES = [
   "Advertising",
   "Software & subscriptions",
@@ -31,10 +38,21 @@ const CATEGORIES = [
   "Office supplies",
 ]
 
+/** Select has no empty-string value, so unrestricted needs a real one. */
+const NO_CATEGORY = "none"
+
+const ERROR_ID = "card-form-error"
+
 interface MerchantOption {
   id: string
   name: string
   currency: Currency
+}
+
+/** The server names the field it rejected; that is what marks the input. */
+interface FormError {
+  field?: string
+  message: string
 }
 
 export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
@@ -45,24 +63,32 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
   const [currency, setCurrency] = useState<Currency>("USD")
-  const [category, setCategory] = useState("")
+  const [category, setCategory] = useState(NO_CATEGORY)
 
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [issued, setIssued] = useState<{ card: Card; number: string } | null>(
-    null,
-  )
+  const [error, setError] = useState<FormError | null>(null)
+  const [issued, setIssued] = useState<{
+    card: Card
+    number: string | null
+  } | null>(null)
+  /**
+   * One key per filled-in form. A double-click, a slow network, or an
+   * impatient retry sends the same key and gets the same single card back.
+   */
+  const [issueKey, setIssueKey] = useState(() => crypto.randomUUID())
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
     setLimit("")
     setCurrency("USD")
-    setCategory("")
+    setCategory(NO_CATEGORY)
     setError(null)
     setSubmitting(false)
     // The full number goes with it. Nothing keeps a copy.
     setIssued(null)
+    // A fresh form is a new request, not a retry of the last one.
+    setIssueKey(crypto.randomUUID())
   }
 
   const openChangeHandler = (next: boolean) => {
@@ -77,6 +103,13 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
     if (merchant) setCurrency(merchant.currency)
   }
 
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
+
+  /** True when the server (or the boundary parser) blamed this field. */
+  const invalid = (field: string) => error?.field === field
+  const describedBy = (field: string) =>
+    invalid(field) ? ERROR_ID : undefined
+
   const submitHandler = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
@@ -84,7 +117,10 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
     // Convert at the boundary, once. The server receives minor units.
     const minorUnits = parseAmountToMinorUnits(limit)
     if (minorUnits === null) {
-      setError("Enter a spend limit like 250 or 250.00.")
+      setError({
+        field: "limit",
+        message: "Enter a spend limit like 250 or 250.00.",
+      })
       return
     }
 
@@ -98,13 +134,17 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
           merchantId,
           limit: minorUnits,
           currency,
-          category: category || undefined,
+          category: category === NO_CATEGORY ? undefined : category,
+          idempotencyKey: issueKey,
         }),
       })
 
       const body = await response.json()
       if (!response.ok) {
-        setError(body.message ?? "Could not issue the card.")
+        setError({
+          field: body.field,
+          message: body.message ?? "Could not issue the card.",
+        })
         return
       }
 
@@ -113,7 +153,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
       // new card is there when the success screen closes.
       router.refresh()
     } catch {
-      setError("Could not reach the server. Try again.")
+      setError({ message: "Could not reach the server. Try again." })
     } finally {
       setSubmitting(false)
     }
@@ -171,34 +211,40 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder="Ad spend — Q3"
                     className="mt-2"
+                    hasError={invalid("nickname")}
+                    aria-invalid={invalid("nickname")}
+                    aria-describedby={describedBy("nickname")}
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="card-merchant"
+                  <span
+                    id="card-merchant-label"
                     className="text-sm font-medium text-gray-900 dark:text-gray-50"
                   >
                     Merchant
-                  </label>
-                  <select
-                    id="card-merchant"
-                    name="merchantId"
-                    value={merchantId}
-                    onChange={(e) => merchantChangeHandler(e.target.value)}
-                    className={cx(
-                      "mt-2 w-full rounded-md border px-3 py-2 shadow-sm outline-none sm:text-sm",
-                      "border-gray-300 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50",
-                      focusRing,
-                    )}
+                  </span>
+                  <Select
+                    value={merchantId || undefined}
+                    onValueChange={merchantChangeHandler}
                   >
-                    <option value="">Choose a merchant</option>
-                    {merchants.map((merchant) => (
-                      <option key={merchant.id} value={merchant.id}>
-                        {merchant.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      className="mt-2"
+                      aria-labelledby="card-merchant-label"
+                      hasError={invalid("merchantId")}
+                      aria-invalid={invalid("merchantId")}
+                      aria-describedby={describedBy("merchantId")}
+                    >
+                      <SelectValue placeholder="Choose a merchant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {merchants.map((merchant) => (
+                        <SelectItem key={merchant.id} value={merchant.id}>
+                          {merchant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex gap-3">
@@ -217,70 +263,84 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                       placeholder="2500.00"
                       inputMode="decimal"
                       className="mt-2"
+                      hasError={invalid("limit")}
+                      aria-invalid={invalid("limit")}
+                      aria-describedby={describedBy("limit")}
                     />
                   </div>
-                  <div className="w-28">
-                    <label
-                      htmlFor="card-currency"
+                  <div className="w-32">
+                    <span
+                      id="card-currency-label"
                       className="text-sm font-medium text-gray-900 dark:text-gray-50"
                     >
                       Currency
-                    </label>
-                    <select
-                      id="card-currency"
-                      name="currency"
+                    </span>
+                    <Select
                       value={currency}
-                      onChange={(e) => setCurrency(e.target.value as Currency)}
-                      className={cx(
-                        "mt-2 w-full rounded-md border px-3 py-2 shadow-sm outline-none sm:text-sm",
-                        "border-gray-300 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50",
-                        focusRing,
-                      )}
+                      onValueChange={(value) => setCurrency(value as Currency)}
                     >
-                      {CURRENCIES.map((code) => (
-                        <option key={code} value={code}>
-                          {code}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        className="mt-2"
+                        aria-labelledby="card-currency-label"
+                        hasError={invalid("currency")}
+                        aria-invalid={invalid("currency")}
+                        aria-describedby={describedBy("currency")}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/*
+                          Once a merchant is chosen the currency is theirs, so
+                          the only option offered is the one the server will
+                          accept. The server checks the pair regardless.
+                        */}
+                        {(selectedMerchant
+                          ? [selectedMerchant.currency]
+                          : CURRENCIES
+                        ).map((code) => (
+                          <SelectItem key={code} value={code}>
+                            {code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="card-category"
+                  <span
+                    id="card-category-label"
                     className="text-sm font-medium text-gray-900 dark:text-gray-50"
                   >
                     Category lock{" "}
                     <span className="font-normal text-gray-500">optional</span>
-                  </label>
-                  <select
-                    id="card-category"
-                    name="category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className={cx(
-                      "mt-2 w-full rounded-md border px-3 py-2 shadow-sm outline-none sm:text-sm",
-                      "border-gray-300 bg-white text-gray-900 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50",
-                      focusRing,
-                    )}
-                  >
-                    <option value="">Unrestricted</option>
-                    {CATEGORIES.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
+                  </span>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger
+                      className="mt-2"
+                      aria-labelledby="card-category-label"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>Unrestricted</SelectItem>
+                      {CATEGORIES.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {error && (
                 <p
+                  id={ERROR_ID}
                   role="alert"
                   className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400"
                 >
-                  {error}
+                  {error.message}
                 </p>
               )}
 
@@ -318,11 +378,12 @@ function RevealOnce({
   onDone,
 }: {
   card: Card
-  number: string
+  /** Null when this was a repeat submit: the reveal already happened. */
+  number: string | null
   merchantName: string
   onDone: () => void
 }) {
-  const grouped = number.replace(/(\d{4})(?=\d)/g, "$1 ")
+  const grouped = number?.replace(/(\d{4})(?=\d)/g, "$1 ") ?? null
 
   return (
     <div>
@@ -330,8 +391,9 @@ function RevealOnce({
         Card issued
       </DialogPrimitives.Title>
       <DialogPrimitives.Description className="mt-1 text-sm text-gray-500 dark:text-gray-500">
-        This is the only time the full number is shown. Copy it now — after you
-        close this, only {maskCardNumber(card.last4)} is kept.
+        {grouped
+          ? `This is the only time the full number is shown. Copy it now — after you close this, only ${maskCardNumber(card.last4)} is kept.`
+          : `This card was already issued by that submit, so one card exists rather than two. Its number was shown once and cannot be shown again — only ${maskCardNumber(card.last4)} is kept.`}
       </DialogPrimitives.Description>
 
       <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
@@ -340,7 +402,7 @@ function RevealOnce({
           <span className="text-sm">{card.nickname}</span>
         </div>
         <p className="mt-2 font-mono text-lg font-medium tracking-wider text-gray-900 tabular-nums dark:text-gray-50">
-          {grouped}
+          {grouped ?? maskCardNumber(card.last4)}
         </p>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
           <dt className="text-gray-500">Merchant</dt>

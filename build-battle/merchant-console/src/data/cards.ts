@@ -104,6 +104,8 @@ export interface CreateCardInput {
   limit: unknown
   currency: unknown
   category?: unknown
+  /** Optional; a repeat of the same key returns the card already issued. */
+  idempotencyKey?: unknown
 }
 
 /** A rejected write names the field, so the dialog can say what to fix. */
@@ -178,6 +180,20 @@ function validateCreate(input: CreateCardInput): Result<{
     }
   }
 
+  // A card settles in the merchant's own currency. The form defaults to it,
+  // but the form is a convenience — a mismatched pair reaching here is either
+  // a stale client or a crafted request, and both are rejected.
+  const merchant = merchantById(input.merchantId)!
+  if (input.currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: {
+        field: "currency",
+        message: `${merchant.name} settles in ${merchant.currency}, so the card cannot be issued in ${input.currency}.`,
+      },
+    }
+  }
+
   const category =
     typeof input.category === "string" && input.category.trim()
       ? input.category.trim()
@@ -195,8 +211,15 @@ function validateCreate(input: CreateCardInput): Result<{
   }
 }
 
+/**
+ * Ids come from a counter, not from `cards.length` — length repeats itself the
+ * moment anything is ever removed, and a repeated card id is a very bad day.
+ */
+let issuedCount = 0
+
 function nextCardId(): string {
-  return `card_${String(store.cards.length + 1).padStart(4, "0")}`
+  issuedCount = Math.max(issuedCount, store.cards.length) + 1
+  return `card_${String(issuedCount).padStart(4, "0")}`
 }
 
 /**
@@ -207,11 +230,27 @@ function nextCardId(): string {
  */
 export function createCard(
   input: CreateCardInput,
-): Result<{ card: Card; number: string }> {
+): Result<{ card: Card; number: string | null; duplicate: boolean }> {
+  // A resubmitted form must not issue a second card. The key is checked before
+  // validation so a retry behaves the same as the request it repeats.
+  const key = typeof input.idempotencyKey === "string" ? input.idempotencyKey : null
+  if (key) {
+    const existingId = store.cardIssueKeys.get(key)
+    if (existingId) {
+      const existing = cardById(existingId)
+      if (existing) {
+        // Deliberately no number: the reveal already happened, and repeating a
+        // request is not a second chance to see it.
+        return { ok: true, value: { card: existing, number: null, duplicate: true } }
+      }
+    }
+  }
+
   const validated = validateCreate(input)
   if (!validated.ok) return validated
 
   const number = generateCardNumber()
+  const createdAt = new Date().toISOString()
   const card: Card = {
     id: nextCardId(),
     nickname: validated.value.nickname,
@@ -222,12 +261,14 @@ export function createCard(
     spent: 0,
     currency: validated.value.currency,
     status: "active",
-    createdAt: new Date().toISOString(),
+    createdAt,
     category: validated.value.category,
+    history: [{ status: "active", at: createdAt }],
   }
 
   store.cards.push(card)
-  return { ok: true, value: { card, number } }
+  if (key) store.cardIssueKeys.set(key, card.id)
+  return { ok: true, value: { card, number, duplicate: false } }
 }
 
 /**
@@ -260,5 +301,6 @@ export function transitionCardStatus(
   }
 
   card.status = next
+  card.history.push({ status: next, at: new Date().toISOString() })
   return { ok: true, value: card }
 }

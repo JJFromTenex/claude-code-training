@@ -2,6 +2,7 @@ import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CardStatus } from "@/data/types"
 import { maskCardNumber } from "@/lib/cards"
 import { formatDate, formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -9,6 +10,13 @@ import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardStatusActions } from "../status-actions"
+
+/** How a status reads in the history list, where it is a past event. */
+const LABELS: Record<CardStatus, string> = {
+  active: "Unfrozen",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
+}
 
 export default async function CardDetail({
   params,
@@ -84,6 +92,29 @@ export default async function CardDetail({
           </Field>
         )}
       </dl>
+
+      <Divider />
+
+      <h2 className="text-sm font-medium text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-3 space-y-2">
+        {card.history.map((event, index) => (
+          <li key={`${event.at}-${index}`} className="flex items-baseline gap-3">
+            <span
+              className="mt-1.5 size-1.5 shrink-0 rounded-full bg-gray-300 dark:bg-gray-700"
+              aria-hidden="true"
+            />
+            <span className="text-sm text-gray-900 dark:text-gray-50">
+              {index === 0 ? "Issued" : LABELS[event.status]}
+            </span>
+            <span className="text-sm text-gray-500">
+              {formatDate(event.at)}
+              {merchant && ` · ${formatInZone(event.at, merchant.timezone)}`}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       <Divider />
 
