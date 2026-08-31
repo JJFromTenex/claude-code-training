@@ -25,6 +25,33 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/** Card last-four is off by default; ops opts in explicitly. */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+/**
+ * Resolves the columns to export from client-supplied names.
+ *
+ * `undefined` (no preference expressed) falls back to the default set.
+ * An explicit empty array is a deliberate "deselect everything" and stays
+ * empty — the caller decides what to do with that, this just doesn't paper
+ * over it. Anything not in EXPORT_COLUMNS is dropped; order and duplicates
+ * from the input are otherwise preserved.
+ */
+export function parseExportColumns(
+  raw: readonly string[] | null | undefined,
+): ExportColumn[] {
+  if (raw == null) return [...DEFAULT_EXPORT_COLUMNS]
+  const seen = new Set<ExportColumn>()
+  for (const value of raw) {
+    if ((EXPORT_COLUMNS as readonly string[]).includes(value)) {
+      seen.add(value as ExportColumn)
+    }
+  }
+  return [...seen]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +93,12 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `scope` names what the file contains beyond "payments": a status like
+ * "disputed" for a filtered export, or "all" for the unfiltered one.
+ * Omitted, the name is just the date, as it was before scope existed.
+ */
+export function exportFilename(date = new Date(), scope?: string): string {
+  const suffix = scope ? `-${scope}` : ""
+  return `payments${suffix}-${date.toISOString().slice(0, 10)}.csv`
 }
