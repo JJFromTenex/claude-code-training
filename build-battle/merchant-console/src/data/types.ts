@@ -71,6 +71,46 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+/** One recorded status change. `from` is null for the issue event. */
+export interface CardAuditEntry {
+  at: string
+  from: CardStatus | null
+  to: CardStatus
+  actor: string
+}
+
+/**
+ * A virtual card. The full number is never a field here: it exists only in
+ * the response to the request that created it. What is stored is the last
+ * four and a reference drawn independently of the number.
+ */
+export interface VirtualCard {
+  id: string
+  merchantId: string
+  nickname: string
+  last4: string
+  reference: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  /** Integer minor units. Zero at issue; nothing in NWP-201 moves it. */
+  spent: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  history: CardAuditEntry[]
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
