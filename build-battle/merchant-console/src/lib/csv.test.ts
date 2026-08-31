@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,38 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("keeps the columns ops asked for, in the order they asked for them", () => {
+    // Not EXPORT_COLUMNS order: the operator decides how the file reads.
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "amount",
+      "id",
+      "status",
+    ])
+
+    expect(toCsv([payment], parseExportColumns("amount,id,status")!)).toBe(
+      ["amount,id,status", "$250.00,pay_0001,captured"].join("\n"),
+    )
+  })
+
+  it("leaves the card last four out unless it is asked for", () => {
+    const columns = parseExportColumns(null)!
+
+    expect(columns).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(columns).not.toContain("last4")
+    expect(columns).toHaveLength(EXPORT_COLUMNS.length - 1)
+    expect(toCsv([payment], columns)).not.toContain("4242")
+
+    // Still available to anyone who deliberately asks.
+    expect(parseExportColumns("last4")).toEqual(["last4"])
+  })
+
+  it("rejects a selection with nothing valid in it rather than writing an empty file", () => {
+    expect(parseExportColumns("")).toBeNull()
+    expect(parseExportColumns("bogus")).toBeNull()
+    expect(parseExportColumns("amount,bogus")).toEqual(["amount"])
   })
 })
