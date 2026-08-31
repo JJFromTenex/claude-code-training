@@ -66,6 +66,23 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Validate a client-supplied column list against the allowlist. Splits the
+ * comma-separated string, keeps only names in EXPORT_COLUMNS, dedupes, and
+ * returns them in the canonical EXPORT_COLUMNS order (not the client's order).
+ * Absent, blank, or all-invalid input returns [].
+ */
+export function parseExportColumns(
+  input: string | null | undefined,
+): ExportColumn[] {
+  const requested = new Set(
+    (input ?? "").split(",").map((token) => token.trim()),
+  )
+  return EXPORT_COLUMNS.filter((column) => requested.has(column))
+}
+
+export function exportFilename(date = new Date(), scope?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  if (scope) return `payments-${scope}-${day}.csv`
+  return `payments-${day}.csv`
 }
