@@ -23,13 +23,11 @@ import { useState } from "react"
  *
  * The success screen is the only place the full number is ever shown. It is
  * held in local state for exactly as long as that screen is open and cleared
- * when the dialog closes — there is no way to get it back afterwards, which is
- * the point.
+ * when the dialog closes — there is no way to get it back afterwards.
  */
 
 const CURRENCIES: Currency[] = ["USD", "EUR", "GBP"]
 
-/** Categories a card can be locked to. NO_CATEGORY means unrestricted. */
 const CATEGORIES = [
   "Advertising",
   "Software & subscriptions",
@@ -40,8 +38,9 @@ const CATEGORIES = [
 
 /** Select has no empty-string value, so unrestricted needs a real one. */
 const NO_CATEGORY = "none"
-
 const ERROR_ID = "card-form-error"
+
+const LABEL = "text-sm font-medium text-gray-900 dark:text-gray-50"
 
 interface MerchantOption {
   id: string
@@ -85,10 +84,8 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
     setCategory(NO_CATEGORY)
     setError(null)
     setSubmitting(false)
-    // The full number goes with it. Nothing keeps a copy.
-    setIssued(null)
-    // A fresh form is a new request, not a retry of the last one.
-    setIssueKey(crypto.randomUUID())
+    setIssued(null) // The full number goes with it. Nothing keeps a copy.
+    setIssueKey(crypto.randomUUID()) // A fresh form is not a retry.
   }
 
   const openChangeHandler = (next: boolean) => {
@@ -104,11 +101,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   }
 
   const selectedMerchant = merchants.find((m) => m.id === merchantId)
-
-  /** True when the server (or the boundary parser) blamed this field. */
   const invalid = (field: string) => error?.field === field
-  const describedBy = (field: string) =>
-    invalid(field) ? ERROR_ID : undefined
 
   const submitHandler = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -117,10 +110,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
     // Convert at the boundary, once. The server receives minor units.
     const minorUnits = parseAmountToMinorUnits(limit)
     if (minorUnits === null) {
-      setError({
-        field: "limit",
-        message: "Enter a spend limit like 250 or 250.00.",
-      })
+      setError({ field: "limit", message: "Enter a spend limit like 250 or 250.00." })
       return
     }
 
@@ -138,19 +128,13 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
           idempotencyKey: issueKey,
         }),
       })
-
       const body = await response.json()
       if (!response.ok) {
-        setError({
-          field: body.field,
-          message: body.message ?? "Could not issue the card.",
-        })
+        setError({ field: body.field, message: body.message ?? "Could not issue the card." })
         return
       }
-
       setIssued({ card: body.card, number: body.number })
-      // The list behind the dialog is a server component; refresh it so the
-      // new card is there when the success screen closes.
+      // The list behind the dialog is a server component; refresh it.
       router.refresh()
     } catch {
       setError({ message: "Could not reach the server. Try again." })
@@ -180,10 +164,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
             <RevealOnce
               card={issued.card}
               number={issued.number}
-              merchantName={
-                merchants.find((m) => m.id === issued.card.merchantId)?.name ??
-                issued.card.merchantId
-              }
+              merchantName={selectedMerchant?.name ?? issued.card.merchantId}
               onDone={() => openChangeHandler(false)}
             />
           ) : (
@@ -192,16 +173,13 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                 Issue a virtual card
               </DialogPrimitives.Title>
               <DialogPrimitives.Description className="mt-1 text-sm text-gray-500 dark:text-gray-500">
-                The card number is shown once, on the next screen. After that
-                only the last four are kept.
+                The card number is shown once, on the next screen. After that only
+                the last four are kept.
               </DialogPrimitives.Description>
 
               <div className="mt-4 flex flex-col gap-4">
                 <div>
-                  <label
-                    htmlFor="card-nickname"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
+                  <label htmlFor="card-nickname" className={LABEL}>
                     Nickname
                   </label>
                   <Input
@@ -213,46 +191,23 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                     className="mt-2"
                     hasError={invalid("nickname")}
                     aria-invalid={invalid("nickname")}
-                    aria-describedby={describedBy("nickname")}
+                    aria-describedby={invalid("nickname") ? ERROR_ID : undefined}
                   />
                 </div>
 
-                <div>
-                  <span
-                    id="card-merchant-label"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
-                    Merchant
-                  </span>
-                  <Select
-                    value={merchantId || undefined}
-                    onValueChange={merchantChangeHandler}
-                  >
-                    <SelectTrigger
-                      className="mt-2"
-                      aria-labelledby="card-merchant-label"
-                      hasError={invalid("merchantId")}
-                      aria-invalid={invalid("merchantId")}
-                      aria-describedby={describedBy("merchantId")}
-                    >
-                      <SelectValue placeholder="Choose a merchant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {merchants.map((merchant) => (
-                        <SelectItem key={merchant.id} value={merchant.id}>
-                          {merchant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <LabelledSelect
+                  id="card-merchant"
+                  label="Merchant"
+                  value={merchantId || undefined}
+                  onChange={merchantChangeHandler}
+                  placeholder="Choose a merchant"
+                  invalid={invalid("merchantId")}
+                  options={merchants.map((m) => ({ value: m.id, label: m.name }))}
+                />
 
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label
-                      htmlFor="card-limit"
-                      className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                    >
+                    <label htmlFor="card-limit" className={LABEL}>
                       Spend limit
                     </label>
                     <Input
@@ -265,73 +220,40 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                       className="mt-2"
                       hasError={invalid("limit")}
                       aria-invalid={invalid("limit")}
-                      aria-describedby={describedBy("limit")}
+                      aria-describedby={invalid("limit") ? ERROR_ID : undefined}
                     />
                   </div>
                   <div className="w-32">
-                    <span
-                      id="card-currency-label"
-                      className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                    >
-                      Currency
-                    </span>
-                    <Select
+                    {/*
+                      Once a merchant is chosen the currency is theirs, so the
+                      only option offered is the one the server will accept.
+                      The server checks the pair regardless.
+                    */}
+                    <LabelledSelect
+                      id="card-currency"
+                      label="Currency"
                       value={currency}
-                      onValueChange={(value) => setCurrency(value as Currency)}
-                    >
-                      <SelectTrigger
-                        className="mt-2"
-                        aria-labelledby="card-currency-label"
-                        hasError={invalid("currency")}
-                        aria-invalid={invalid("currency")}
-                        aria-describedby={describedBy("currency")}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/*
-                          Once a merchant is chosen the currency is theirs, so
-                          the only option offered is the one the server will
-                          accept. The server checks the pair regardless.
-                        */}
-                        {(selectedMerchant
-                          ? [selectedMerchant.currency]
-                          : CURRENCIES
-                        ).map((code) => (
-                          <SelectItem key={code} value={code}>
-                            {code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(value) => setCurrency(value as Currency)}
+                      invalid={invalid("currency")}
+                      options={(selectedMerchant
+                        ? [selectedMerchant.currency]
+                        : CURRENCIES
+                      ).map((c) => ({ value: c, label: c }))}
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <span
-                    id="card-category-label"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
-                    Category lock{" "}
-                    <span className="font-normal text-gray-500">optional</span>
-                  </span>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger
-                      className="mt-2"
-                      aria-labelledby="card-category-label"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_CATEGORY}>Unrestricted</SelectItem>
-                      {CATEGORIES.map((name) => (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <LabelledSelect
+                  id="card-category"
+                  label="Category lock"
+                  optional
+                  value={category}
+                  onChange={setCategory}
+                  options={[
+                    { value: NO_CATEGORY, label: "Unrestricted" },
+                    ...CATEGORIES.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
               </div>
 
               {error && (
@@ -350,12 +272,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                     Cancel
                   </Button>
                 </DialogPrimitives.Close>
-                <Button
-                  variant="primary"
-                  className="py-1.5"
-                  type="submit"
-                  disabled={submitting}
-                >
+                <Button variant="primary" className="py-1.5" type="submit" disabled={submitting}>
                   {submitting ? "Issuing…" : "Issue card"}
                 </Button>
               </div>
@@ -368,8 +285,60 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
 }
 
 /**
+ * A labelled Select. The trigger is a button, so the label is tied to it with
+ * aria-labelledby rather than htmlFor, and a rejected field carries both
+ * hasError and aria-describedby pointing at the form's error message.
+ */
+function LabelledSelect({
+  id,
+  label,
+  optional,
+  value,
+  onChange,
+  placeholder,
+  invalid,
+  options,
+}: {
+  id: string
+  label: string
+  optional?: boolean
+  value: string | undefined
+  onChange: (value: string) => void
+  placeholder?: string
+  invalid?: boolean
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div>
+      <span id={`${id}-label`} className={LABEL}>
+        {label}
+        {optional && <span className="font-normal text-gray-500"> optional</span>}
+      </span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          className="mt-2"
+          aria-labelledby={`${id}-label`}
+          hasError={invalid}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? ERROR_ID : undefined}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+/**
  * The one screen that shows a full card number. Closing it is irreversible,
- * so it says so.
+ * so it says so. A null number means this was a repeat submit.
  */
 function RevealOnce({
   card,
@@ -378,7 +347,6 @@ function RevealOnce({
   onDone,
 }: {
   card: Card
-  /** Null when this was a repeat submit: the reveal already happened. */
   number: string | null
   merchantName: string
   onDone: () => void
@@ -393,7 +361,7 @@ function RevealOnce({
       <DialogPrimitives.Description className="mt-1 text-sm text-gray-500 dark:text-gray-500">
         {grouped
           ? `This is the only time the full number is shown. Copy it now — after you close this, only ${maskCardNumber(card.last4)} is kept.`
-          : `This card was already issued by that submit, so one card exists rather than two. Its number was shown once and cannot be shown again — only ${maskCardNumber(card.last4)} is kept.`}
+          : `This card was already issued by that submit, so one card exists rather than two. Its number was shown once and cannot be shown again.`}
       </DialogPrimitives.Description>
 
       <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">

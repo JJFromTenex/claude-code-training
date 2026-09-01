@@ -106,39 +106,37 @@ describe("createCard", () => {
     expect(Number.isInteger(result.value.card.limit)).toBe(true)
   })
 
-  it("rejects a missing merchant", () => {
-    const result = createCard({ ...valid, merchantId: undefined })
+  // One row per rejection the ticket names. A table rather than fifteen
+  // near-identical blocks: it is shorter to read and it is obvious at a glance
+  // which cases are covered and which field each one blames.
+  const rejections: [string, Record<string, unknown>, string][] = [
+    ["a missing merchant", { merchantId: undefined }, "merchantId"],
+    ["a merchant that does not exist", { merchantId: "mch_nope" }, "merchantId"],
+    ["a zero limit", { limit: 0 }, "limit"],
+    ["a negative limit", { limit: -5000 }, "limit"],
+    ["a limit above the cap", { limit: MAX_CARD_LIMIT + 1 }, "limit"],
+    ["a fractional limit", { limit: 1000.5 }, "limit"],
+    ["a limit sent as a string", { limit: "1000" }, "limit"],
+    ["a null limit", { limit: null }, "limit"],
+    ["a currency outside the allowlist", { currency: "JPY" }, "currency"],
+    ["a lowercased currency", { currency: "usd" }, "currency"],
+    ["a missing currency", { currency: undefined }, "currency"],
+    ["a currency the merchant does not settle in", { merchantId: "mch_04" }, "currency"],
+    ["a blank nickname", { nickname: "" }, "nickname"],
+    ["a whitespace-only nickname", { nickname: "   " }, "nickname"],
+  ]
+
+  it.each(rejections)("rejects %s, blaming the right field", (_label, patch, field) => {
+    const result = issue(patch)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error.field).toBe("merchantId")
+    expect(result.error.field).toBe(field)
+    // A rejected card is never written, and never consumes a number.
+    expect(store.cards).toHaveLength(0)
   })
 
-  it("rejects a merchant that does not exist", () => {
-    const result = issue({ merchantId: "mch_nope" })
-    expect(result.ok).toBe(false)
-  })
-
-  it("rejects a zero or negative limit", () => {
-    expect(issue({ limit: 0 }).ok).toBe(false)
-    expect(issue({ limit: -5000 }).ok).toBe(false)
-  })
-
-  it("rejects a limit above the cap but allows the cap itself", () => {
-    expect(issue({ limit: MAX_CARD_LIMIT + 1 }).ok).toBe(false)
+  it("allows the cap itself — the ticket rejects only above it", () => {
     expect(issue({ limit: MAX_CARD_LIMIT }).ok).toBe(true)
-  })
-
-  it("rejects a limit that is not an integer number of minor units", () => {
-    // A float or a string here means a client skipped its conversion.
-    expect(issue({ limit: 1000.5 }).ok).toBe(false)
-    expect(issue({ limit: "1000" }).ok).toBe(false)
-    expect(issue({ limit: null }).ok).toBe(false)
-  })
-
-  it("rejects a currency outside the allowlist", () => {
-    expect(issue({ currency: "JPY" }).ok).toBe(false)
-    expect(issue({ currency: "usd" }).ok).toBe(false)
-    expect(issue({ currency: undefined }).ok).toBe(false)
   })
 
   it("accepts each allowed currency, against a merchant who settles in it", () => {
@@ -148,25 +146,10 @@ describe("createCard", () => {
     expect(issue({ merchantId: "mch_04", currency: "GBP" }).ok).toBe(true)
   })
 
-  it("rejects a currency the merchant does not settle in", () => {
-    // The form defaults this correctly; a mismatch here is a stale or crafted
-    // client, and a card that settles in the wrong currency is a real mess.
+  it("names the merchant's currency when the pair does not match", () => {
     const result = issue({ merchantId: "mch_04", currency: "USD" })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.error.field).toBe("currency")
+    if (result.ok) throw new Error("expected a mismatched pair to be rejected")
     expect(result.error.message).toContain("GBP")
-    expect(store.cards).toHaveLength(0)
-  })
-
-  it("rejects a blank nickname, whitespace included", () => {
-    expect(issue({ nickname: "" }).ok).toBe(false)
-    expect(issue({ nickname: "   " }).ok).toBe(false)
-  })
-
-  it("does not consume a card id when validation fails", () => {
-    issue({ limit: 0 })
-    expect(store.cards).toHaveLength(0)
   })
 
   it("treats a blank category as unrestricted", () => {
