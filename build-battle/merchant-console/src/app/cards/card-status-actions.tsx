@@ -25,9 +25,12 @@ const NEXT_ACTIONS: Record<CardStatus, { label: string; status: CardStatus }[]> 
 export function CardStatusActions({
   cardId,
   initialStatus,
+  compact = false,
 }: {
   cardId: string
   initialStatus: CardStatus
+  /** Tighter buttons and no trailing explanatory text, for use in a table row. */
+  compact?: boolean
 }) {
   const [status, setStatus] = useState(initialStatus)
   const [pending, setPending] = useState(false)
@@ -56,24 +59,27 @@ export function CardStatusActions({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       <CardStatusBadge status={status} />
       {NEXT_ACTIONS[status].map((action) => (
         <Button
           key={action.status}
           variant="secondary"
-          className="py-1.5"
+          className={compact ? "px-2 py-1 text-xs" : "py-1.5"}
           disabled={pending}
           onClick={() => transition(action.status)}
         >
           {action.label}
         </Button>
       ))}
-      {status === "cancelled" && (
+      {!compact && status === "cancelled" && (
         <span className="text-sm text-gray-500">Cancelled cards can&apos;t be reactivated.</span>
       )}
       {error && (
-        <span role="alert" className="text-sm text-red-600 dark:text-red-500">
+        <span
+          role="alert"
+          className={compact ? "text-xs text-red-600 dark:text-red-500" : "text-sm text-red-600 dark:text-red-500"}
+        >
           {error}
         </span>
       )}

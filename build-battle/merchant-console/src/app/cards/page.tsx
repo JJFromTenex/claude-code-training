@@ -7,12 +7,12 @@ import {
   TableRoot,
   TableRow,
 } from "@/components/Table"
-import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { listCards } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
+import { CardStatusActions } from "./card-status-actions"
 import { IssueCardDialog } from "./issue-card-dialog"
 
 export default function CardsPage() {
@@ -77,7 +77,7 @@ export default function CardsPage() {
                   {formatMoney(card.limit, card.currency)}
                 </TableCell>
                 <TableCell>
-                  <CardStatusBadge status={card.status} />
+                  <CardStatusActions cardId={card.id} initialStatus={card.status} compact />
                 </TableCell>
                 <TableCell>{formatDate(card.createdAt)}</TableCell>
               </TableRow>
