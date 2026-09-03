@@ -33,3 +33,4 @@ Merchants ask why they did not receive an event. Support has no way to answer wi
 **Type** Story · **Status** Backlog · **Priority** Medium
 
 A screen that compares a payout's recorded net against the sum of its line items and shows the delta. Would have caught [NWP-102](NWP-102.md) before a merchant did.
+# e2e submit-flow check 2026-09-03T14:10:35Z
