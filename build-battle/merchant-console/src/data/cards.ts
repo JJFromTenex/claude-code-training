@@ -1,13 +1,6 @@
 import { canTransition, generateCardNumber } from "@/lib/cards"
 import { store } from "./store"
-import {
-  Card,
-  CardCategory,
-  CardEvent,
-  CardEventType,
-  CardStatus,
-  Currency,
-} from "./types"
+import { Card, CardCategory, CardEvent, CardEventType, CardStatus, Currency } from "./types"
 
 /**
  * Store accessors for cards. The full number never lands in here: createCard
@@ -25,7 +18,7 @@ const ACTIONS: Record<CardAction, { to: CardStatus; event: CardEventType }> = {
 const CARD_PREFIX = "card_"
 const EVENT_PREFIX = "cev_"
 
-/** Continues the seeded sequence, so a created row never collides with a seed. */
+/** Continues the sequence already in the collection, so ids never collide. */
 function nextId(prefix: string, rows: readonly { id: string }[]): string {
   const highest = rows.reduce((max, row) => {
     const n = Number(row.id.slice(prefix.length))
@@ -34,21 +27,9 @@ function nextId(prefix: string, rows: readonly { id: string }[]): string {
   return `${prefix}${String(highest + 1).padStart(6, "0")}`
 }
 
-/** The reference that stands in for the number the store never keeps. */
-function numberRef(): string {
-  const hex = Array.from({ length: 12 }, () =>
-    Math.floor(Math.random() * 16).toString(16),
-  ).join("")
-  return `cardnum_${hex}`
-}
-
 function appendEvent(cardId: string, type: CardEventType, at: string) {
-  store.cardEvents.push({
-    id: nextId(EVENT_PREFIX, store.cardEvents),
-    cardId,
-    type,
-    at,
-  })
+  const id = nextId(EVENT_PREFIX, store.cardEvents)
+  store.cardEvents.push({ id, cardId, type, at })
 }
 
 /** Newest first, the way ops reads a list of things they just issued. */
@@ -80,17 +61,12 @@ export function createCard(input: {
   | { conflict: true } {
   const { idempotencyKey } = input
 
-  // What this key was used for. A key retried with the same body is a replay;
-  // a key reused for a different card is a caller bug, and answering it with
-  // the original card would silently hand back the wrong record.
+  // What this key was used for. Same key, same body is a replay; same key, a
+  // different body is a caller bug, and handing back the original card would
+  // silently return the wrong record.
   const fingerprint = JSON.stringify([
-    input.nickname,
-    input.merchantId,
-    input.spendLimit,
-    input.currency,
-    input.categoryLock,
+    input.nickname, input.merchantId, input.spendLimit, input.currency, input.categoryLock,
   ])
-
   if (idempotencyKey) {
     const seen = store.cardIdempotency[idempotencyKey]
     if (seen) {
@@ -103,13 +79,13 @@ export function createCard(input: {
 
   const fullNumber = generateCardNumber()
   const createdAt = new Date().toISOString()
-
   const card: Card = {
     id: nextId(CARD_PREFIX, store.cards),
     merchantId: input.merchantId,
     nickname: input.nickname,
     last4: fullNumber.slice(-4),
-    numberRef: numberRef(),
+    // A reference stands in for the number the store never keeps.
+    numberRef: `cardnum_${Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`,
     spendLimit: input.spendLimit,
     spent: 0,
     currency: input.currency,
@@ -117,30 +93,23 @@ export function createCard(input: {
     categoryLock: input.categoryLock,
     createdAt,
   }
-
   store.cards.push(card)
   appendEvent(card.id, "issued", createdAt)
   if (idempotencyKey) {
     store.cardIdempotency[idempotencyKey] = { cardId: card.id, fingerprint }
   }
-
   return { card, fullNumber, replayed: false }
 }
 
-/**
- * The state machine, guarded here rather than in the UI. Callers get a reason
- * back so a route can answer 404 and 409 with the right one.
- */
+/** The state machine, guarded here rather than in the UI. The reason lets a route pick 404 or 409. */
 export function transitionCard(
   id: string,
   action: CardAction,
 ): { ok: true; card: Card } | { ok: false; reason: "not_found" | "illegal" } {
   const card = cardById(id)
   if (!card) return { ok: false, reason: "not_found" }
-
   const { to, event } = ACTIONS[action]
   if (!canTransition(card.status, to)) return { ok: false, reason: "illegal" }
-
   card.status = to
   appendEvent(card.id, event, new Date().toISOString())
   return { ok: true, card }

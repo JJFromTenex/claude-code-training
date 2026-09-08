@@ -19,38 +19,19 @@ const EVENT_LABELS: Record<CardEventType, string> = {
 }
 
 /**
- * The bar's width comes from a fixed set of classes rather than an inline
- * style, because this codebase is Tailwind only. It rounds to five percent;
- * the exact figure is written beside it.
+ * Tailwind only, so the bar's width is a class, not an inline style. The tokens
+ * stay literal here or the scanner never emits them. Rounded to five percent;
+ * the exact figure is written beside the bar.
  */
-const BAR_WIDTHS = [
-  "w-[0%]",
-  "w-[5%]",
-  "w-[10%]",
-  "w-[15%]",
-  "w-[20%]",
-  "w-[25%]",
-  "w-[30%]",
-  "w-[35%]",
-  "w-[40%]",
-  "w-[45%]",
-  "w-[50%]",
-  "w-[55%]",
-  "w-[60%]",
-  "w-[65%]",
-  "w-[70%]",
-  "w-[75%]",
-  "w-[80%]",
-  "w-[85%]",
-  "w-[90%]",
-  "w-[95%]",
-  "w-[100%]",
-] as const
+const BAR_WIDTHS = (
+  "w-[0%] w-[5%] w-[10%] w-[15%] w-[20%] w-[25%] w-[30%] w-[35%] w-[40%] " +
+  "w-[45%] w-[50%] w-[55%] w-[60%] w-[65%] w-[70%] w-[75%] w-[80%] w-[85%] " +
+  "w-[90%] w-[95%] w-[100%]"
+).split(" ")
 
-function barWidth(percent: number): string {
-  // Any spend at all shows something, so a card at 1% does not read as untouched.
-  return BAR_WIDTHS[percent > 0 ? Math.max(1, Math.round(percent / 5)) : 0]
-}
+/** Any spend at all shows something, so a card at 1% does not read as untouched. */
+const barWidth = (percent: number) =>
+  BAR_WIDTHS[percent > 0 ? Math.max(1, Math.round(percent / 5)) : 0]
 
 export default async function CardDetail({
   params,
@@ -63,7 +44,6 @@ export default async function CardDetail({
 
   const merchant = merchantById(card.merchantId)!
   const events = eventsForCard(card.id)
-
   const percent = (card.spent / card.spendLimit) * 100
   const capped = Math.min(100, percent)
   const nearLimit = percent > 80
@@ -76,7 +56,6 @@ export default async function CardDetail({
       >
         ← All cards
       </Link>
-
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
           {card.nickname}
@@ -89,24 +68,17 @@ export default async function CardDetail({
           <CardRowActions cardId={card.id} status={card.status} />
         </div>
       </div>
-      <p className="mt-1 font-mono text-sm text-gray-500">{card.id}</p>
-
       <Divider />
-
       <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Merchant">
           {merchant.name}
           <span className="ml-2 text-gray-500">{merchant.country}</span>
         </Field>
         <Field label="Spend limit">
-          <span className="tabular-nums">
-            {formatMoney(card.spendLimit, card.currency)}
-          </span>
+          <span className="tabular-nums">{formatMoney(card.spendLimit, card.currency)}</span>
         </Field>
         <Field label="Spent">
-          <span className="tabular-nums">
-            {formatMoney(card.spent, card.currency)}
-          </span>
+          <span className="tabular-nums">{formatMoney(card.spent, card.currency)}</span>
         </Field>
         <Field label="Category lock">
           <span className="capitalize">{card.categoryLock ?? "—"}</span>
@@ -116,9 +88,7 @@ export default async function CardDetail({
           {formatInZone(card.createdAt, merchant.timezone)}
         </Field>
       </dl>
-
       <Divider />
-
       <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
         Spend against limit
       </h2>
@@ -142,9 +112,7 @@ export default async function CardDetail({
         <span
           className={cx(
             "shrink-0 text-sm font-medium tabular-nums",
-            nearLimit
-              ? "text-amber-600 dark:text-amber-500"
-              : "text-gray-900 dark:text-gray-50",
+            nearLimit ? "text-amber-600 dark:text-amber-500" : "text-gray-900 dark:text-gray-50",
           )}
         >
           {percent.toFixed(1)}%
@@ -155,19 +123,14 @@ export default async function CardDetail({
         {formatMoney(card.spendLimit, card.currency)} spent
         {nearLimit ? " — past 80% of the limit." : "."}
       </p>
-
       <Divider />
-
       <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
         Audit trail
       </h2>
       <ol className="mt-4 space-y-4">
         {events.map((event) => (
           <li key={event.id} className="flex gap-3">
-            <span
-              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
-              aria-hidden="true"
-            />
+            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500" aria-hidden="true" />
             <div>
               <p className="text-sm text-gray-900 dark:text-gray-50">
                 {EVENT_LABELS[event.type]}
@@ -175,9 +138,7 @@ export default async function CardDetail({
               <p className="text-sm text-gray-500">
                 {formatInZone(event.at, merchant.timezone)}
               </p>
-              {event.detail && (
-                <p className="mt-1 text-sm text-gray-500">{event.detail}</p>
-              )}
+              {event.detail && <p className="mt-1 text-sm text-gray-500">{event.detail}</p>}
             </div>
           </li>
         ))}
@@ -186,19 +147,11 @@ export default async function CardDetail({
   )
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-        {children}
-      </dd>
+      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">{children}</dd>
     </div>
   )
 }

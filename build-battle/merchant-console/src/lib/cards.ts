@@ -7,7 +7,7 @@ import { CardCategory, CardStatus } from "@/data/types"
  */
 
 /** The test BIN. Nothing generated in this repository may resemble a real PAN. */
-export const CARD_BIN = "4242"
+const CARD_BIN = "4242"
 
 /** Ceiling on a spend limit, in integer minor units. */
 export const MAX_SPEND_LIMIT_MINOR = 5_000_000
@@ -25,7 +25,7 @@ export const CARD_CATEGORIES: readonly CardCategory[] = [
  * The Luhn digit that completes `partial`. Doubling starts at the partial's
  * last digit, because the returned digit takes the position after it.
  */
-export function luhnCheckDigit(partial: string): string {
+function luhnCheckDigit(partial: string): string {
   let sum = 0
   for (let i = partial.length - 1; i >= 0; i--) {
     const fromRight = partial.length - 1 - i
@@ -56,10 +56,10 @@ export function isLuhnValid(cardNumber: string): boolean {
 }
 
 /**
- * A 16-digit number on the test BIN carrying a valid check digit.
- * Only server code calls this — the store seeds and the create path in
- * `src/data/cards.ts`. Client components import constants and helpers from
- * this module, never this function: a number produced in the browser is a bug.
+ * A 16-digit number on the test BIN carrying a valid check digit. Only server
+ * code calls this — the create path in `src/data/cards.ts`. Client components
+ * import constants and helpers from this module, never this function: a number
+ * produced in the browser is a bug.
  */
 export function generateCardNumber(): string {
   let body = CARD_BIN

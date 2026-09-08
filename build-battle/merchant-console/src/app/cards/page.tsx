@@ -1,12 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRoot,
-  TableRow,
-} from "@/components/Table"
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRoot, TableRow } from "@/components/Table"
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { listCards } from "@/data/cards"
 import { merchantById, merchants } from "@/data/merchants"
@@ -20,11 +12,7 @@ import { CardRowActions } from "./row-actions"
 export default function CardsPage() {
   const cards = listCards()
   // The drawer only ever needs enough of a merchant to name it and lock its currency.
-  const issuable = merchants.map((m) => ({
-    id: m.id,
-    name: m.name,
-    currency: m.currency,
-  }))
+  const issuable = merchants.map((m) => ({ id: m.id, name: m.name, currency: m.currency }))
 
   return (
     <section aria-label="Cards">
@@ -46,15 +34,11 @@ export default function CardsPage() {
             No cards have been issued yet
           </p>
           <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
-            A virtual card belongs to one merchant and carries a limit from the
-            moment it exists. Issue the first one and it lands here with its
-            masked number, its status, and who it was issued for.
+            A virtual card belongs to one merchant and carries a limit from the moment
+            it exists. Issue the first one and it lands here, masked.
           </p>
           <div className="mt-6 flex justify-center">
-            <IssueCardDrawer
-              merchants={issuable}
-              triggerLabel="Issue the first card"
-            />
+            <IssueCardDrawer merchants={issuable} triggerLabel="Issue the first card" />
           </div>
         </div>
       ) : (
@@ -66,14 +50,10 @@ export default function CardsPage() {
                 <TableHeaderCell>Merchant</TableHeaderCell>
                 <TableHeaderCell>Number</TableHeaderCell>
                 <TableHeaderCell>Category lock</TableHeaderCell>
-                <TableHeaderCell className="text-right">
-                  Spend limit
-                </TableHeaderCell>
+                <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell>Created</TableHeaderCell>
-                <TableHeaderCell className="text-right">
-                  Actions
-                </TableHeaderCell>
+                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -90,9 +70,7 @@ export default function CardsPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{merchant?.name}</TableCell>
-                    <TableCell className="font-mono">
-                      {maskCard(card.last4)}
-                    </TableCell>
+                    <TableCell className="font-mono">{maskCard(card.last4)}</TableCell>
                     <TableCell className="capitalize text-gray-500">
                       {card.categoryLock ?? "—"}
                     </TableCell>

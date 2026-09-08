@@ -1,4 +1,4 @@
-import { generate, seedCards } from "./generate"
+import { generate } from "./generate"
 import { merchants } from "./merchants"
 import { Card, CardEvent, Dispute, Payment, Payout, Refund } from "./types"
 
@@ -32,32 +32,18 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  const { cards, cardEvents } = seedCards()
-  return {
-    merchants,
-    payments,
-    refunds,
-    disputes,
-    payouts,
-    cards,
-    cardEvents,
-    cardIdempotency: {},
-  }
+  // No cards are seeded: the list opens on its empty state until one is issued.
+  return { merchants, payments, refunds, disputes, payouts, cards: [], cardEvents: [], cardIdempotency: {} }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
 
-/**
- * A dev server that was already running before NWP-201 holds a store with no
- * card collections on it. Fill them in rather than let a route read undefined.
- */
+// A dev server started before NWP-201 has no card collections. Fill them in
+// rather than let a route read undefined.
 const carried = store as Partial<Store>
-if (!carried.cards || !carried.cardEvents || !carried.cardIdempotency) {
-  const { cards, cardEvents } = seedCards()
-  carried.cards ??= cards
-  carried.cardEvents ??= cardEvents
-  carried.cardIdempotency ??= {}
-}
+carried.cards ??= []
+carried.cardEvents ??= []
+carried.cardIdempotency ??= {}
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__northwindStore = store

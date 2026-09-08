@@ -1,25 +1,9 @@
 "use client"
 
 import { Button } from "@/components/Button"
-import {
-  Drawer,
-  DrawerBody,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/Drawer"
+import { Drawer, DrawerBody, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/Drawer"
 import { Input } from "@/components/Input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/Select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
 import { CARD_CATEGORIES, MAX_SPEND_LIMIT_MINOR, maskCard } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -30,52 +14,68 @@ import { useState } from "react"
 
 /**
  * Issue a card, then reveal its number exactly once.
- *
- * Every check here is a hint: the route handler is the enforcement, and a 400
- * from it is shown as-is. The number lives in this component's state for the
- * life of the success screen and is cleared before the drawer unmounts.
+ * These checks are hints; POST /api/cards is the enforcement and its 400 shows as-is.
+ * The number lives only in this state and is cleared on close; one key per opening.
  */
 
 const NICKNAME_MAX = 40
 const NO_LOCK = "none"
+type Lock = CardCategory | typeof NO_LOCK
+const EMPTY = { nickname: "", merchantId: "", limit: "", categoryLock: NO_LOCK as Lock }
 
 type IssuableMerchant = { id: string; name: string; currency: Currency }
 
-export function IssueCardDrawer({
-  merchants,
-  triggerLabel = "Issue card",
-}: {
+/** Ties an input to the message that describes it, so a screen reader hears both. */
+const describedBy = (id: string, error: string | null) => ({
+  id,
+  hasError: Boolean(error),
+  "aria-invalid": Boolean(error) || undefined,
+  "aria-describedby": error ? `${id}-error` : undefined,
+})
+
+function Field({ id, label, error, hint, children }: {
+  id: string
+  label: string
+  error?: string | null
+  hint?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-900 dark:text-gray-50">
+        {label}
+      </label>
+      {children}
+      {error ? (
+        <p id={`${id}-error`} className="mt-1 text-sm text-red-600 dark:text-red-500">{error}</p>
+      ) : (
+        hint && <p className="mt-1 text-sm text-gray-500">{hint}</p>
+      )}
+    </div>
+  )
+}
+
+export function IssueCardDrawer({ merchants, triggerLabel = "Issue card" }: {
   merchants: IssuableMerchant[]
-  /** Trigger text; the empty state uses a distinct label so the two triggers read apart. */
+  /** The empty state passes a distinct label so the two triggers read apart. */
   triggerLabel?: string
 }) {
   const router = useRouter()
-
   const [open, setOpen] = useState(false)
   const [idempotencyKey, setIdempotencyKey] = useState("")
-  const [nickname, setNickname] = useState("")
-  const [merchantId, setMerchantId] = useState("")
-  const [limitInput, setLimitInput] = useState("")
-  const [categoryLock, setCategoryLock] = useState<CardCategory | typeof NO_LOCK>(
-    NO_LOCK,
-  )
-  const [touchedNickname, setTouchedNickname] = useState(false)
-  const [touchedLimit, setTouchedLimit] = useState(false)
+  const [form, setForm] = useState(EMPTY)
+  const [touched, setTouched] = useState<{ nickname?: boolean; limit?: boolean }>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [issued, setIssued] = useState<{
-    card: Card
-    fullNumber: string | null
-  } | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [copyFailed, setCopyFailed] = useState(false)
+  const [issued, setIssued] = useState<{ card: Card; fullNumber: string | null } | null>(null)
 
-  const merchant = merchants.find((m) => m.id === merchantId)
+  const set = (patch: Partial<typeof EMPTY>) => setForm((f) => ({ ...f, ...patch }))
+  const merchant = merchants.find((m) => m.id === form.merchantId)
 
-  const trimmedLimit = limitInput.trim()
-  const limitMinor = trimmedLimit === "" ? null : parseAmountToMinorUnits(trimmedLimit)
+  const typed = form.limit.trim()
+  const limitMinor = typed === "" ? null : parseAmountToMinorUnits(typed)
   const limitError =
-    trimmedLimit === ""
+    typed === ""
       ? "Enter a spend limit."
       : limitMinor === null
         ? "Enter the limit as a plain amount, like 250 or 250.00."
@@ -84,31 +84,27 @@ export function IssueCardDrawer({
           : merchant && limitMinor > MAX_SPEND_LIMIT_MINOR
             ? `A card cannot be issued above ${formatMoney(MAX_SPEND_LIMIT_MINOR, merchant.currency)}.`
             : null
+  const nicknameError = form.nickname.trim()
+    ? null
+    : "Give the card a nickname so ops can recognise it later."
 
-  const nicknameError =
-    nickname.trim() === ""
-      ? "Give the card a nickname so ops can recognise it later."
-      : null
-
+  // Nothing is wrong until it has been left, and a limit needs a currency to be wrong in.
+  const nickShown = touched.nickname ? nicknameError : null
+  const limitShown = merchant && touched.limit ? limitError : null
   const ready = !nicknameError && !limitError && Boolean(merchant)
 
   const handleOpenChange = (next: boolean) => {
-    if (next) {
-      // One key per opening, so a double-click or a retry issues one card.
-      setIdempotencyKey(crypto.randomUUID())
-    } else {
-      // The number never outlives the success screen.
+    // One key per opening, so a double-click or a retry issues one card.
+    if (next) setIdempotencyKey(crypto.randomUUID())
+    else {
+      // The number never outlives the success screen. The list re-reads only now:
+      // a refresh while it is up unmounts the empty state's drawer, number and all.
+      if (issued) router.refresh()
       setIssued(null)
       setIdempotencyKey("")
-      setNickname("")
-      setMerchantId("")
-      setLimitInput("")
-      setCategoryLock(NO_LOCK)
-      setTouchedNickname(false)
-      setTouchedLimit(false)
+      setForm(EMPTY)
+      setTouched({})
       setError(null)
-      setCopied(false)
-      setCopyFailed(false)
     }
     setOpen(next)
   }
@@ -116,7 +112,6 @@ export function IssueCardDrawer({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!ready || submitting || !merchant || limitMinor === null) return
-
     setSubmitting(true)
     setError(null)
     try {
@@ -124,11 +119,11 @@ export function IssueCardDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nickname: nickname.trim(),
+          nickname: form.nickname.trim(),
           merchantId: merchant.id,
           spendLimit: limitMinor,
           currency: merchant.currency,
-          categoryLock: categoryLock === NO_LOCK ? null : categoryLock,
+          categoryLock: form.categoryLock === NO_LOCK ? null : form.categoryLock,
           idempotencyKey,
         }),
       })
@@ -139,22 +134,10 @@ export function IssueCardDrawer({
       }
       // A replay answers with the record and no number: the reveal already happened.
       setIssued({ card: payload.card, fullNumber: payload.fullNumber ?? null })
-      router.refresh()
     } catch {
       setError("The console could not reach the server. Nothing was issued.")
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const copyNumber = async () => {
-    if (!issued?.fullNumber) return
-    try {
-      await navigator.clipboard.writeText(issued.fullNumber)
-      setCopied(true)
-      setCopyFailed(false)
-    } catch {
-      setCopyFailed(true)
     }
   }
 
@@ -168,64 +151,43 @@ export function IssueCardDrawer({
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>
-            {issued ? "Card issued" : "Issue a virtual card"}
-          </DrawerTitle>
+          <DrawerTitle>{issued ? "Card issued" : "Issue a virtual card"}</DrawerTitle>
           <DrawerDescription className="text-sm">
             {issued
-              ? "Copy the number now. The console will not show it again."
+              ? "Write the number down now. The console will not show it again."
               : "One merchant, one limit, in the merchant's own currency."}
           </DrawerDescription>
         </DrawerHeader>
-
         {issued ? (
           <>
             <DrawerBody className="space-y-5">
-              {issued.fullNumber ? (
-                <div aria-live="polite">
-                  <p className="text-sm text-gray-500">Card number</p>
-                  <p className="mt-1 font-mono text-lg tracking-widest text-gray-900 dark:text-gray-50">
-                    {issued.fullNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+              <div aria-live="polite">
+                {issued.fullNumber ? (
+                  <>
+                    <p className="text-sm text-gray-500">Card number</p>
+                    <p className="mt-1 font-mono text-lg tracking-widest text-gray-900 dark:text-gray-50">
+                      {issued.fullNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    This request had already issued the card, so there is no number to
+                    show: it was revealed once, on the first answer.
                   </p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="py-1.5"
-                      onClick={copyNumber}
-                    >
-                      {copied ? "Copied" : "Copy number"}
-                    </Button>
-                    {copyFailed && (
-                      <p className="text-sm text-red-600 dark:text-red-500">
-                        This browser would not hand over the clipboard. Select
-                        the number and copy it by hand.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  This request had already issued the card, so there is no
-                  number to show: it was revealed once, on the first answer.
-                </p>
-              )}
-
+                )}
+              </div>
               <p className="text-sm text-amber-700 dark:text-amber-500">
-                The full number is shown exactly once. After this drawer closes
-                the console keeps only {maskCard(issued.card.last4)}.
+                The full number is shown exactly once. After this drawer closes the
+                console keeps only {maskCard(issued.card.last4)}.
               </p>
-
-              <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+              <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-sm text-gray-500">Nickname</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-                    {issued.card.nickname}
-                  </dd>
+                  <dt className="text-gray-500">Nickname</dt>
+                  <dd className="mt-1 text-gray-900 dark:text-gray-50">{issued.card.nickname}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Spend limit</dt>
-                  <dd className="mt-1 text-sm tabular-nums text-gray-900 dark:text-gray-50">
+                  <dt className="text-gray-500">Spend limit</dt>
+                  <dd className="mt-1 tabular-nums text-gray-900 dark:text-gray-50">
                     {formatMoney(issued.card.spendLimit, issued.card.currency)}
                   </dd>
                 </div>
@@ -240,113 +202,62 @@ export function IssueCardDrawer({
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
             <DrawerBody className="space-y-4">
-              <div>
-                <label
-                  htmlFor="card-nickname"
-                  className="block text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
+              <Field id="card-nickname" label="Nickname" error={nickShown}>
                 <Input
-                  id="card-nickname"
+                  {...describedBy("card-nickname", nickShown)}
                   name="nickname"
                   className="mt-2"
                   maxLength={NICKNAME_MAX}
-                  value={nickname}
-                  hasError={Boolean(touchedNickname && nicknameError)}
-                  aria-invalid={Boolean(touchedNickname && nicknameError) || undefined}
-                  aria-describedby={
-                    touchedNickname && nicknameError
-                      ? "card-nickname-error"
-                      : undefined
-                  }
-                  onBlur={() => setTouchedNickname(true)}
-                  onChange={(event) => setNickname(event.target.value)}
+                  value={form.nickname}
+                  onBlur={() => setTouched((t) => ({ ...t, nickname: true }))}
+                  onChange={(e) => set({ nickname: e.target.value })}
                   placeholder="Meta Ads Q3"
                 />
-                {touchedNickname && nicknameError && (
-                  <p
-                    id="card-nickname-error"
-                    className="mt-1 text-sm text-red-600 dark:text-red-500"
-                  >
-                    {nicknameError}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="card-merchant"
-                  className="block text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
-                <Select value={merchantId} onValueChange={setMerchantId}>
+              </Field>
+              <Field id="card-merchant" label="Merchant">
+                <Select value={form.merchantId} onValueChange={(v) => set({ merchantId: v })}>
                   <SelectTrigger id="card-merchant" className="mt-2 w-full">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
                   <SelectContent>
-                    {merchants.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.name}
-                      </SelectItem>
+                    {merchants.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="card-limit"
-                  className="block text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Spend limit
-                </label>
+              </Field>
+              <Field
+                id="card-limit"
+                label="Spend limit"
+                error={limitShown}
+                hint={merchant ? undefined : "Choose a merchant first — the limit is set in their currency."}
+              >
                 <div className="mt-2 flex items-center gap-2">
                   <Input
-                    id="card-limit"
+                    {...describedBy("card-limit", limitShown)}
                     name="spendLimit"
                     type="text"
                     inputMode="decimal"
                     disabled={!merchant}
-                    value={limitInput}
-                    hasError={Boolean(touchedLimit && limitError)}
-                    aria-invalid={Boolean(touchedLimit && limitError) || undefined}
-                    aria-describedby={
-                      touchedLimit && limitError ? "card-limit-error" : undefined
-                    }
-                    onBlur={() => setTouchedLimit(true)}
-                    onChange={(event) => setLimitInput(event.target.value)}
+                    value={form.limit}
+                    onBlur={() => setTouched((t) => ({ ...t, limit: true }))}
+                    onChange={(e) => set({ limit: e.target.value })}
                     placeholder="2500.00"
                   />
                   <span className="shrink-0 text-sm text-gray-500">
                     {merchant ? merchant.currency : "—"}
                   </span>
                 </div>
-                {!merchant ? (
-                  <p className="mt-1 text-sm text-gray-500">
-                    Choose a merchant first — the limit is set in their currency.
-                  </p>
-                ) : (
-                  touchedLimit &&
-                  limitError && (
-                    <p
-                      id="card-limit-error"
-                      className="mt-1 text-sm text-red-600 dark:text-red-500"
-                    >
-                      {limitError}
-                    </p>
-                  )
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="card-currency"
-                  className="block text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Currency
-                </label>
+              </Field>
+              <Field
+                id="card-currency"
+                label="Currency"
+                hint={
+                  merchant
+                    ? `${merchant.name} settles in ${merchant.currency}, so the card is issued in ${merchant.currency}.`
+                    : "A card is always issued in its merchant's own currency."
+                }
+              >
                 <Input
                   id="card-currency"
                   name="currency"
@@ -356,77 +267,44 @@ export function IssueCardDrawer({
                   value={merchant ? merchant.currency : ""}
                   placeholder="Set by the merchant"
                 />
-                <p className="mt-1 text-sm text-gray-500">
-                  {merchant
-                    ? `${merchant.name} settles in ${merchant.currency}, so the card is issued in ${merchant.currency}.`
-                    : "A card is always issued in its merchant's own currency."}
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="card-category"
-                  className="block text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
+              </Field>
+              <Field id="card-category" label="Category lock">
                 <Select
-                  value={categoryLock}
-                  onValueChange={(value) =>
-                    setCategoryLock(value as CardCategory | typeof NO_LOCK)
-                  }
+                  value={form.categoryLock}
+                  onValueChange={(v) => set({ categoryLock: v as Lock })}
                 >
                   <SelectTrigger
                     id="card-category"
-                    className={cx(
-                      "mt-2 w-full",
-                      categoryLock !== NO_LOCK && "capitalize",
-                    )}
+                    className={cx("mt-2 w-full", form.categoryLock !== NO_LOCK && "capitalize")}
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NO_LOCK}>No lock</SelectItem>
                     {CARD_CATEGORIES.map((category) => (
-                      <SelectItem
-                        key={category}
-                        value={category}
-                        className="capitalize"
-                      >
+                      <SelectItem key={category} value={category} className="capitalize">
                         {category}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
+              </Field>
               {error && (
                 <div
                   role="alert"
                   className="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-500/10"
                 >
-                  <p className="text-sm text-red-700 dark:text-red-500">
-                    {error}
-                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-500">{error}</p>
                 </div>
               )}
             </DrawerBody>
             <DrawerFooter>
               <DrawerClose asChild>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-2 w-full py-2 sm:mt-0 sm:w-fit"
-                >
+                <Button type="button" variant="secondary" className="mt-2 w-full py-2 sm:mt-0 sm:w-fit">
                   Cancel
                 </Button>
               </DrawerClose>
-              <Button
-                type="submit"
-                className="w-full py-2 sm:w-fit"
-                disabled={!ready}
-                isLoading={submitting}
-              >
+              <Button type="submit" className="w-full py-2 sm:w-fit" disabled={!ready} isLoading={submitting}>
                 Issue card
               </Button>
             </DrawerFooter>
