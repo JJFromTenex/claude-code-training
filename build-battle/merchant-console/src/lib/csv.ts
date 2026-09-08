@@ -4,10 +4,6 @@ import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
- *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +20,34 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+// last4 is off by default: merchants get the file more often than not, and
+// stripping the card column by hand was the pain that drove NWP-101.
+export const DEFAULT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+const EXPORT_COLUMN_SET: ReadonlySet<string> = new Set(EXPORT_COLUMNS)
+
+/**
+ * Parse a comma-separated column list from the export URL, allowlisted against
+ * EXPORT_COLUMNS. Returns null for empty or unknown input so the route can 400
+ * rather than let a bad name reach a query, a filename, or the CSV writer.
+ */
+export function parseColumns(
+  raw: string | null,
+): readonly ExportColumn[] | null {
+  if (raw === null) return null
+  const parts = raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (parts.length === 0) return null
+  for (const part of parts) {
+    if (!EXPORT_COLUMN_SET.has(part)) return null
+  }
+  return parts as readonly ExportColumn[]
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +90,13 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(
+  date: Date = new Date(),
+  opts: { status?: string; scope?: "filtered" | "all" } = {},
+): string {
+  const parts = ["payments"]
+  if (opts.scope === "all") parts.push("all")
+  else if (opts.status && opts.status !== "all") parts.push(opts.status)
+  parts.push(date.toISOString().slice(0, 10))
+  return `${parts.join("-")}.csv`
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +87,38 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+})
+
+describe("column selection", () => {
+  it("writes a subset of columns in the caller's order, not the canonical order", () => {
+    const csv = toCsv([payment], ["amount", "id", "status"])
+    const [header, row] = csv.split("\n")
+    expect(header).toBe("amount,id,status")
+    expect(row).toBe("$250.00,pay_0001,captured")
+  })
+
+  it("DEFAULT_COLUMNS excludes last4 so merchant exports do not leak card data", () => {
+    expect(DEFAULT_COLUMNS).not.toContain("last4")
+    for (const column of EXPORT_COLUMNS) {
+      if (column === "last4") continue
+      expect(DEFAULT_COLUMNS).toContain(column)
+    }
+    const header = toCsv([payment], DEFAULT_COLUMNS).split("\n")[0]
+    expect(header.split(",")).not.toContain("last4")
+  })
+
+  it("rejects an empty selection so the route refuses to write an empty file", () => {
+    expect(parseColumns("")).toBeNull()
+    expect(parseColumns(null)).toBeNull()
+    expect(parseColumns(",,")).toBeNull()
+  })
+
+  it("rejects any unknown column rather than silently dropping it", () => {
+    expect(parseColumns("id,bogus")).toBeNull()
+  })
+
+  it("returns the typed subset when every name is on the allowlist", () => {
+    expect(parseColumns("amount,id")).toEqual(["amount", "id"])
   })
 })
