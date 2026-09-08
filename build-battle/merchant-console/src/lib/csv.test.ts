@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,12 +79,37 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("writes the requested columns in the caller's order, not the canonical one", () => {
+    expect(toCsv([payment], ["status", "id", "amount"])).toBe(
+      ["status,id,amount", "captured,pay_0001,$250.00"].join("\n"),
+    )
+  })
+
+  it("returns an empty string when no columns are selected, so an empty selection is unambiguous", () => {
+    expect(toCsv([payment], [])).toBe("")
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("omits last4 so exports intended for merchants do not leak card digits by default", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+  })
+
+  it("keeps every other column in the canonical order", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
 })
 
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+  it("stamps the UTC date and the scope, so two exports on the same day are distinguishable", () => {
+    expect(
+      exportFilename({
+        scope: "disputed",
+        date: new Date("2026-08-13T23:00:00.000Z"),
+      }),
+    ).toBe("payments-disputed-2026-08-13.csv")
   })
 })
