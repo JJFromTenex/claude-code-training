@@ -48,6 +48,7 @@ Add a `cards` collection (plus an append-only `cardEvents` audit log) to the exi
 | --- | --- | --- |
 | `src/data/types.ts` | change | `Card`, `CardStatus`, `CardEvent`, `CardCategory` types |
 | `src/data/generate.ts` | change | Deterministic seed cards + their audit events |
+| `src/data/generate.test.ts` | add | Unit tests: seed determinism, spend derived from the merchant's own payments |
 | `src/data/store.ts` | change | `cards` + `cardEvents` collections (defensive init for hot-reloaded stores) |
 | `src/data/cards.ts` | add | Store accessors: list, byId, events, create, transition |
 | `src/lib/cards.ts` | add | Luhn generate/validate on 4242 BIN, `maskCard`, `canTransition`, category allowlist |
@@ -57,10 +58,14 @@ Add a `cards` collection (plus an append-only `cardEvents` audit log) to the exi
 | `src/app/api/cards/[id]/status/route.ts` | add | `POST` freeze/unfreeze/cancel, state machine guarded server-side |
 | `src/app/siteConfig.ts` | change | `cards` base link |
 | `src/components/ui/navigation/AppSidebar.tsx` | change | Cards nav item |
+| `src/components/ui/navigation/Breadcrumbs.tsx` | change | `cards` path label, so the new routes render a breadcrumb |
+| `CLAUDE.md` | change | Layout table no longer says cards does not exist |
 | `src/components/ui/cards/CardStatusBadge.tsx` | add | Status badge in the house `StatusBadge` style |
 | `src/app/cards/page.tsx` | add | List page: table, written empty state, issue drawer trigger |
 | `src/app/cards/issue-drawer.tsx` | add | Issue form + reveal-once success screen (client) |
 | `src/app/cards/row-actions.tsx` | add | Freeze/unfreeze/cancel without a full page reload (client) |
+| `src/app/cards/cancel-confirm.ts` | add | Pure arm/disarm rules for the two-click cancel, DOM-free so they can be tested |
+| `src/app/cards/cancel-confirm.test.ts` | add | Unit tests: blur inside/outside the row, null related target, Escape, timeout, success |
 | `src/app/cards/[id]/page.tsx` | add | Detail: record, spend progress (amber past 80%), category lock, audit trail |
 
 ## Plan
