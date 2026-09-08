@@ -71,6 +71,26 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory = "retail" | "marketplace" | "subscription" | "services"
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, same currency as spendLimit. Starts at 0; future work populates it. */
+  spend: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  last4: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
