@@ -1,6 +1,6 @@
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import { Card, Payment, PaymentFilters, PaymentStatus } from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -115,4 +115,34 @@ export function refundsForPayment(paymentId: string) {
 
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
+}
+
+/**
+ * Card queries. Newest first. The store never returns the full number — a card
+ * record only carries the last four and the reference.
+ */
+
+export function listCards(): Card[] {
+  return [...store.cards].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function cardById(id: string): Card | null {
+  return store.cards.find((c) => c.id === id) ?? null
+}
+
+/**
+ * Spend against a card, in minor units. Only captured payments count; refunds
+ * would properly net out at the payment level and no card is linked to
+ * anything in seed data yet, so this returns zero until real spend arrives.
+ */
+export function spendForCard(card: Card): number {
+  return store.payments
+    .filter(
+      (p) =>
+        p.merchantId === card.merchantId &&
+        p.status === "captured" &&
+        p.last4 === card.last4 &&
+        p.currency === card.currency,
+    )
+    .reduce((sum, p) => sum + p.amount, 0)
 }
