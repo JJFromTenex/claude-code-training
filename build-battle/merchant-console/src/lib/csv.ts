@@ -5,9 +5,10 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops picks the columns. The card last four is off by default, because most
+ * files go to a merchant and used to be cleaned up by hand first. The picked
+ * set arrives from the client, so it is matched against EXPORT_COLUMNS before
+ * it reaches a serializer or a filename — see parseExportColumns.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +25,38 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * What ops gets when they do not say otherwise: everything except the card
+ * last four. Derived from EXPORT_COLUMNS so a new column cannot be added to
+ * one list and forgotten in the other.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * Column names arrive from the client. Match them against the allowlist —
+ * never interpolate one into a query or a filename.
+ *
+ * Unknown names are dropped, duplicates collapse, and the order the caller
+ * asked for is what comes back. An empty result means the request selected
+ * nothing valid; the route turns that into a 400 rather than an empty file.
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (!raw) return []
+
+  const allowed = new Set<string>(EXPORT_COLUMNS)
+  const picked: ExportColumn[] = []
+
+  for (const name of raw.split(",")) {
+    const column = name.trim()
+    if (!allowed.has(column)) continue
+    if (picked.includes(column as ExportColumn)) continue
+    picked.push(column as ExportColumn)
+  }
+
+  return picked
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +99,13 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Names the file after what is in it. `scope` is the status the export was
+ * filtered to, or "all" when it ignores the filters — omitted when the export
+ * covers every status under the current filter, which is the plain
+ * `payments-<date>.csv` ops already knows.
+ */
+export function exportFilename(date = new Date(), scope?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  return `payments-${scope ? `${scope}-` : ""}${stamp}.csv`
 }
