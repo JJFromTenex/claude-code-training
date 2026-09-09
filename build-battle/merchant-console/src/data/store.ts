@@ -1,6 +1,14 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import {
+  Card,
+  CardEvent,
+  CardIdempotencyKey,
+  Dispute,
+  Payment,
+  Payout,
+  Refund,
+} from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +27,12 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  /** Issued virtual cards. Empty at boot: nothing seeds a card. */
+  cards: Card[]
+  /** Append-only status history, one entry per transition. */
+  cardEvents: CardEvent[]
+  /** Idempotency keys already honoured by POST /api/cards. */
+  cardKeys: CardIdempotencyKey[]
 }
 
 declare global {
@@ -28,7 +42,16 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardEvents: [],
+    cardKeys: [],
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

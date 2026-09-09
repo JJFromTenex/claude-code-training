@@ -129,5 +129,5 @@ issue, which is NWP-202.
 
 - Should a frozen card still count toward a merchant's issued-card total on the overview?
   Not asked for, not built.
-- The category lock list is invented here (`travel`, `software`, `advertising`, `office`,
-  `any`) because merchants carry no category. Ops should own that vocabulary before it grows.
+- The category lock list is invented here (`advertising`, `software`, `travel`,
+  `office`, `subscriptions`) because merchants carry no category. Ops should own that vocabulary before it grows.
