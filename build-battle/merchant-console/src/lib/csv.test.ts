@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -26,13 +31,31 @@ describe("toCsv", () => {
   it("writes a header row followed by one row per payment", () => {
     const lines = toCsv([payment]).split("\n")
     expect(lines).toHaveLength(2)
-    expect(lines[0]).toBe(EXPORT_COLUMNS.join(","))
+    expect(lines[0]).toBe(DEFAULT_EXPORT_COLUMNS.join(","))
   })
 
   it("writes only the requested columns, in the order given", () => {
     expect(toCsv([payment], ["id", "amount"])).toBe(
       ["id,amount", "pay_0001,$250.00"].join("\n"),
     )
+  })
+
+  it("excludes the card last four by default", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(toCsv([payment])).not.toContain("last4")
+  })
+
+  it("keeps an explicitly requested subset in order", () => {
+    expect(parseExportColumns("currency,id,amount")).toEqual([
+      "currency",
+      "id",
+      "amount",
+    ])
+  })
+
+  it("rejects an empty or invalid column selection", () => {
+    expect(parseExportColumns("")).toBeNull()
+    expect(parseExportColumns("id,not_a_column")).toBeNull()
   })
 
   it("quotes cells containing a comma, so amounts do not split", () => {
@@ -78,8 +101,8 @@ describe("toCsv", () => {
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+    expect(exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-disputed-2026-03-14.csv",
     )
   })
 })

@@ -25,6 +25,25 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+export function parseExportColumns(value: string | null): ExportColumn[] | null {
+  if (value === null) return [...DEFAULT_EXPORT_COLUMNS]
+
+  const columns = value.split(",")
+  if (
+    columns.length === 0 ||
+    columns.some((column) => !EXPORT_COLUMNS.includes(column as ExportColumn)) ||
+    new Set(columns).size !== columns.length
+  ) {
+    return null
+  }
+
+  return columns as ExportColumn[]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -57,7 +76,7 @@ function cell(payment: Payment, column: ExportColumn): string {
 
 export function toCsv(
   payments: Payment[],
-  columns: readonly ExportColumn[] = EXPORT_COLUMNS,
+  columns: readonly ExportColumn[] = DEFAULT_EXPORT_COLUMNS,
 ): string {
   const header = columns.join(",")
   const rows = payments.map((payment) =>
@@ -66,6 +85,6 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(scope: string, date = new Date()): string {
+  return `payments-${scope}-${date.toISOString().slice(0, 10)}.csv`
 }
