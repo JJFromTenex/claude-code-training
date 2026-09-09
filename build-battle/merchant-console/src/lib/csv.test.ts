@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,50 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a subset of columns in the requested order", () => {
+    expect(parseExportColumns("amount,id,merchant")).toEqual([
+      "amount",
+      "id",
+      "merchant",
+    ])
+  })
+
+  it("excludes the card last four by default", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(columns).not.toContain("last4")
+    expect(columns).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  it("includes the last four only when asked for explicitly", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("rejects an empty selection rather than producing an empty file", () => {
+    expect(parseExportColumns("")).toBeNull()
+  })
+
+  it("rejects any name outside the allowlist", () => {
+    expect(parseExportColumns("id,amount;DROP TABLE payments")).toBeNull()
+    expect(parseExportColumns("id,createdAt")).toBeNull()
+  })
+
+  it("drops duplicates rather than writing a column twice", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+})
+
 describe("exportFilename", () => {
+  it("carries the scope and the UTC date", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-08-13T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+    expect(exportFilename("all", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-all-2026-03-14.csv",
     )
   })
 })
