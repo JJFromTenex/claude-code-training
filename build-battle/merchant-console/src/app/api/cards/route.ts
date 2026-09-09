@@ -1,17 +1,11 @@
 import { issueCard, listCards, parseIssue } from "@/data/cards"
 import { NextRequest, NextResponse } from "next/server"
 
-/**
- * One error shape everywhere: a status code that means what it says and a
- * message safe to put in front of an operator.
- */
+/** One error shape: a status that means what it says, and a safe message. */
 const fail = (status: number, message: string) =>
   NextResponse.json({ message }, { status })
 
-/**
- * The list payload is built from Card records, which carry `last4` and a
- * reference and have no field for the number itself. It cannot leak one.
- */
+/** Built from Card records, which have no field for a number to leak. */
 export function GET() {
   return NextResponse.json({ cards: listCards() })
 }
@@ -25,14 +19,10 @@ export async function POST(request: NextRequest) {
   const issued = issueCard(values, request.headers.get("idempotency-key"))
   if ("message" in issued) return fail(issued.status, issued.message)
 
-  // 201 with the number on a fresh issue; 200 and no number on a replay,
-  // because the reveal happens exactly once.
+  // 201 with the number on a fresh issue; 200 and no number on a replay.
+  const replayed = issued.fullNumber === null
   return NextResponse.json(
-    {
-      card: issued.card,
-      fullNumber: issued.fullNumber,
-      replayed: issued.fullNumber === null,
-    },
-    { status: issued.fullNumber ? 201 : 200 },
+    { card: issued.card, fullNumber: issued.fullNumber, replayed },
+    { status: replayed ? 200 : 201 },
   )
 }

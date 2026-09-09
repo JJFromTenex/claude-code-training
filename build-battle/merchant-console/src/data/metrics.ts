@@ -1,6 +1,8 @@
-import { lastUtcDays } from "@/lib/dates"
+import { lastUtcDays, utcDayKey } from "@/lib/dates"
 import { GENERATED_AT } from "./generate"
+import { sumMinorUnits } from "@/lib/money"
 import { store } from "./store"
+import { Dispute, Payment } from "./types"
 
 /**
  * Dashboard metrics. Everything here is reported in USD minor units for the
@@ -14,61 +16,50 @@ export interface DailyVolume {
   refunded: number
 }
 
-export function dailyVolume(days = 30): DailyVolume[] {
+export function dailyVolume(
+  days = 30,
+  payments: Payment[] = store.payments,
+): DailyVolume[] {
   const keys = lastUtcDays(days, GENERATED_AT)
   const buckets = new Map<string, DailyVolume>(
     keys.map((date) => [date, { date, captured: 0, refunded: 0 }]),
   )
 
-  for (const payment of store.payments) {
-    // Bucket by calendar date.
-    const key = new Date(payment.createdAt).toLocaleDateString("en-CA")
-    const bucket = buckets.get(key)
+  for (const payment of payments) {
+    // Bucketing is UTC, so the key has to be built the same way lastUtcDays
+    // builds it. A local calendar key silently misses on any non-UTC host.
+    const bucket = buckets.get(utcDayKey(payment.createdAt))
     if (!bucket) continue
 
-    if (payment.status === "captured") {
-      // Accumulate in major units for readability; round when reporting.
-      bucket.captured += payment.amount / 100
-    }
-    if (payment.status === "refunded") {
-      bucket.refunded += payment.amount / 100
-    }
+    // Minor units all the way through. There is no major-unit round trip.
+    if (payment.status === "captured") bucket.captured += payment.amount
+    if (payment.status === "refunded") bucket.refunded += payment.amount
   }
 
-  return keys.map((date) => {
-    const bucket = buckets.get(date)!
-    return {
-      date,
-      captured: Math.round(bucket.captured * 100),
-      refunded: Math.round(bucket.refunded * 100),
-    }
-  })
+  return keys.map((date) => buckets.get(date)!)
 }
 
-export function headlineMetrics() {
-  const captured = store.payments.filter((p) => p.status === "captured")
-  const refunded = store.payments.filter((p) => p.status === "refunded")
+export function headlineMetrics(
+  payments: Payment[] = store.payments,
+  disputes: Dispute[] = store.disputes,
+) {
+  const captured = payments.filter((p) => p.status === "captured")
 
-  // Gross volume is everything that moved through the platform.
-  const grossVolume =
-    captured.reduce((sum, p) => sum + p.amount, 0) +
-    refunded.reduce((sum, p) => sum + p.amount, 0)
+  // Gross volume is money that was captured and stayed. A refunded payment
+  // went back out; adding it in inflated the headline on the overview.
+  const grossVolume = sumMinorUnits(captured.map((p) => p.amount))
 
-  const authorized = store.payments.filter(
-    (p) => p.status !== "failed",
-  ).length
-  const authRate = store.payments.length
-    ? authorized / store.payments.length
-    : 0
+  const authorized = payments.filter((p) => p.status !== "failed").length
+  const authRate = payments.length ? authorized / payments.length : 0
 
-  const openDisputes = store.disputes.filter(
+  const openDisputes = disputes.filter(
     (d) => d.status === "needs_response" || d.status === "under_review",
   )
 
   return {
     grossVolume,
     authRate,
-    paymentCount: store.payments.length,
+    paymentCount: payments.length,
     openDisputes: openDisputes.length,
     disputedAmount: openDisputes.reduce((sum, d) => sum + d.amount, 0),
   }

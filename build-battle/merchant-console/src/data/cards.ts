@@ -16,11 +16,9 @@ import {
 } from "./types"
 
 /**
- * Issuing, listing, and moving a card through its status machine.
- *
- * Validation lives here rather than inline in the route so that the rules the
- * ticket cares about can be asserted in a test as well as over HTTP. The route
- * is the only caller and it does not second-guess any of it.
+ * Issuing, listing, and moving a card through its status machine. Validation
+ * lives here rather than inline in the route so the rules the ticket cares
+ * about are assertable in a test as well as over HTTP.
  */
 
 export const MAX_SPEND_LIMIT = 5_000_000
@@ -28,7 +26,7 @@ export const MAX_SPEND_LIMIT = 5_000_000
 export interface IssueValues {
   nickname: string
   merchantId: string
-  /** Integer minor units, already converted at the client boundary. */
+  /** Integer minor units, converted once at the client boundary. */
   spendLimit: number
   currency: Currency
   categoryLock: CardCategory | null
@@ -39,80 +37,60 @@ export interface Rejection {
   message: string
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
+const bad = (message: string, status = 400): Rejection => ({ status, message })
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null
 
 /**
  * Everything the client sends, checked against an allowlist before it reaches
- * the store. Rejects early and returns; the caller narrows on `message`.
+ * the store. Rejects early; the caller narrows on `message`.
  */
 export function parseIssue(body: unknown): IssueValues | Rejection {
-  if (!isRecord(body)) return { status: 400, message: "Send a JSON object." }
+  if (!isRecord(body)) return bad("Send a JSON object.")
   const { nickname, merchantId, spendLimit, currency, categoryLock } = body
 
   if (typeof nickname !== "string" || !nickname.trim()) {
-    return {
-      status: 400,
-      message: "Give the card a nickname so ops can recognise it later.",
-    }
+    return bad("Give the card a nickname so ops can recognise it later.")
   }
   if (nickname.trim().length > 60) {
-    return {
-      status: 400,
-      message: "The nickname must be 60 characters or fewer.",
-    }
+    return bad("The nickname must be 60 characters or fewer.")
   }
 
   const merchant =
     typeof merchantId === "string" ? merchantById(merchantId) : undefined
-  if (!merchant) {
-    return { status: 400, message: "Choose the merchant this card belongs to." }
-  }
+  if (!merchant) return bad("Choose the merchant this card belongs to.")
 
   // Money arrives as integer minor units. The one string-to-integer conversion
-  // happens in the form, through parseAmountToMinorUnits; nothing parses a
-  // currency string here.
+  // happens in the form, through parseAmountToMinorUnits.
   if (typeof spendLimit !== "number" || !Number.isFinite(spendLimit)) {
-    return {
-      status: 400,
-      message: "The spend limit must be a number of minor units.",
-    }
+    return bad("The spend limit must be a number of minor units.")
   }
   if (!Number.isInteger(spendLimit)) {
-    return {
-      status: 400,
-      message: "The spend limit must be a whole number of minor units.",
-    }
+    return bad("The spend limit must be a whole number of minor units.")
   }
-  if (spendLimit <= 0) {
-    return {
-      status: 400,
-      message: "The spend limit must be greater than zero.",
-    }
-  }
+  if (spendLimit <= 0) return bad("The spend limit must be greater than zero.")
   if (spendLimit > MAX_SPEND_LIMIT) {
-    return {
-      status: 400,
-      message: "The spend limit cannot be above 5,000,000 minor units.",
-    }
+    return bad("The spend limit cannot be above 5,000,000 minor units.")
   }
 
   if (!CURRENCIES.includes(currency as Currency)) {
-    return { status: 400, message: "The currency must be USD, EUR, or GBP." }
+    return bad("The currency must be USD, EUR, or GBP.")
   }
   // A card in a currency its merchant cannot settle is a payout problem later.
   if (currency !== merchant.currency) {
-    return {
-      status: 422,
-      message: `${merchant.name} settles in ${merchant.currency}, so this card has to be ${merchant.currency}.`,
-    }
+    const c = merchant.currency
+    return bad(
+      `${merchant.name} settles in ${c}, so this card has to be ${c}.`,
+      422,
+    )
   }
 
   if (
     categoryLock != null &&
     !CARD_CATEGORIES.includes(categoryLock as CardCategory)
   ) {
-    return { status: 400, message: "That category lock is not one we support." }
+    return bad("That category lock is not one we support.")
   }
 
   return {
@@ -137,12 +115,10 @@ export function eventsForCard(cardId: string): CardEvent[] {
 }
 
 /**
- * The one place a card number is generated. The number leaves as a return
- * value and is never assigned to the record, which has no field that could
- * hold it — so no later reader can recover it.
- *
- * A repeated submit carrying the same idempotency key replays the card it
- * already minted, and deliberately does not reveal the number a second time.
+ * The one place a card number is generated. It leaves as a return value and is
+ * never assigned to the record, which has no field that could hold it. A
+ * repeated submit with the same key replays that card and does not reveal the
+ * number a second time.
  */
 export function issueCard(
   values: IssueValues,
@@ -153,11 +129,10 @@ export function issueCard(
   if (idempotencyKey) {
     const seen = store.cardKeys.find((k) => k.key === idempotencyKey)
     if (seen && seen.fingerprint !== fingerprint) {
-      return {
-        status: 409,
-        message:
-          "That idempotency key was already used for a different card. Use a fresh key.",
-      }
+      return bad(
+        "That key was already used for a different card. Use a fresh one.",
+        409,
+      )
     }
     if (seen) return { card: cardById(seen.cardId)!, fullNumber: null }
   }
@@ -171,8 +146,8 @@ export function issueCard(
     last4: fullNumber.slice(-4),
     numberRef: `cardnum_${Math.random().toString(16).slice(2, 14)}`,
     spendLimit: values.spendLimit,
-    // Nothing in this console captures against a card, so spend starts at zero
-    // and stays there rather than being invented for the sake of the bar.
+    // Nothing captures against a card here, so spend starts at zero and stays
+    // there rather than being invented for the sake of the bar.
     spent: 0,
     currency: values.currency,
     status: "active",
@@ -189,34 +164,26 @@ export function issueCard(
   return { card, fullNumber }
 }
 
-/**
- * The state machine, guarded on the server. The UI hides the buttons it should
- * not offer, but this is the thing that actually refuses.
- */
+/** The machine, guarded on the server. The UI hides buttons; this refuses. */
 export function applyAction(
   id: string,
   action: CardAction,
 ): { card: Card } | Rejection {
   const card = cardById(id)
-  if (!card) return { status: 404, message: "No card with that id." }
+  if (!card) return bad("No card with that id.", 404)
 
   const to = CARD_ACTIONS[action]
   if (!canTransition(card.status, to)) {
-    return {
-      status: 409,
-      message:
-        card.status === "cancelled"
-          ? "This card is cancelled, and a cancelled card is terminal."
-          : `This card is already ${card.status}.`,
-    }
+    return bad(
+      card.status === "cancelled"
+        ? "This card is cancelled, and a cancelled card is terminal."
+        : `This card is already ${card.status}.`,
+      409,
+    )
   }
 
-  store.cardEvents.push({
-    cardId: card.id,
-    from: card.status,
-    to,
-    at: new Date().toISOString(),
-  })
+  const at = new Date().toISOString()
+  store.cardEvents.push({ cardId: card.id, from: card.status, to, at })
   card.status = to
   return { card }
 }

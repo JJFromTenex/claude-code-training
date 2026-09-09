@@ -27,11 +27,9 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
-  /** Issued virtual cards. Empty at boot: nothing seeds a card. */
+  /** Issued cards. Empty at boot: nothing seeds one. NWP-201. */
   cards: Card[]
-  /** Append-only status history, one entry per transition. */
   cardEvents: CardEvent[]
-  /** Idempotency keys already honoured by POST /api/cards. */
   cardKeys: CardIdempotencyKey[]
 }
 

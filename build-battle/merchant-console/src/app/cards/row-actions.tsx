@@ -7,9 +7,8 @@ import { useEffect, useReducer, useState } from "react"
 import { cancelConfirm, idle } from "./cancel-confirm"
 
 /**
- * Freeze, unfreeze and cancel, sent as a PATCH and reflected with
- * router.refresh(), which re-fetches this route's data in place rather than
- * reloading the page. Cancel takes two clicks: it is terminal.
+ * Freeze, unfreeze and cancel. router.refresh() re-fetches this route's data
+ * in place rather than reloading the page. Cancel takes two clicks.
  */
 export function CardRowActions({
   id,

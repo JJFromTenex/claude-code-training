@@ -10,10 +10,9 @@ import {
 } from "./cards"
 
 /**
- * The card rules that cannot be allowed to drift: the test BIN, the Luhn
- * check digit, and the status machine. The Luhn check below is written out a
- * second time on purpose — asserting the generator against the same function
- * that built it would prove nothing.
+ * The card rules that cannot drift: the test BIN, the Luhn check digit, and
+ * the status machine. The Luhn below is written out a second time on purpose
+ * — checking the generator with the function that built it proves nothing.
  */
 
 /** An independent Luhn, written from the definition rather than reused. */

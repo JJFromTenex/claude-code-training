@@ -1,20 +1,18 @@
 import { CardStatus } from "@/data/types"
 
 /**
- * Card number generation and the card status machine.
- *
- * Pure functions with no store access, so the rules that matter most can be
- * asserted directly. Every generated number starts with the 4242 test BIN:
- * nothing in this repository may resemble a real PAN.
+ * Card number generation and the status machine. Pure, with no store access,
+ * so the rules that matter most are assertable directly. Every generated
+ * number starts with the 4242 test BIN: nothing here may resemble a real PAN.
  */
 
 export const TEST_BIN = "4242"
 const LENGTH = 16
 
 /**
- * The Luhn check digit for a number that is still missing its last digit.
- * Doubling starts at the rightmost digit of the partial, because the check
- * digit that will sit to its right is the one in the undoubled position.
+ * The Luhn check digit for a number still missing its last digit. Doubling
+ * starts at the rightmost digit of the partial, because the check digit that
+ * will sit to its right is the one in the undoubled position.
  */
 export function luhnCheckDigit(partial: string): number {
   let sum = 0
@@ -36,10 +34,8 @@ export function isLuhnValid(cardNumber: string): boolean {
   return luhnCheckDigit(body) === check
 }
 
-/**
- * A fresh sixteen-digit test-BIN number with a computed check digit.
- * Server side only — a card number produced in the browser is a bug.
- */
+/** Sixteen digits on the test BIN. Server side only: a number generated in
+ * the browser is a bug. `random` is injectable so tests are deterministic. */
 export function generateCardNumber(random: () => number = Math.random): string {
   let body = TEST_BIN
   while (body.length < LENGTH - 1) {
@@ -73,10 +69,7 @@ export const CARD_ACTIONS = {
 
 export type CardAction = keyof typeof CARD_ACTIONS
 
-/**
- * Whole-percent spend against a limit. Both arguments are integer minor
- * units; the result is a display figure and never re-enters arithmetic.
- */
+/** Whole-percent spend from integer minor units. Display only. */
 export function spendPercent(spent: number, limit: number): number {
   if (limit <= 0) return 0
   return Math.min(100, Math.round((spent * 100) / limit))
@@ -85,11 +78,8 @@ export function spendPercent(spent: number, limit: number): number {
 /** Past this, the bar goes amber. */
 export const SPEND_WARNING_PERCENT = 80
 
-/**
- * Tailwind compiles the classes it can see in the source, so the bar's fill
- * snaps to one of these rather than interpolating a width at runtime. The
- * percentage printed beside the bar is exact.
- */
+/** Tailwind compiles only classes it can see, so the fill snaps to one of
+ * these rather than interpolating. The percentage beside it is exact. */
 const BAR_WIDTHS = [
   "w-[0%]",
   "w-[5%]",

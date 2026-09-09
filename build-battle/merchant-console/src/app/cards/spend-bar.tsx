@@ -3,10 +3,7 @@ import { Currency } from "@/data/types"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
 
-/**
- * Spend against the limit. Both figures arrive as integer minor units and are
- * formatted here, at the edge. Past 80% the bar goes amber.
- */
+/** Spend against the limit. Minor units in, formatted here at the edge. */
 export function SpendBar({
   spent,
   limit,

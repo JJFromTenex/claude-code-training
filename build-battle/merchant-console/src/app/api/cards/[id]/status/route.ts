@@ -4,10 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 const ACTIONS = Object.keys(CARD_ACTIONS) as CardAction[]
 
-/**
- * The status machine is guarded here, not in the UI. The console hides the
- * buttons it should not offer; this is the thing that refuses.
- */
+/** Guarded here, not in the UI. The console hides buttons; this refuses. */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -64,8 +64,8 @@ export default function CardsPage() {
                     No cards have been issued yet
                   </p>
                   <p className="mt-1 text-gray-500">
-                    Issuing one here takes a minute and sets the spend limit up
-                    front, instead of a request to the platform team.
+                    Issuing one here sets the spend limit up front, instead of a
+                    request to the platform team.
                   </p>
                 </TableCell>
               </TableRow>

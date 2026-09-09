@@ -6,11 +6,7 @@ import {
   isConfirming,
 } from "./cancel-confirm"
 
-/**
- * Cancelling is terminal, so the guard in front of it has to behave. These
- * are the rules a reviewer would otherwise have to reconstruct from an event
- * handler.
- */
+/** Cancelling is terminal, so the guard in front of it has to behave. */
 
 const armed: CancelState = { armed: true }
 

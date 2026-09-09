@@ -78,8 +78,8 @@ export default async function CardDetailPage({
         />
       </div>
       <p className="mt-3 max-w-prose text-sm text-gray-500">
-        Nothing is captured against a card in this console, so spend is zero at
-        issue and stays there. The bar reads the record rather than an estimate.
+        Nothing is captured against a card here, so spend is zero at issue and
+        stays there. The bar reads the record, not an estimate.
       </p>
 
       <Divider />

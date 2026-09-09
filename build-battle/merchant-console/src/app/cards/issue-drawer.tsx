@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { CARD_CATEGORIES } from "@/data/types"
-import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
+import { parseAmountToMinorUnits } from "@/lib/money"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 
@@ -33,9 +33,9 @@ interface MerchantOption {
 const NO_LOCK = "none"
 
 /**
- * Issuing a card. The number is generated on the server and shown here once,
- * on the success screen; closing the drawer drops it out of client state and
- * there is no way to ask for it again.
+ * Issuing a card. The number is generated on the server and shown once, here;
+ * closing the drawer drops it out of client state and nothing can ask for it
+ * again.
  */
 export function IssueCardDrawer({
   merchants,
@@ -52,12 +52,7 @@ export function IssueCardDrawer({
   const [category, setCategory] = useState<string>(NO_LOCK)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [issued, setIssued] = useState<{
-    number: string
-    nickname: string
-    limit: number
-    currency: MerchantOption["currency"]
-  } | null>(null)
+  const [issued, setIssued] = useState<string | null>(null)
 
   // One key per opening of the drawer, so a double submit replays the first
   // card instead of minting a second. The server is what honours it.
@@ -82,8 +77,8 @@ export function IssueCardDrawer({
     event.preventDefault()
     setError(null)
 
-    // Client-side checks are a courtesy so the operator is not round-tripped
-    // for a typo. Every one of them is enforced again on the server.
+    // A courtesy so a typo is not a round trip. Every one is enforced again
+    // on the server, which is the enforcement.
     if (!nickname.trim())
       return setError("Give the card a nickname so ops can recognise it later.")
     if (!merchant) return setError("Choose the merchant this card belongs to.")
@@ -113,12 +108,7 @@ export function IssueCardDrawer({
         setError(data?.message ?? "The card could not be issued.")
         return
       }
-      setIssued({
-        number: data.fullNumber,
-        nickname: data.card.nickname,
-        limit: data.card.spendLimit,
-        currency: data.card.currency,
-      })
+      setIssued(data.fullNumber)
     } catch {
       setError("The console could not reach the server. Nothing was issued.")
     } finally {
@@ -152,25 +142,11 @@ export function IssueCardDrawer({
               <div aria-live="polite">
                 <p className="text-sm text-gray-500">Card number</p>
                 <p className="mt-1 font-mono text-lg tracking-widest text-gray-900 dark:text-gray-50">
-                  {issued.number.replace(/(.{4})/g, "$1 ").trim()}
+                  {issued.replace(/(.{4})/g, "$1 ").trim()}
                 </p>
                 <p className="mt-2 text-sm text-gray-500">
                   This is the only time it is shown.
                 </p>
-                <dl className="mt-6 space-y-2 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-gray-500">Nickname</dt>
-                    <dd className="text-gray-900 dark:text-gray-50">
-                      {issued.nickname}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-gray-500">Spend limit</dt>
-                    <dd className="tabular-nums text-gray-900 dark:text-gray-50">
-                      {formatMoney(issued.limit, issued.currency)}
-                    </dd>
-                  </div>
-                </dl>
               </div>
             </DrawerBody>
             <DrawerFooter>
@@ -182,31 +158,18 @@ export function IssueCardDrawer({
         ) : (
           <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
             <DrawerBody className="space-y-4">
-              <div>
-                <label
-                  htmlFor="card-nickname"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
+              <Field id="card-nickname" label="Nickname">
                 <Input
                   id="card-nickname"
-                  className="mt-1"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="Q3 ad spend"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-merchant"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
+              <Field id="card-merchant" label="Merchant">
                 <Select value={merchantId} onValueChange={setMerchantId}>
-                  <SelectTrigger id="card-merchant" className="mt-1">
+                  <SelectTrigger id="card-merchant">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
                   <SelectContent>
@@ -217,40 +180,26 @@ export function IssueCardDrawer({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               <div className="flex gap-3">
-                <div className="flex-1">
-                  <label
-                    htmlFor="card-limit"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
-                    Spend limit
-                  </label>
+                <Field id="card-limit" label="Spend limit" className="flex-1">
                   <Input
                     id="card-limit"
-                    className="mt-1"
                     inputMode="decimal"
                     value={limit}
                     onChange={(e) => setLimit(e.target.value)}
                     placeholder="2500.00"
                   />
-                </div>
-                <div className="w-24">
-                  <label
-                    htmlFor="card-currency"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                  >
-                    Currency
-                  </label>
+                </Field>
+                <Field id="card-currency" label="Currency" className="w-24">
                   <Input
                     id="card-currency"
-                    className="mt-1"
                     readOnly
                     value={merchant?.currency ?? ""}
                     placeholder="—"
                   />
-                </div>
+                </Field>
               </div>
               {merchant && (
                 <p className="text-sm text-gray-500">
@@ -259,15 +208,9 @@ export function IssueCardDrawer({
                 </p>
               )}
 
-              <div>
-                <label
-                  htmlFor="card-category"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
+              <Field id="card-category" label="Category lock">
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger id="card-category" className="mt-1">
+                  <SelectTrigger id="card-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -279,7 +222,7 @@ export function IssueCardDrawer({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               {error && (
                 <p
@@ -299,5 +242,30 @@ export function IssueCardDrawer({
         )}
       </DrawerContent>
     </Drawer>
+  )
+}
+
+/** Every control gets a label pointing at its own id. */
+function Field({
+  id,
+  label,
+  className,
+  children,
+}: {
+  id: string
+  label: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={className}>
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-gray-900 dark:text-gray-50"
+      >
+        {label}
+      </label>
+      <div className="mt-1">{children}</div>
+    </div>
   )
 }

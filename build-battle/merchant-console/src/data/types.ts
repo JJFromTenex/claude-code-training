@@ -84,10 +84,8 @@ export interface PaymentFilters {
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
-/**
- * Merchants carry no category of their own, so the lock is a card field with
- * its own allowlist. A card with no lock stores `null`.
- */
+/** Merchants carry no category, so the lock is a card field with its own
+ * allowlist. A card with no lock stores `null`. */
 export const CARD_CATEGORIES = [
   "advertising",
   "software",
@@ -102,13 +100,12 @@ export interface Card {
   id: string
   merchantId: string
   nickname: string
-  /** Last four of the generated number. The full number is never stored. */
+  /** Last four only. The full number is never stored. */
   last4: string
-  /** An opaque handle for the generated number. Not the number. */
+  /** An opaque handle for the number. Not the number. */
   numberRef: string
   /** Integer minor units. Never a float. */
   spendLimit: number
-  /** Integer minor units. Never a float. */
   spent: number
   currency: Currency
   status: CardStatus
@@ -117,7 +114,7 @@ export interface Card {
   createdAt: string
 }
 
-/** One entry in a card's append-only status history. */
+/** One entry in the append-only status history. */
 export interface CardEvent {
   cardId: string
   /** null on the issuing event, which has no previous status. */
@@ -127,7 +124,7 @@ export interface CardEvent {
   at: string
 }
 
-/** A honoured idempotency key, with a fingerprint of the request that used it. */
+/** An honoured idempotency key plus a fingerprint of the request. */
 export interface CardIdempotencyKey {
   key: string
   fingerprint: string
