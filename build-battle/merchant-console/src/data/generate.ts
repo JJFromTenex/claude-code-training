@@ -1,5 +1,9 @@
+import { generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardCategory,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +152,51 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * A few cards that already exist, so the list, the detail view, and the
+ * spend bar have something to show before anyone issues one. Spend is
+ * varied on purpose: one card sits past the 80% warning threshold and one
+ * is untouched.
+ */
+function generateCards(): Card[] {
+  const seeds: {
+    nickname: string
+    merchantIndex: number
+    limit: number
+    percentSpent: number
+    category: CardCategory
+    status: CardStatus
+  }[] = [
+    { nickname: "Meta ad spend", merchantIndex: 0, limit: 200_000, percentSpent: 92, category: "advertising", status: "active" },
+    { nickname: "Contractor tools", merchantIndex: 1, limit: 500_000, percentSpent: 24, category: "contractors", status: "active" },
+    { nickname: "SaaS subscriptions", merchantIndex: 2, limit: 150_000, percentSpent: 81, category: "software", status: "active" },
+    { nickname: "Team travel", merchantIndex: 3, limit: 300_000, percentSpent: 0, category: "travel", status: "frozen" },
+    { nickname: "Old agency retainer", merchantIndex: 4, limit: 100_000, percentSpent: 47, category: "any", status: "cancelled" },
+  ]
+
+  return seeds.map((seed, index) => {
+    const merchant = merchants[seed.merchantIndex % merchants.length]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - (index + 1) * 9)
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      nickname: seed.nickname,
+      merchantId: merchant.id,
+      spendLimit: seed.limit,
+      // Kept in minor units: a percentage of an integer, rounded once.
+      spent: Math.round((seed.limit * seed.percentSpent) / 100),
+      currency: merchant.currency,
+      status: seed.status,
+      category: seed.category,
+      last4: generateCardNumber(rand).slice(-4),
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
