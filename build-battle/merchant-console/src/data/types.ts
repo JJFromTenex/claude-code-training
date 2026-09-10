@@ -71,6 +71,30 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/**
+ * A virtual card. The full number is never stored: `last4` is for display and
+ * `numberRef` is the opaque reference the issuance produced. Money is integer
+ * minor units with its currency beside it.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units spent against the limit so far. */
+  spent: number
+  currency: Currency
+  last4: string
+  numberRef: string
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
