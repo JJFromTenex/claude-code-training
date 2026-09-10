@@ -48,6 +48,7 @@ Keep the export server-side and add two validated query parameters to the existi
 | `src/app/api/payments/export/route.test.ts` | add | Route-level happy path, `scope=all` row count, and the 400 cases |
 | `src/app/payments/export-dialog.tsx` | add | Client component: Drawer, column checkboxes, scope radios, row count, Download |
 | `src/app/payments/page.tsx` | change | Mount the dialog in place of the plain export anchor, passing the current filter query without `page` |
+| `tailwind.config.ts` | change | Pre-existing defect surfaced by the dialog: both drawer keyframes used `translateX(-100%)`, so the right-anchored panel slid in from the left. Now `100%`, matching Tremor upstream. Decided with Doug to keep it in this PR |
 
 ## Plan
 
