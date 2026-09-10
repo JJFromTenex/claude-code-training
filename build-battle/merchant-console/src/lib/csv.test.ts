@@ -181,8 +181,13 @@ describe("exportFilename", () => {
     expect(exportFilename("all", day)).toBe("payments-all-2026-08-13.csv")
   })
 
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
+  it("stamps the UTC date, never the local one", () => {
+    // Late and early UTC instants: a local-date implementation gets one of
+    // these wrong on any machine whose offset is not zero.
     expect(exportFilename("all", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-all-2026-03-14.csv",
+    )
+    expect(exportFilename("all", new Date("2026-03-14T00:30:00.000Z"))).toBe(
       "payments-all-2026-03-14.csv",
     )
   })
