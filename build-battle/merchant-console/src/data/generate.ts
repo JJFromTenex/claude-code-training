@@ -1,5 +1,10 @@
+import { generateCardNumber, lastFour } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardCategory,
+  CardEvent,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -190,4 +195,102 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+/**
+ * Seed cards, so the list, the detail page, and the spend bar have something
+ * real to draw before anyone issues one. Numbers run through the same
+ * generator the API uses, so even the seed is on the test BIN.
+ *
+ * Nothing increments `spent`: authorising against a card is not part of
+ * NWP-201, and these figures stand in for a card that has been in use.
+ */
+export function generateCards(): Card[] {
+  const cardRand = mulberry32(SEED + 1)
+
+  const specs: {
+    merchantId: string
+    nickname: string
+    spendLimit: number
+    spent: number
+    currency: Currency
+    status: CardStatus
+    category: CardCategory
+    daysAgo: number
+  }[] = [
+    {
+      merchantId: "mch_01",
+      nickname: "Meta Ads",
+      spendLimit: 250000,
+      spent: 216400,
+      currency: "USD",
+      status: "active",
+      category: "advertising",
+      daysAgo: 34,
+    },
+    {
+      merchantId: "mch_04",
+      nickname: "Figma seats",
+      spendLimit: 60000,
+      spent: 14400,
+      currency: "GBP",
+      status: "active",
+      category: "software",
+      daysAgo: 21,
+    },
+    {
+      merchantId: "mch_05",
+      nickname: "Messe travel",
+      spendLimit: 400000,
+      spent: 0,
+      currency: "EUR",
+      status: "frozen",
+      category: "travel",
+      daysAgo: 12,
+    },
+    {
+      merchantId: "mch_07",
+      nickname: "Contractor — Pilates studio build",
+      spendLimit: 1500000,
+      spent: 1487500,
+      currency: "USD",
+      status: "cancelled",
+      category: "contractors",
+      daysAgo: 6,
+    },
+  ]
+
+  return specs.map((spec, index) => {
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - spec.daysAgo)
+    const number = generateCardNumber(cardRand)
+
+    const history: CardEvent[] = [
+      { at: createdAt.toISOString(), status: "active", note: "Card issued" },
+    ]
+    if (spec.status !== "active") {
+      const changed = new Date(createdAt)
+      changed.setUTCDate(changed.getUTCDate() + 3)
+      history.push({
+        at: changed.toISOString(),
+        status: spec.status,
+        note: spec.status === "frozen" ? "Frozen" : "Cancelled",
+      })
+    }
+
+    return {
+      id: `card_${pad(index + 1)}`,
+      merchantId: spec.merchantId,
+      nickname: spec.nickname,
+      last4: lastFour(number),
+      reference: `cref_${pad(index + 1)}`,
+      spendLimit: spec.spendLimit,
+      spent: spec.spent,
+      currency: spec.currency,
+      status: spec.status,
+      category: spec.category,
+      createdAt: createdAt.toISOString(),
+      history,
+    }
+  })
 }
