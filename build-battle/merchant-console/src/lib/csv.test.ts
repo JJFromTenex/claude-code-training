@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,46 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a subset of columns in the order the caller asked for", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("drops names that are not real columns, and collapses duplicates", () => {
+    expect(parseExportColumns("id,nope,amount,id")).toEqual(["id", "amount"])
+  })
+
+  it("treats an empty or missing selection as no columns, not every column", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns(null)).toEqual([])
+    expect(parseExportColumns("nope,,   ")).toEqual([])
+  })
+})
+
+describe("column defaults", () => {
+  it("leaves the card last four out of the default column set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    const header = toCsv([payment], DEFAULT_EXPORT_COLUMNS).split("\n")[0]
+    expect(header.split(",")).not.toContain("last4")
+  })
+
+  it("includes the card last four only when it is asked for by name", () => {
+    expect(toCsv([payment], parseExportColumns("id,last4"))).toBe(
+      ["id,last4", "pay_0001,4242"].join("\n"),
+    )
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
+    expect(exportFilename(undefined, new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("folds the scope label into the name when there is one", () => {
+    expect(
+      exportFilename("disputed", new Date("2026-08-13T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-08-13.csv")
   })
 })

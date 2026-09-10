@@ -25,6 +25,51 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/**
+ * The columns selected when a request does not say otherwise: everything
+ * except the card last four, which only belongs in a file when ops asks for it.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/** Human labels for the column picker. Keyed by the wire name. */
+export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
+  id: "Payment ID",
+  created_at: "Created (UTC)",
+  merchant: "Merchant",
+  description: "Description",
+  status: "Status",
+  method: "Method",
+  card_brand: "Card brand",
+  last4: "Card last four",
+  amount: "Amount",
+  currency: "Currency",
+}
+
+const EXPORT_COLUMN_SET: ReadonlySet<string> = new Set(EXPORT_COLUMNS)
+
+function isExportColumn(value: string): value is ExportColumn {
+  return EXPORT_COLUMN_SET.has(value)
+}
+
+/**
+ * Turn a client-supplied `columns` value into a safe, ordered column list.
+ *
+ * Column names arrive from the browser, so this is the allowlist: anything not
+ * in EXPORT_COLUMNS is dropped, duplicates collapse, and the caller's order is
+ * kept. An empty or all-unknown input yields `[]`, which the route treats as
+ * "nothing to export" rather than "every column".
+ */
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (!raw) return []
+  const seen = new Set<ExportColumn>()
+  for (const part of raw.split(",")) {
+    const name = part.trim()
+    if (isExportColumn(name)) seen.add(name)
+  }
+  return [...seen]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +111,12 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Name the download after what is in it: an optional scope label (a status
+ * filter, or "all") and the UTC date. Two exports on the same day collide by
+ * design — the date is for the person filing it, not for uniqueness.
+ */
+export function exportFilename(label?: string, date = new Date()): string {
+  const day = date.toISOString().slice(0, 10)
+  return label ? `payments-${label}-${day}.csv` : `payments-${day}.csv`
 }
