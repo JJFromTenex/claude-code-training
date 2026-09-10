@@ -34,7 +34,6 @@ Ops asks the platform team to create virtual cards by hand. It takes hours, happ
 | "Validate everything from the client against an allowlist" | `.claude/rules/api-routes.md`, `ORG-STANDARDS.md` #7 | A POST sets a huge limit or `JPY` |
 | "Return the same error shape everywhere" | `.claude/rules/api-routes.md` | Every caller parses errors differently |
 
-Also binding: UTC storage, merchant-timezone display (`ORG-STANDARDS.md` #4-5), labelled inputs, written empty and error states (`.claude/rules/components.md`).
 
 ## Approach
 
@@ -96,8 +95,7 @@ Cards follow the shape payments use: types and store in `src/data/`, pure logic 
 ## Risks
 
 - The store is cached on `globalThis` (`src/data/store.ts`), so an older dev server has no `cards`; restart it, and say so in the PR body.
-- Thirteen files is the whole budget, so no new dependencies.
-- Rules files load only when a matching file is opened, so anyone editing `src/app/api/cards/` may miss the rules quoted above.
+- No new dependencies.
 - The success screen is the only place a PAN exists in the browser, so not clearing drawer state on close re-reveals it, which is a rule violation.
 
 ## Out of scope
