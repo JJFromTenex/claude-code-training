@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,73 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a requested subset in the order asked for, not the canonical one", () => {
+    const columns = parseExportColumns("amount,id,merchant")
+    expect(columns).toEqual(["amount", "id", "merchant"])
+    // The serializer honors that order, which is the point of choosing it.
+    expect(toCsv([payment], columns)).toBe(
+      ["amount,id,merchant", "$250.00,pay_0001,Lumen Coffee Roasters"].join(
+        "\n",
+      ),
+    )
+  })
+
+  it("excludes the card last four by default", () => {
+    expect(parseExportColumns(null)).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(parseExportColumns(null)).not.toContain("last4")
+    expect(toCsv([payment], parseExportColumns(null))).not.toContain("4242")
+    // Every other column still ships, so the default is a clean file, not a thin one.
+    expect(parseExportColumns(null)).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  it("includes the card last four only when asked for by name", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("returns nothing for an empty selection, so the caller can refuse it", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns(",,")).toEqual([])
+  })
+
+  it("drops column names that are not on the allowlist", () => {
+    expect(parseExportColumns("id,cardholder_name,amount")).toEqual([
+      "id",
+      "amount",
+    ])
+    // A request made entirely of unknown names is an empty selection, never
+    // a silent fallback to every column.
+    expect(parseExportColumns("password,1=1,cvv")).toEqual([])
+  })
+
+  it("collapses a duplicated column to one, keeping its first position", () => {
+    expect(parseExportColumns("amount,id,amount")).toEqual(["amount", "id"])
+  })
+
+  it("tolerates whitespace around names", () => {
+    expect(parseExportColumns(" id , amount ")).toEqual(["id", "amount"])
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("names the scope, so two files in a downloads folder tell themselves apart", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T09:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
+    )
+  })
+
+  it("sanitizes a scope before it reaches a filename", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T09:00:00.000Z"), "../../etc/passwd"),
+    ).toBe("payments-etc-passwd-2026-08-13.csv")
   })
 })

@@ -35,6 +35,33 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   }
 }
 
+export const EXPORT_SCOPES = ["filter", "all"] as const
+
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
+
+/**
+ * Scope decides whether an export honors the active filters or ignores them.
+ * Anything the client sends that is not in the allowlist falls back to the
+ * filtered view, which is the narrower and safer of the two.
+ */
+export function parseScope(params: URLSearchParams): ExportScope {
+  return params.get("scope") === "all" ? "all" : "filter"
+}
+
+/**
+ * The filename segment for a scope: `all` for everything, otherwise the
+ * status being looked at, or `filtered` when the narrowing was a search or a
+ * merchant rather than a status.
+ */
+export function describeScope(
+  filters: PaymentFilters,
+  scope: ExportScope,
+): string {
+  if (scope === "all") return "all"
+  if (filters.status && filters.status !== "all") return filters.status
+  return "filtered"
+}
+
 /**
  * The one payment query builder. Every list, export, and metric goes through
  * it. A second implementation is a defect, not a shortcut.
@@ -103,6 +130,19 @@ export function queryPayments(filters: PaymentFilters) {
   const filtered = filterPayments(filters)
   const sorted = sortPayments(filtered, filters.sort, filters.direction)
   return paginate(sorted, filters.page, filters.pageSize)
+}
+
+/**
+ * Rows for an export. Filtering goes through the same builder the table uses;
+ * pagination does not apply, because a paginated export is the bug NWP-101
+ * exists to avoid. Scope `all` deliberately drops the active filters.
+ */
+export function exportRows(
+  filters: PaymentFilters,
+  scope: ExportScope,
+): Payment[] {
+  const rows = filterPayments(scope === "all" ? { status: "all" } : filters)
+  return sortPayments(rows, filters.sort, filters.direction)
 }
 
 export function paymentById(id: string) {
