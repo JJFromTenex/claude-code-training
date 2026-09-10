@@ -10,12 +10,12 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { queryPayments } from "@/data/queries"
+import { filterPayments, parseFilters, queryPayments } from "@/data/queries"
 import { PaymentFilters, PaymentStatus } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
-import { Download } from "lucide-react"
 import Link from "next/link"
+import { ExportDialog } from "./export-dialog"
 import { PaymentsFilterBar } from "./filter-bar"
 
 const STATUSES: (PaymentStatus | "all")[] = [
@@ -43,6 +43,11 @@ export default async function PaymentsPage({
   }
 
   const { rows, total, page, pageCount } = queryPayments(filters)
+
+  // The export dialog shows both row counts before anything downloads. Both
+  // come from the one query builder here rather than a fetch from the client.
+  const allTotal = filterPayments(parseFilters(new URLSearchParams())).length
+
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
@@ -65,15 +70,11 @@ export default async function PaymentsPage({
             search: filters.search ?? "",
           }}
         />
-        <Button variant="secondary" className="w-full gap-2 py-1.5 sm:w-fit" asChild>
-          <a href={`/api/payments/export?${query.toString()}`}>
-            <Download
-              className="-ml-0.5 size-4 shrink-0 text-gray-400 dark:text-gray-600"
-              aria-hidden="true"
-            />
-            Export
-          </a>
-        </Button>
+        <ExportDialog
+          query={query.toString()}
+          filteredTotal={total}
+          allTotal={allTotal}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
