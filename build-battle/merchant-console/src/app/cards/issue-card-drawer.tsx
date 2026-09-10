@@ -51,6 +51,13 @@ export function IssueCardDrawer({
   const [errors, setErrors] = useState<Errors>({})
   const [submitting, setSubmitting] = useState(false)
   const [issued, setIssued] = useState<{ card: Card; number: string } | null>(null)
+  // One key per open form. A retry of the same submission reuses it, so the
+  // server returns the card it already issued instead of minting another.
+  const [issueKey, setIssueKey] = useState("")
+
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
+  const currencyMismatch =
+    selectedMerchant !== undefined && selectedMerchant.currency !== currency
 
   const reset = () => {
     setNickname("")
@@ -60,11 +67,13 @@ export function IssueCardDrawer({
     setErrors({})
     setSubmitting(false)
     setIssued(null)
+    setIssueKey("")
   }
 
   const onOpenChange = (next: boolean) => {
     setOpen(next)
-    if (!next) reset()
+    if (next) setIssueKey(crypto.randomUUID())
+    else reset()
   }
 
   const chooseMerchant = (id: string) => {
@@ -96,7 +105,10 @@ export function IssueCardDrawer({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": issueKey,
+        },
         body: JSON.stringify({
           nickname: nickname.trim(),
           merchantId,
@@ -308,7 +320,10 @@ export function IssueCardDrawer({
                       hasError={Boolean(errors.currency)}
                       aria-labelledby="currency-label"
                       aria-invalid={Boolean(errors.currency)}
-                      aria-describedby={describedBy("currency")}
+                      aria-describedby={describedBy(
+                        "currency",
+                        currencyMismatch ? "hint" : undefined,
+                      )}
                     >
                       <SelectValue />
                     </SelectTrigger>
@@ -320,10 +335,19 @@ export function IssueCardDrawer({
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.currency && (
+                  {errors.currency ? (
                     <p id="currency-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
                       {errors.currency}
                     </p>
+                  ) : (
+                    currencyMismatch && (
+                      <p
+                        id="currency-hint"
+                        className="mt-1 text-sm text-amber-700 dark:text-amber-400"
+                      >
+                        {selectedMerchant.name} settles in {selectedMerchant.currency}.
+                      </p>
+                    )
                   )}
                 </div>
               </div>

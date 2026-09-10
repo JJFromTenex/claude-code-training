@@ -17,19 +17,28 @@ export function cardById(id: string): Card | null {
   return store.cards.find((c) => c.id === id) ?? null
 }
 
+/** The card a previous request with this idempotency key already issued, if any. */
+export function cardByIssueKey(key: string): Card | null {
+  const id = store.cardIssueKeys[key]
+  return id ? cardById(id) : null
+}
+
 export function insertCard(
-  fields: Omit<Card, "id" | "status" | "spent" | "createdAt" | "updatedAt">,
-  now: Date = new Date(),
+  fields: Omit<Card, "id" | "status" | "spent" | "history" | "createdAt" | "updatedAt">,
+  options: { idempotencyKey?: string; now?: Date } = {},
 ): Card {
+  const at = (options.now ?? new Date()).toISOString()
   const card: Card = {
     id: `card_${pad(store.cards.length + 1)}`,
     ...fields,
     spent: 0,
     status: "active",
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
+    history: [{ status: "active", at }],
+    createdAt: at,
+    updatedAt: at,
   }
   store.cards.push(card)
+  if (options.idempotencyKey) store.cardIssueKeys[options.idempotencyKey] = card.id
   return card
 }
 
@@ -54,7 +63,9 @@ export function transitionCard(
           : `A ${card.status} card cannot move to ${to}.`,
     }
   }
+  const at = now.toISOString()
   card.status = to
-  card.updatedAt = now.toISOString()
+  card.updatedAt = at
+  card.history.push({ status: to, at })
   return { ok: true, card }
 }

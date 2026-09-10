@@ -73,6 +73,12 @@ export interface Payout {
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
+/** One entry in a card's audit trail: the status it moved to, and when (UTC). */
+export interface CardStatusChange {
+  status: CardStatus
+  at: string
+}
+
 /**
  * A virtual card. The full number is never stored: `last4` is for display and
  * `numberRef` is the opaque reference the issuance produced. Money is integer
@@ -90,6 +96,8 @@ export interface Card {
   last4: string
   numberRef: string
   status: CardStatus
+  /** Every status the card has held, oldest first. Issuance is the first entry. */
+  history: CardStatusChange[]
   /** ISO 8601, always UTC. */
   createdAt: string
   updatedAt: string

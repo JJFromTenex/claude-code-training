@@ -100,7 +100,8 @@ export function validateIssueRequest(body: unknown): Validation<IssueCardInput> 
   if (typeof merchantId !== "string" || merchantId.length === 0) {
     return { ok: false, field: "merchantId", message: "Merchant is required." }
   }
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return { ok: false, field: "merchantId", message: "Merchant not found." }
   }
   if (typeof spendLimit !== "number" || !Number.isInteger(spendLimit)) {
@@ -122,6 +123,16 @@ export function validateIssueRequest(body: unknown): Validation<IssueCardInput> 
   }
   if (typeof currency !== "string" || !CURRENCIES.includes(currency as Currency)) {
     return { ok: false, field: "currency", message: "Currency must be USD, EUR, or GBP." }
+  }
+  // A card is single-merchant, and a merchant settles in one currency. A
+  // mismatch is the wrong-currency mistake the ticket describes, so it is
+  // rejected here rather than trusted from the form.
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      field: "currency",
+      message: `${merchant.name} settles in ${merchant.currency}. Choose ${merchant.currency} for this card.`,
+    }
   }
 
   return {

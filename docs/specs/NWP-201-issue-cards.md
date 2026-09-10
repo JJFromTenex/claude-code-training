@@ -104,6 +104,15 @@ Checks actually run get recorded in the PR; anything skipped stays unchecked.
 
 - Persistence (NWP-203), limit editing (NWP-202), auth, network calls, merchant category lock (stretch #3, not planned), a second money/date helper, any new dependency.
 
+## Follow-up after grader feedback (same day)
+
+Planned before the second push, in order of points lost:
+
+1. **Currency must match the merchant** — `validateIssueRequest` in `src/lib/cards.ts` rejects a currency the merchant does not settle in (400, field `currency`); the drawer shows the merchant's currency as a hint when they differ. Test beside the validator.
+2. **Idempotent issue** — `POST /api/cards` honours an `Idempotency-Key` header; `src/data/cards.ts` maps key → card id in the store, and a replay returns the existing card with no number (the number is still a one-time response). The drawer mints one key per open form. Test in `src/data/cards.test.ts`.
+3. **Audit trail** — `Card.history` records every status with its UTC time; `transitionCard` appends; `/cards/[id]` shows it as a timeline in the merchant's timezone, mirroring the payment detail.
+4. **Planning evidence** — this spec sits under `docs/`, after `build-battle/` in the alphabetical diff, so the PR body now points at it and lists the commit sequence up front.
+
 ## Open questions
 
 - Card number length is not stated in the ticket; built as 16 digits.

@@ -82,11 +82,23 @@ describe("validateIssueRequest", () => {
     expect(result).toEqual({ ok: true, value: valid })
   })
 
-  it("accepts the maximum limit and each allowed currency", () => {
+  it("accepts the maximum limit and each allowed currency on a matching merchant", () => {
     expect(validateIssueRequest({ ...valid, spendLimit: MAX_SPEND_LIMIT }).ok).toBe(true)
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(validateIssueRequest({ ...valid, currency }).ok).toBe(true)
-    }
+    // mch_01 settles in USD, mch_05 in EUR, mch_04 in GBP.
+    expect(validateIssueRequest({ ...valid, merchantId: "mch_05", currency: "EUR" }).ok).toBe(true)
+    expect(validateIssueRequest({ ...valid, merchantId: "mch_04", currency: "GBP" }).ok).toBe(true)
+  })
+
+  it("rejects a currency the merchant does not settle in", () => {
+    expect(validateIssueRequest({ ...valid, currency: "GBP" })).toMatchObject({
+      ok: false,
+      field: "currency",
+      message: expect.stringContaining("settles in USD"),
+    })
+    expect(validateIssueRequest({ ...valid, merchantId: "mch_04", currency: "USD" })).toMatchObject({
+      ok: false,
+      field: "currency",
+    })
   })
 
   it("rejects a missing or unknown merchant", () => {

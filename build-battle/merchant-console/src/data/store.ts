@@ -21,6 +21,8 @@ interface Store {
   payouts: Payout[]
   /** Issued in-session. Starts empty; nothing is seeded. */
   cards: Card[]
+  /** Idempotency key → card id, so a retried issue request cannot create a second card. */
+  cardIssueKeys: Record<string, string>
 }
 
 declare global {
@@ -30,7 +32,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards: [] }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardIssueKeys: {},
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

@@ -2,6 +2,7 @@ import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CardStatus } from "@/data/types"
 import { maskCard } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
@@ -12,6 +13,12 @@ import { CardActions } from "../card-actions"
 
 /** Amber once spend passes this share of the limit. */
 const WARN_PERCENT = 80
+
+const HISTORY_LABELS: Record<CardStatus, string> = {
+  active: "Unfrozen",
+  frozen: "Frozen",
+  cancelled: "Cancelled",
+}
 
 /**
  * Bar widths in 5% steps, written out so Tailwind can generate them and no
@@ -142,6 +149,26 @@ export default async function CardDetail({
           </p>
         )}
       </div>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">History</h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={`${entry.at}-${entry.status}`} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {index === 0 ? "Issued" : HISTORY_LABELS[entry.status]}
+              </p>
+              <p className="text-sm text-gray-500">{formatInZone(entry.at, timezone)}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       <Divider />
 
