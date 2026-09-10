@@ -104,6 +104,6 @@ Persistence (NWP-203), editing a limit after issue (NWP-202), auth, real issuer 
 
 ## Open questions
 
-- Is the limit monthly, yearly, or lifetime? Building a lifetime cap, the only reading needing no reset.
+- Is the limit monthly or lifetime? Building a lifetime cap.
 - Should `grossVolume` in `src/data/metrics.ts` include refunded payments? Not touching it without an answer.
-- Who issued a card? `CardEvent` records what and when but not who, and there is no auth.
+- Who issued a card? No auth exists yet to record it.
