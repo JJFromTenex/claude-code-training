@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,12 +80,70 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("follows the caller's column order, not the canonical one", () => {
+    expect(toCsv([payment], ["status", "currency", "id"])).toBe(
+      ["status,currency,id", "captured,USD,pay_0001"].join("\n"),
+    )
+  })
+
+  it("produces a blank file for an empty selection, which is why the route refuses one", () => {
+    // No header, no cells — just the row separator. Never a download path.
+    expect(toCsv([payment], [])).toBe("\n")
+    expect(toCsv([], [])).toBe("")
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("leaves the card last four out, so a merchant file is clean by default", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("falls back to the default set when the client sends no columns", () => {
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("keeps the requested order", () => {
+    expect(parseExportColumns("amount,id,status")).toEqual([
+      "amount",
+      "id",
+      "status",
+    ])
+  })
+
+  it("drops names that are not columns and de-dupes the rest", () => {
+    expect(parseExportColumns("id, id ,merchant,../etc/passwd,DROP TABLE")).toEqual(
+      ["id", "merchant"],
+    )
+  })
+
+  it("returns an empty selection when nothing survives the allowlist", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("nope,also_nope")).toEqual([])
+  })
 })
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
+    )
+  })
+
+  it("names the scope when there is one", () => {
+    expect(
+      exportFilename(new Date("2026-08-13T09:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
+  it("strips anything a scope segment has no business putting in a filename", () => {
+    expect(exportFilename(new Date("2026-08-13T09:00:00.000Z"), "../all")).toBe(
+      "payments-all-2026-08-13.csv",
     )
   })
 })
