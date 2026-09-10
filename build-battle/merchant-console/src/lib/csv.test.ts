@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -73,6 +79,56 @@ describe("toCsv", () => {
 
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("defaults to every column except the card last four, in the standard order", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual([
+      "id",
+      "created_at",
+      "merchant",
+      "description",
+      "status",
+      "method",
+      "card_brand",
+      "amount",
+      "currency",
+    ])
+    expect(parseExportColumns(null)).toEqual({
+      ok: true,
+      columns: DEFAULT_EXPORT_COLUMNS,
+    })
+  })
+
+  it("accepts a subset and keeps the requested order, so the file follows the request", () => {
+    const parsed = parseExportColumns("amount,id")
+    expect(parsed).toEqual({ ok: true, columns: ["amount", "id"] })
+    if (!parsed.ok) throw new Error("unreachable")
+    expect(toCsv([payment], parsed.columns)).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("rejects an empty selection rather than producing an empty file", () => {
+    expect(parseExportColumns("")).toEqual({
+      ok: false,
+      message: "Select at least one column",
+    })
+  })
+
+  it("rejects a column that is not on the allowlist and names it", () => {
+    expect(parseExportColumns("id,pan")).toEqual({
+      ok: false,
+      message: 'Unknown column "pan"',
+    })
+  })
+
+  it("rejects a column listed twice", () => {
+    expect(parseExportColumns("id,id")).toEqual({
+      ok: false,
+      message: 'Duplicate column "id"',
+    })
   })
 })
 

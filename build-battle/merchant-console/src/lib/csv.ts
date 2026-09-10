@@ -5,9 +5,8 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops picks the columns (NWP-101). Column names arrive from the client, so
+ * they are checked against EXPORT_COLUMNS before they reach the serializer.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +23,38 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** What the dialog starts with: everything except the card last four. */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+export type ExportOptionResult<T> =
+  | { ok: true; columns: T }
+  | { ok: false; message: string }
+
+/**
+ * Parse the `columns` query value. `null` (param absent) means the default
+ * set; anything present must be a comma-separated list of allowlisted names
+ * with no repeats. Rejections carry a message safe to show a user.
+ */
+export function parseExportColumns(
+  raw: string | null,
+): ExportOptionResult<readonly ExportColumn[]> {
+  if (raw === null) return { ok: true, columns: DEFAULT_EXPORT_COLUMNS }
+  if (raw === "") return { ok: false, message: "Select at least one column" }
+
+  const columns: ExportColumn[] = []
+  for (const name of raw.split(",")) {
+    if (!EXPORT_COLUMNS.includes(name as ExportColumn)) {
+      return { ok: false, message: `Unknown column "${name}"` }
+    }
+    if (columns.includes(name as ExportColumn)) {
+      return { ok: false, message: `Duplicate column "${name}"` }
+    }
+    columns.push(name as ExportColumn)
+  }
+  return { ok: true, columns }
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
