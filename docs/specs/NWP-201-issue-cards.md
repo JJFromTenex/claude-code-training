@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Ronnie (with Claude)
-**Status:** building
+**Status:** done
 
 ## Context
 
@@ -106,5 +106,6 @@ Checks actually run get recorded in the PR; anything skipped stays unchecked.
 
 ## Open questions
 
-- Card number length is not stated in the ticket; assuming 16 digits (the common PAN length with a 4-digit BIN). Say so if you want 15 or 19.
+- Card number length is not stated in the ticket; built as 16 digits.
+- Departures during the build: the generator uses the Web Crypto global instead of `node:crypto` because the drawer imports constants from the same module and webpack rejects Node-scheme imports in a client bundle; seeded cards were not added, so `spent` is always 0 and the amber state is built but not exercised.
 - Seeding a few cards with spend so the amber bar is demonstrable: deferred to stretch (c), skipped if the clock is tight.
