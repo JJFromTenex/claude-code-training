@@ -1,6 +1,6 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Card, Dispute, Payment, Payout, Refund } from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +19,9 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  cards: Card[]
+  /** Idempotency-Key -> card id, so a repeated key never mints a second card. */
+  cardIdempotencyKeys: Map<string, string>
 }
 
 declare global {
@@ -28,10 +31,24 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardIdempotencyKeys: new Map(),
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
+
+// A dev server that was running before `cards` existed keeps the old object
+// shape across hot reloads. Guard so the new fields exist even then, rather
+// than relying on a restart.
+store.cards ??= []
+store.cardIdempotencyKeys ??= new Map()
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__northwindStore = store

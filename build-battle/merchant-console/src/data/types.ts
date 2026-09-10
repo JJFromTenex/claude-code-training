@@ -82,3 +82,41 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+export interface CardEvent {
+  /** null means the issue event. */
+  from: CardStatus | null
+  to: CardStatus
+  at: string
+  /** Always "ops" — there is no auth in scope. */
+  actor: string
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** 4 digits, always "4242" for generated numbers. Stored, not derived. */
+  last4: string
+  /** Opaque handle. NOT derived from the PAN. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Never a float. */
+  spent: number
+  currency: Currency
+  category: CardCategory
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+  events: CardEvent[]
+}
