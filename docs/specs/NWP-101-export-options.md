@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-101](../tickets/NWP-101.md)
 **Author:** Douglas Gimli
-**Status:** building
+**Status:** done
 
 ## Problem
 
@@ -67,11 +67,11 @@ Keep the export server-side and add two validated query parameters to the existi
 | Filename reflects scope and date | Unit test asserts `payments-disputed-2026-08-13.csv` and `payments-all-…`; route test reads the content-disposition header |
 | Amounts stay in minor units, formatted once, currency own column | Existing `toCsv` tests plus a route test for `columns=amount,currency` producing `$250.00,USD` |
 | Deselecting every column disables Download | Manual check in the dialog; route test returns 400 for `columns=` so no empty file can be produced |
-| `npm test` passes, serializer test extended in `csv.test.ts` | Test summary recorded in the PR: 28 passing before, all passing after with the new count |
+| `npm test` passes, serializer test extended in `csv.test.ts` | `npm test`: 28 passing in 3 files before, 50 passing in 4 files after; `csv.test.ts` went from 9 to 22 tests, none deleted |
 
 ## Risks
 
-- `NextRequest` may not construct cleanly under vitest. If so, drop the route test file and keep every validation branch unit-tested in `csv.ts`; the route becomes glue only.
+- `NextRequest` might not have constructed under vitest. It did, so `src/app/api/payments/export/route.test.ts` stayed and covers the happy path, both scopes, the filename header, and every rejection.
 - Changing `exportFilename`'s signature touches an existing test. The test is updated to the new contract, never deleted, and the UTC-date assertion stays.
 - `sortPayments` compares amounts as strings. The export inherits that when `sort=amount` is in the query. Out of scope here; tracked for its own fix and PR.
 - The dialog has no automated test because the repo has no DOM test runner. Manual steps are listed in the plan and recorded in the PR.
@@ -85,5 +85,7 @@ Keep the export server-side and add two validated query parameters to the existi
 
 ## Open questions
 
-- Filename token when the current filter has no status but has a merchant or search: this spec uses `filtered`. If ops would rather see the merchant id, that is a one-line change in `exportScopeToken`.
-- Whether an invalid `scope` should 400 or fall back to `current`, matching how `parseFilters` defaults. This spec rejects, per the api-routes rule.
+Both were decided before code was written:
+
+- Filename token when the current filter has no status but has a merchant or search: `filtered`. If ops would rather see the merchant id, that is a one-line change in `exportScopeToken`.
+- An invalid `scope` returns 400 rather than falling back to `current`, per the api-routes rule. `parseFilters` still defaults invalid statuses, so the two styles coexist on purpose.
