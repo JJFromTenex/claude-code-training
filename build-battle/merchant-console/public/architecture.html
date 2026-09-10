@@ -42,12 +42,16 @@
   .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
   .warn b { display: block; margin-bottom: 4px; }
   .small { color: var(--muted); font-size: 13px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 20px; vertical-align: 2px; margin-left: 6px; }
+  .pill.new { background: #e7f3ec; color: #1a6b3c; border: 1px solid #b6ddc6; }
+  .pill.open { background: #fdeaea; color: #96201f; border: 1px solid #f3b7b6; }
 </style>
 </head>
 <body>
 <main>
   <h1>Northwind Payments Merchant Console</h1>
-  <p class="sub">Architecture notes for <code>build-battle/merchant-console</code>. Written for the NWP-101 export options ticket.</p>
+  <p class="sub">Architecture notes for <code>build-battle/merchant-console</code>. Current as of NWP-101, which shipped the export options dialog.</p>
 
   <h2>What the app does</h2>
   <p>An internal tool for Northwind's support and ops teams. Staff use it to look up a payment, refund it, and work the dispute queue. Northwind Payments is fictional and every merchant, cardholder, and amount is generated at boot.</p>
@@ -93,52 +97,63 @@
   </ul>
 
   <h2>Payments export, end to end</h2>
-  <p>Today the export is a plain link. There is no dialog, no column choice, and no scope choice. This is what NWP-101 changes.</p>
+  <p>Ops exports the payments table several times a day. Since NWP-101 the Export button opens a dialog first, so the file matches the job instead of being one fixed shape.<span class="pill new">shipped</span></p>
 
   <div class="flow">
     <div class="step"><div class="num">1</div><div class="body">
       <b>Filter bar builds the URL</b>
       <span class="file">src/app/payments/filter-bar.tsx</span>
-      <p>A client component. Search, status, and merchant selections are pushed into the query string of <code>/payments</code> via the router.</p>
+      <p>A client component. Search, status, and merchant selections are pushed into the query string of <code>/payments</code> via the router. Unchanged by NWP-101.</p>
     </div></div>
     <div class="step"><div class="num">2</div><div class="body">
-      <b>Payments page renders the table and the Export link</b>
+      <b>Payments page renders the table and the export dialog</b>
       <span class="file">src/app/payments/page.tsx</span>
-      <p>A server component. It reads the search params, calls <code>queryPayments</code> for one page of 20 rows, and renders an Export button that is just an anchor to <code>/api/payments/export?</code> plus the same query string.</p>
+      <p>A server component. It reads the search params, calls <code>queryPayments</code> for one page of 20 rows, and hands the dialog the query string plus both row counts: the filtered total it already has, and the unfiltered total. The dialog therefore costs no extra request to open.</p>
     </div></div>
     <div class="step"><div class="num">3</div><div class="body">
-      <b>Export route handler parses and validates the filters</b>
-      <span class="file">src/app/api/payments/export/route.ts</span>
-      <p>Calls <code>parseFilters</code>, which allowlists status, sort, and direction and sanitizes the page number. Then it calls <code>filterPayments</code> and <code>sortPayments</code> directly, skipping pagination, so the whole filtered set is exported.</p>
+      <b>Dialog collects the choices</b>
+      <span class="file">src/app/payments/export-dialog.tsx</span>
+      <p>Built on the <code>Drawer</code> primitive, which is a Radix dialog, so it has an accessible name, focus handling, and Escape to close. Ten column checkboxes with the card last four unchecked, a scope radio showing the row count for each option, and a Download that turns into a disabled button when nothing is selected. It emits <code>columns</code> as an ordered comma-separated param and <code>scope</code> alongside the existing filters.</p>
     </div></div>
     <div class="step"><div class="num">4</div><div class="body">
-      <b>Query builder filters the in-memory store</b>
-      <span class="file">src/data/queries.ts</span>
-      <p><code>filterPayments</code> applies status, merchant, date range, and a text search over id, description, last four, and merchant name. <code>sortPayments</code> orders by date or amount.</p>
+      <b>Route handler validates everything from the client</b>
+      <span class="file">src/app/api/payments/export/route.ts</span>
+      <p><code>parseExportColumns</code> checks each name against the allowlist, drops unknowns, collapses duplicates, and keeps the caller's order. An empty or entirely unknown selection returns a 400 with a message safe to show a user, rather than an empty file. <code>parseScope</code> allowlists the two scopes and falls back to the narrower one. <code>parseFilters</code> handles status, sort, and direction as before.</p>
     </div></div>
     <div class="step"><div class="num">5</div><div class="body">
-      <b>CSV helper serializes the rows</b>
-      <span class="file">src/lib/csv.ts</span>
-      <p><code>toCsv</code> already accepts a <code>columns</code> argument, but the route never passes one, so every export includes all ten columns from <code>EXPORT_COLUMNS</code>, including <code>last4</code>. <code>exportFilename</code> produces <code>payments-YYYY-MM-DD.csv</code> with no scope.</p>
+      <b>Query builder builds the row set</b>
+      <span class="file">src/data/queries.ts</span>
+      <p><code>exportRows</code> calls the same <code>filterPayments</code> and <code>sortPayments</code> the table uses, and never paginates. Scope <code>all</code> deliberately drops the active filters. A browser-side export would have shipped only the visible 20 rows, which is the bug this route exists to avoid.</p>
     </div></div>
     <div class="step"><div class="num">6</div><div class="body">
+      <b>CSV helper serializes the chosen columns</b>
+      <span class="file">src/lib/csv.ts</span>
+      <p><code>toCsv(rows, columns)</code> writes the header and cells in the order given. <code>EXPORT_COLUMNS</code> is the allowlist of what may be asked for; <code>DEFAULT_EXPORT_COLUMNS</code> is the same list minus the card last four and is what a client that expresses no preference receives. <code>exportFilename(date, scope)</code> stamps both, giving names like <code>payments-disputed-2026-09-10.csv</code>.</p>
+    </div></div>
+    <div class="step"><div class="num">7</div><div class="body">
       <b>Response streams back as a download</b>
-      <p>Content type <code>text/csv</code> with a <code>content-disposition: attachment</code> header. The browser saves the file.</p>
+      <p>Content type <code>text/csv</code> with a <code>content-disposition: attachment</code> header carrying the scoped filename.</p>
     </div></div>
   </div>
 
-  <h3>Where NWP-101 plugs in</h3>
-  <ul>
-    <li><b>Dialog on the page.</b> Replace the anchor with a client component using the existing Dialog primitive. Column checkboxes with <code>last4</code> off by default, a scope radio for current filter or all payments, and a row count fetched from <code>GET /api/payments</code>, which already returns <code>total</code>.</li>
-    <li><b>Route handler.</b> Accept <code>columns</code> and <code>scope</code> params. Validate columns against <code>EXPORT_COLUMNS</code> before use. For all payments, call <code>filterPayments</code> with empty filters. Pass the validated column list to <code>toCsv</code>.</li>
-    <li><b>CSV helper.</b> Extend <code>exportFilename</code> to take a scope label. Add tests to the existing <code>csv.test.ts</code>.</li>
-  </ul>
+  <h3>What NWP-101 changed</h3>
+  <table>
+    <tr><th></th><th>Before</th><th>After</th></tr>
+    <tr><td>Export control</td><td>A plain link that downloaded immediately</td><td>A dialog that collects columns and scope first</td></tr>
+    <tr><td>Columns</td><td>All ten, always, including the card last four</td><td>Ops chooses; the card last four is off unless ticked</td></tr>
+    <tr><td>Scope</td><td>The active filter only</td><td>Active filter or all payments, each showing its row count</td></tr>
+    <tr><td>Filename</td><td><code>payments-2026-09-10.csv</code></td><td><code>payments-disputed-2026-09-10.csv</code></td></tr>
+    <tr><td>Empty selection</td><td>Not possible to express</td><td>Download disabled in the UI, 400 from the route</td></tr>
+  </table>
+  <p class="small">Nine tests were added to <code>src/lib/csv.test.ts</code> covering column subsets in the requested order, the default exclusion of the card last four, empty and unknown selections, and scoped filenames. All nine pre-existing tests in that file still pass unchanged. Suite total: 37.</p>
 
+  <h2>Known rough edges</h2>
   <div class="warn">
-    <b>Two things worth knowing before you start</b>
+    <b>Open, and outside the NWP-101 scope</b>
     <ul>
-      <li>The <code>amount</code> CSV cell uses <code>formatMoney</code>, which adds a currency symbol and thousands separators. The ticket asks for amounts formatted once with currency in its own column, so the amount column probably wants a plain decimal instead.</li>
-      <li><code>sortPayments</code> sorts by amount using string comparison, so 900 sorts after 10000. Not part of NWP-101, but it affects export order when sorting by amount.</li>
+      <li><b>Amount sorting compares text, not numbers.</b><span class="pill open">open</span> <code>sortPayments</code> in <code>src/data/queries.ts</code> uses <code>String(a.amount).localeCompare(...)</code>, so 900 orders after 10000. It affects both the table and the export whenever ops sorts by amount.</li>
+      <li><b>The amount column carries a currency symbol.</b> The cell renders through <code>formatMoney</code>, so it reads <code>$250.00</code> while the <code>currency</code> column separately reads <code>USD</code>. Amounts are still integer minor units everywhere upstream and are formatted exactly once, at the edge, so the convention holds. The symbol was left in place because two pre-existing tests pin that output and the test file states that this ticket changes which columns ship, not how a cell is written.</li>
+      <li><b>There is no <code>Dialog.tsx</code>.</b> <code>.claude/rules/components.md</code> lists one among the available primitives, but <code>src/components/</code> has only <code>Drawer.tsx</code>. Both wrap <code>@radix-ui/react-dialog</code>, so the export dialog reuses <code>Drawer</code>.</li>
     </ul>
   </div>
 </main>
