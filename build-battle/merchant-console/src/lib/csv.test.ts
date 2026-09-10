@@ -175,9 +175,15 @@ describe("exportScopeToken", () => {
 })
 
 describe("exportFilename", () => {
+  it("puts the scope token before the date, as in the ticket example", () => {
+    const day = new Date("2026-08-13T10:00:00.000Z")
+    expect(exportFilename("disputed", day)).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename("all", day)).toBe("payments-all-2026-08-13.csv")
+  })
+
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+    expect(exportFilename("all", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-all-2026-03-14.csv",
     )
   })
 })

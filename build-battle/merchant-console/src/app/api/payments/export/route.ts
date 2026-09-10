@@ -1,5 +1,5 @@
 import { filterPayments, parseFilters, sortPayments } from "@/data/queries"
-import { exportFilename, toCsv } from "@/lib/csv"
+import { exportFilename, exportScopeToken, toCsv } from "@/lib/csv"
 import { NextRequest } from "next/server"
 
 /**
@@ -19,7 +19,7 @@ export function GET(request: NextRequest) {
   return new Response(toCsv(rows), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="${exportFilename()}"`,
+      "content-disposition": `attachment; filename="${exportFilename(exportScopeToken("current", filters))}"`,
     },
   })
 }

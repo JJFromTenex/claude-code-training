@@ -126,6 +126,7 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/** `payments-<scope token>-<UTC date>.csv`, e.g. payments-disputed-2026-08-13.csv */
+export function exportFilename(token: string, date = new Date()): string {
+  return `payments-${token}-${date.toISOString().slice(0, 10)}.csv`
 }
