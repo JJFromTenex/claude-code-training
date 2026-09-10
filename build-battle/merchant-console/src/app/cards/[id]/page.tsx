@@ -19,33 +19,15 @@ const HISTORY_LABELS: Record<string, string> = {
 }
 
 /**
- * Bar widths in 5% steps.
+ * Bar widths in 10% steps.
  *
  * Written out rather than interpolated because Tailwind only ships classes
  * it can see in the source, and the rules here are Tailwind-only — no inline
  * style attribute for a dynamic width.
  */
 const WIDTHS: Record<number, string> = {
-  0: "w-0",
-  5: "w-[5%]",
-  10: "w-[10%]",
-  15: "w-[15%]",
-  20: "w-[20%]",
-  25: "w-[25%]",
-  30: "w-[30%]",
-  35: "w-[35%]",
-  40: "w-[40%]",
-  45: "w-[45%]",
-  50: "w-[50%]",
-  55: "w-[55%]",
-  60: "w-[60%]",
-  65: "w-[65%]",
-  70: "w-[70%]",
-  75: "w-[75%]",
-  80: "w-[80%]",
-  85: "w-[85%]",
-  90: "w-[90%]",
-  95: "w-[95%]",
+  0: "w-0", 10: "w-[10%]", 20: "w-[20%]", 30: "w-[30%]", 40: "w-[40%]",
+  50: "w-[50%]", 60: "w-[60%]", 70: "w-[70%]", 80: "w-[80%]", 90: "w-[90%]",
   100: "w-full",
 }
 
@@ -112,7 +94,7 @@ export default async function CardDetail({
           <div
             className={cx(
               "h-full rounded-full transition-all",
-              WIDTHS[Math.round(percent / 5) * 5],
+              WIDTHS[Math.round(percent / 10) * 10],
               nearLimit
                 ? "bg-amber-500 dark:bg-amber-400"
                 : "bg-blue-500 dark:bg-blue-500",

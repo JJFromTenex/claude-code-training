@@ -207,6 +207,8 @@ export function issueCard(
     nickname: input.nickname,
     merchantId: input.merchantId,
     spendLimit: input.spendLimit,
+    // A new card has spent nothing because no payment is attributed to it yet.
+    paymentIds: [],
     spent: 0,
     currency: input.currency,
     status: "active",

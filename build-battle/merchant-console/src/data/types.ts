@@ -95,7 +95,12 @@ export interface Card {
   merchantId: string
   /** Integer minor units. Never a float. */
   spendLimit: number
-  /** Integer minor units. Spent against the limit so far. */
+  /**
+   * Captured payments attributed to this card, the way `Payout` carries them.
+   * `spent` is the sum of these and nothing else — never a hand-picked figure.
+   */
+  paymentIds: string[]
+  /** Integer minor units. Derived from `paymentIds`, never invented. */
   spent: number
   currency: Currency
   status: CardStatus

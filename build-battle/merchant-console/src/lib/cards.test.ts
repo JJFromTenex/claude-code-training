@@ -123,83 +123,46 @@ describe("validateCardInput", () => {
     })
   })
 
-  it("rejects a missing or unknown merchant", () => {
-    expect(
-      validateCardInput({ ...valid, merchantId: undefined }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-    expect(
-      validateCardInput({ ...valid, merchantId: "mch_nope" }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-  })
-
-  it("rejects a zero or negative spend limit", () => {
-    expect(
-      validateCardInput({ ...valid, spendLimit: 0 }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-    expect(
-      validateCardInput({ ...valid, spendLimit: -1 }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-  })
-
-  it("rejects a limit above the cap but accepts the cap itself", () => {
-    expect(
-      validateCardInput(
-        { ...valid, spendLimit: MAX_SPEND_LIMIT + 1 },
-        MERCHANTS,
-      ),
-    ).toMatchObject({ ok: false })
-    expect(
-      validateCardInput({ ...valid, spendLimit: MAX_SPEND_LIMIT }, MERCHANTS),
-    ).toMatchObject({ ok: true })
-  })
-
-  it("rejects a limit that is not an integer, so no float money gets in", () => {
-    expect(
-      validateCardInput({ ...valid, spendLimit: 250.5 }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-    expect(
-      validateCardInput({ ...valid, spendLimit: "25000" }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-  })
-
-  it("rejects a currency outside USD, EUR, GBP", () => {
-    expect(
-      validateCardInput({ ...valid, currency: "JPY" }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-  })
-
-  it("rejects an empty nickname", () => {
-    expect(
-      validateCardInput({ ...valid, nickname: "   " }, MERCHANTS),
-    ).toMatchObject({ ok: false })
-  })
-
-  it("falls back to the 'any' category rather than failing", () => {
-    const parsed = validateCardInput(
-      { ...valid, category: "nonsense" },
-      MERCHANTS,
+  // Everything the client can get wrong, and the reason it is refused.
+  it.each([
+    ["a missing merchant", { merchantId: undefined }],
+    ["an unknown merchant", { merchantId: "mch_nope" }],
+    ["a zero limit", { spendLimit: 0 }],
+    ["a negative limit", { spendLimit: -1 }],
+    ["a limit above the cap", { spendLimit: MAX_SPEND_LIMIT + 1 }],
+    ["a fractional limit, so no float money gets in", { spendLimit: 250.5 }],
+    ["a limit sent as a string", { spendLimit: "25000" }],
+    ["a currency outside USD, EUR, GBP", { currency: "JPY" }],
+    ["an empty nickname", { nickname: "   " }],
+    // The default merchant here is mch_01, which settles in USD, so a GBP
+    // card would compare a limit against spend in another currency.
+    ["a currency the merchant does not settle in", { currency: "GBP" }],
+  ])("refuses %s", (_label, override) => {
+    expect(validateCardInput({ ...valid, ...override }, MERCHANTS)).toMatchObject(
+      { ok: false },
     )
-    expect(parsed.ok && parsed.value.category).toBe("any")
   })
 
-  it("refuses a currency the merchant does not settle in", () => {
-    // mch_02 settles in GBP; a USD card against it would compare a limit
-    // against spend in another currency.
+  it.each([
+    ["the cap itself", { spendLimit: MAX_SPEND_LIMIT }],
+    ["the merchant's own currency", { merchantId: "mch_02", currency: "GBP" }],
+  ])("accepts %s", (_label, override) => {
+    expect(validateCardInput({ ...valid, ...override }, MERCHANTS)).toMatchObject(
+      { ok: true },
+    )
+  })
+
+  it("names the currency the merchant settles in, so ops can fix it", () => {
     const parsed = validateCardInput(
       { ...valid, merchantId: "mch_02", currency: "USD" },
       MERCHANTS,
     )
-    expect(parsed).toMatchObject({ ok: false })
     expect(parsed.ok === false && parsed.message).toContain("GBP")
   })
 
-  it("accepts the merchant's own currency", () => {
-    expect(
-      validateCardInput(
-        { ...valid, merchantId: "mch_02", currency: "GBP" },
-        MERCHANTS,
-      ),
-    ).toMatchObject({ ok: true })
+  it("falls back to the 'any' category rather than failing", () => {
+    const parsed = validateCardInput({ ...valid, category: "nonsense" }, MERCHANTS)
+    expect(parsed.ok && parsed.value.category).toBe("any")
   })
 })
 

@@ -1,4 +1,5 @@
 import { generateCardNumber } from "@/lib/cards"
+import { sumMinorUnits } from "@/lib/money"
 import { merchants } from "./merchants"
 import {
   Card,
@@ -152,30 +153,33 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  const cards = generateCards()
+  const cards = generateCards(payments)
   return { payments, refunds, disputes, payouts, cards }
 }
 
 /**
- * A few cards that already exist, so the list, the detail view, and the
- * spend bar have something to show before anyone issues one. Spend is
- * varied on purpose: one card sits past the 80% warning threshold and one
- * is untouched.
+ * A few cards that already exist, so the list, the detail view, and the spend
+ * bar have something to show before anyone issues one.
+ *
+ * Spend is not a chosen number: each card is attributed a slice of its own
+ * merchant's captured payments, and `spent` is the sum of exactly those. The
+ * slice sizes differ so one card lands past the 80% warning threshold and one
+ * has no payments at all.
  */
-function generateCards(): Card[] {
+function generateCards(payments: Payment[]): Card[] {
   const seeds: {
     nickname: string
     merchantIndex: number
     limit: number
-    percentSpent: number
+    take: number
     category: CardCategory
     status: CardStatus
   }[] = [
-    { nickname: "Meta ad spend", merchantIndex: 0, limit: 200_000, percentSpent: 92, category: "advertising", status: "active" },
-    { nickname: "Contractor tools", merchantIndex: 1, limit: 500_000, percentSpent: 24, category: "contractors", status: "active" },
-    { nickname: "SaaS subscriptions", merchantIndex: 2, limit: 150_000, percentSpent: 81, category: "software", status: "active" },
-    { nickname: "Team travel", merchantIndex: 3, limit: 300_000, percentSpent: 0, category: "travel", status: "frozen" },
-    { nickname: "Old agency retainer", merchantIndex: 4, limit: 100_000, percentSpent: 47, category: "any", status: "cancelled" },
+    { nickname: "Meta ad spend", merchantIndex: 0, limit: 200_000, take: 6, category: "advertising", status: "active" },
+    { nickname: "Contractor tools", merchantIndex: 1, limit: 500_000, take: 4, category: "contractors", status: "active" },
+    { nickname: "SaaS subscriptions", merchantIndex: 2, limit: 150_000, take: 5, category: "software", status: "active" },
+    { nickname: "Team travel", merchantIndex: 3, limit: 300_000, take: 0, category: "travel", status: "frozen" },
+    { nickname: "Old agency retainer", merchantIndex: 4, limit: 100_000, take: 2, category: "any", status: "cancelled" },
   ]
 
   return seeds.map((seed, index) => {
@@ -183,13 +187,24 @@ function generateCards(): Card[] {
     const createdAt = new Date(GENERATED_AT)
     createdAt.setUTCDate(createdAt.getUTCDate() - (index + 1) * 9)
 
+    const attributed = payments
+      .filter(
+        (payment) =>
+          payment.merchantId === merchant.id &&
+          payment.status === "captured" &&
+          payment.currency === merchant.currency &&
+          payment.createdAt >= createdAt.toISOString(),
+      )
+      .slice(0, seed.take)
+
     return {
       id: `card_${pad(index + 1, 4)}`,
       nickname: seed.nickname,
       merchantId: merchant.id,
       spendLimit: seed.limit,
-      // Kept in minor units: a percentage of an integer, rounded once.
-      spent: Math.round((seed.limit * seed.percentSpent) / 100),
+      paymentIds: attributed.map((payment) => payment.id),
+      // Summed in minor units from the attributed payments, nothing else.
+      spent: sumMinorUnits(attributed.map((payment) => payment.amount)),
       currency: merchant.currency,
       status: seed.status,
       category: seed.category,
@@ -201,7 +216,6 @@ function generateCards(): Card[] {
           at: createdAt.toISOString(),
           detail: `Limit ${seed.limit} ${merchant.currency} minor units`,
         },
-        // Whatever moved a seeded card off active is part of its history too.
         ...(seed.status === "frozen"
           ? [{ action: "frozen" as const, at: createdAt.toISOString() }]
           : []),

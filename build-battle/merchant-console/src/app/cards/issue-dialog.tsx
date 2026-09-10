@@ -29,6 +29,29 @@ import { CATEGORY_LABELS } from "./categories"
 
 type Issued = { last4: string; fullNumber: string | null; nickname: string }
 
+/** Label + control. Every input in this form is labelled the same way. */
+function Field({
+  htmlFor,
+  label,
+  children,
+}: {
+  htmlFor: string
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={htmlFor}
+        className="text-sm font-medium text-gray-900 dark:text-gray-50"
+      >
+        {label}
+      </label>
+      <div className="mt-2">{children}</div>
+    </div>
+  )
+}
+
 /**
  * Issue a card, then reveal its number exactly once.
  *
@@ -170,29 +193,16 @@ export function IssueCardDialog({
             </DrawerHeader>
 
             <DrawerBody className="flex flex-col gap-4">
-              <div>
-                <label
-                  htmlFor="card-nickname"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
+              <Field htmlFor="card-nickname" label="Nickname">
                 <Input
                   id="card-nickname"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="Meta ad spend"
-                  className="mt-2"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-merchant"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
+              <Field htmlFor="card-merchant" label="Merchant">
                 <Select
                   value={merchantId}
                   onValueChange={(id) => {
@@ -203,7 +213,7 @@ export function IssueCardDialog({
                     if (merchant) setCurrency(merchant.currency)
                   }}
                 >
-                  <SelectTrigger id="card-merchant" className="mt-2">
+                  <SelectTrigger id="card-merchant">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>
                   <SelectContent>
@@ -214,37 +224,24 @@ export function IssueCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-limit"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Spend limit
-                </label>
+              <Field htmlFor="card-limit" label="Spend limit">
                 <Input
                   id="card-limit"
                   inputMode="decimal"
                   value={limit}
                   onChange={(e) => setLimit(e.target.value)}
                   placeholder="2500.00"
-                  className="mt-2"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-currency"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Currency
-                </label>
+              <Field htmlFor="card-currency" label="Currency">
                 <Select
                   value={currency}
                   onValueChange={(value) => setCurrency(value as Currency)}
                 >
-                  <SelectTrigger id="card-currency" className="mt-2">
+                  <SelectTrigger id="card-currency">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -255,20 +252,14 @@ export function IssueCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="card-category"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
+              <Field htmlFor="card-category" label="Category lock">
                 <Select
                   value={category}
                   onValueChange={(value) => setCategory(value as CardCategory)}
                 >
-                  <SelectTrigger id="card-category" className="mt-2">
+                  <SelectTrigger id="card-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -279,7 +270,7 @@ export function IssueCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               {error && (
                 <p
