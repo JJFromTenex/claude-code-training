@@ -37,3 +37,9 @@ Work is submitted as a pull request against this repository and scored automatic
 - Branch from `main` with the ticket ID: `NWP-201-issue-cards`
 - Commit subjects carry the ticket ID: `NWP-201: issue virtual cards`
 - Fill in the pull request template. The grader reads it.
+
+## Release Standards
+
+- No direct commits to `main`. All changes land through a pull request.
+- Every change needs test evidence before merging — a passing test run, a curl output, or a screenshot, attached to the PR.
+- Every PR includes a one-line business impact summary: what changes for ops, merchants, or the org standards score.
