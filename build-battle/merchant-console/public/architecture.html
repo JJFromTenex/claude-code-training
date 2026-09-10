@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merchant Console Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1c1c1c; --muted: #5f6368; --line: #e3e3e3;
+    --panel: #f7f7f5; --accent: #1d4ed8; --warn-bg: #fff7ed; --warn-line: #fdba74;
+    --code-bg: #f1f1ef;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 36px; }
+  h2 { font-size: 19px; margin: 44px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p { margin: 0 0 12px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 12px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .card b { display: block; margin-bottom: 4px; }
+  .card span { color: var(--muted); font-size: 14px; }
+  ul { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 5px; }
+  .rules li { margin-bottom: 8px; }
+  .flow { display: flex; flex-direction: column; gap: 0; margin: 16px 0 20px; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
+  .num { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; }
+  .step .body { padding-bottom: 22px; border-left: 2px solid var(--line); margin-left: -21px; padding-left: 35px; }
+  .step:last-child .body { border-left-color: transparent; }
+  .step b { display: block; }
+  .step .file { color: var(--muted); font-size: 13px; }
+  .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+  .warn b { display: block; margin-bottom: 4px; }
+  .small { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Northwind Payments Merchant Console</h1>
+  <p class="sub">Architecture notes for <code>build-battle/merchant-console</code>. Written for the NWP-101 export options ticket.</p>
+
+  <h2>What the app does</h2>
+  <p>An internal tool for Northwind's support and ops teams. Staff use it to look up a payment, refund it, and work the dispute queue. Northwind Payments is fictional and every merchant, cardholder, and amount is generated at boot.</p>
+  <div class="grid">
+    <div class="card"><b>/overview</b><span>Authorization, capture, and dispute-free rates, with Summary, Monitoring, and Merchants tabs.</span></div>
+    <div class="card"><b>/payments</b><span>Filterable, paginated table of payments. Has the Export button and a detail page per payment.</span></div>
+    <div class="card"><b>/disputes</b><span>The dispute queue with evidence deadlines.</span></div>
+    <div class="card"><b>/payouts</b><span>Merchant payouts with gross, fees, and net.</span></div>
+  </div>
+  <p>There is no database. Seed data is generated once and held in memory on <code>globalThis</code> so the dev server's hot reload does not reset it. Anything written vanishes on restart, and that is intended. Persistence is a separate ticket, NWP-203.</p>
+
+  <h2>Tech stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Choice</th><th>Notes</th></tr>
+    <tr><td>Framework</td><td>Next.js 15.1 App Router</td><td>Server components by default. Route handlers under <code>src/app/api</code>.</td></tr>
+    <tr><td>UI</td><td>React 19, Tailwind CSS 3.4</td><td>Tailwind only. No inline styles or CSS modules.</td></tr>
+    <tr><td>Components</td><td>Tremor primitives on Radix UI</td><td>Button, Input, Select, Dialog, Drawer, Table, Badge, Tabs are already built. Reuse them.</td></tr>
+    <tr><td>Charts</td><td>Recharts</td><td>Bar, combo, and conditional bar charts on the overview pages.</td></tr>
+    <tr><td>Icons</td><td>Lucide, Remix Icon</td><td></td></tr>
+    <tr><td>Tests</td><td>Vitest, node environment</td><td>Covers money, dates, and CSV helpers. Runs in under a second.</td></tr>
+    <tr><td>Language</td><td>TypeScript 5.9</td><td>Path alias <code>@/</code> maps to <code>src/</code>.</td></tr>
+  </table>
+  <p class="small">Forked from Tremor Labs' template-planner under the MIT license. See LICENSE.md and NOTICE.</p>
+
+  <h2>How src is organized</h2>
+  <table>
+    <tr><th>Path</th><th>What lives there</th></tr>
+    <tr><td><code>src/app/</code></td><td>Routes. Root <code>page.tsx</code> redirects to <code>/overview</code>. <code>layout.tsx</code> holds the sidebar, header, and theme provider.</td></tr>
+    <tr><td><code>src/app/api/payments/</code></td><td>Two route handlers: <code>route.ts</code> returns filtered JSON, <code>export/route.ts</code> returns CSV.</td></tr>
+    <tr><td><code>src/app/payments/</code></td><td>The payments table page, a client-side filter bar, and a <code>[id]</code> detail page.</td></tr>
+    <tr><td><code>src/app/overview/</code></td><td>Overview with nested Monitoring and Merchants tabs and chart components.</td></tr>
+    <tr><td><code>src/components/</code></td><td>Tremor-based primitives. <code>ui/</code> holds console-specific pieces: navigation, metric cards, status badges.</td></tr>
+    <tr><td><code>src/data/</code></td><td><code>types.ts</code> for the domain model, <code>generate.ts</code> for seed data, <code>store.ts</code> for the in-memory store, <code>queries.ts</code> for the one query builder.</td></tr>
+    <tr><td><code>src/lib/</code></td><td><code>money.ts</code>, <code>dates.ts</code>, <code>csv.ts</code>, each with a test beside it. Plus small React hooks and class utilities.</td></tr>
+  </table>
+
+  <h3>The four rules</h3>
+  <ul class="rules">
+    <li><b>Money is integer minor units.</b> $250.00 is 25000. Format once, at the edge, next to its currency code. Helpers in <code>src/lib/money.ts</code>.</li>
+    <li><b>Storage and bucketing are UTC.</b> Only display converts to the merchant's timezone.</li>
+    <li><b>One query builder.</b> All payment filtering goes through <code>src/data/queries.ts</code>. A second one is a defect.</li>
+    <li><b>Validate on the server.</b> Anything from the client is checked against an allowlist before touching a query, filename, or store.</li>
+  </ul>
+
+  <h2>Payments export, end to end</h2>
+  <p>Today the export is a plain link. There is no dialog, no column choice, and no scope choice. This is what NWP-101 changes.</p>
+
+  <div class="flow">
+    <div class="step"><div class="num">1</div><div class="body">
+      <b>Filter bar builds the URL</b>
+      <span class="file">src/app/payments/filter-bar.tsx</span>
+      <p>A client component. Search, status, and merchant selections are pushed into the query string of <code>/payments</code> via the router.</p>
+    </div></div>
+    <div class="step"><div class="num">2</div><div class="body">
+      <b>Payments page renders the table and the Export link</b>
+      <span class="file">src/app/payments/page.tsx</span>
+      <p>A server component. It reads the search params, calls <code>queryPayments</code> for one page of 20 rows, and renders an Export button that is just an anchor to <code>/api/payments/export?</code> plus the same query string.</p>
+    </div></div>
+    <div class="step"><div class="num">3</div><div class="body">
+      <b>Export route handler parses and validates the filters</b>
+      <span class="file">src/app/api/payments/export/route.ts</span>
+      <p>Calls <code>parseFilters</code>, which allowlists status, sort, and direction and sanitizes the page number. Then it calls <code>filterPayments</code> and <code>sortPayments</code> directly, skipping pagination, so the whole filtered set is exported.</p>
+    </div></div>
+    <div class="step"><div class="num">4</div><div class="body">
+      <b>Query builder filters the in-memory store</b>
+      <span class="file">src/data/queries.ts</span>
+      <p><code>filterPayments</code> applies status, merchant, date range, and a text search over id, description, last four, and merchant name. <code>sortPayments</code> orders by date or amount.</p>
+    </div></div>
+    <div class="step"><div class="num">5</div><div class="body">
+      <b>CSV helper serializes the rows</b>
+      <span class="file">src/lib/csv.ts</span>
+      <p><code>toCsv</code> already accepts a <code>columns</code> argument, but the route never passes one, so every export includes all ten columns from <code>EXPORT_COLUMNS</code>, including <code>last4</code>. <code>exportFilename</code> produces <code>payments-YYYY-MM-DD.csv</code> with no scope.</p>
+    </div></div>
+    <div class="step"><div class="num">6</div><div class="body">
+      <b>Response streams back as a download</b>
+      <p>Content type <code>text/csv</code> with a <code>content-disposition: attachment</code> header. The browser saves the file.</p>
+    </div></div>
+  </div>
+
+  <h3>Where NWP-101 plugs in</h3>
+  <ul>
+    <li><b>Dialog on the page.</b> Replace the anchor with a client component using the existing Dialog primitive. Column checkboxes with <code>last4</code> off by default, a scope radio for current filter or all payments, and a row count fetched from <code>GET /api/payments</code>, which already returns <code>total</code>.</li>
+    <li><b>Route handler.</b> Accept <code>columns</code> and <code>scope</code> params. Validate columns against <code>EXPORT_COLUMNS</code> before use. For all payments, call <code>filterPayments</code> with empty filters. Pass the validated column list to <code>toCsv</code>.</li>
+    <li><b>CSV helper.</b> Extend <code>exportFilename</code> to take a scope label. Add tests to the existing <code>csv.test.ts</code>.</li>
+  </ul>
+
+  <div class="warn">
+    <b>Two things worth knowing before you start</b>
+    <ul>
+      <li>The <code>amount</code> CSV cell uses <code>formatMoney</code>, which adds a currency symbol and thousands separators. The ticket asks for amounts formatted once with currency in its own column, so the amount column probably wants a plain decimal instead.</li>
+      <li><code>sortPayments</code> sorts by amount using string comparison, so 900 sorts after 10000. Not part of NWP-101, but it affects export order when sorting by amount.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

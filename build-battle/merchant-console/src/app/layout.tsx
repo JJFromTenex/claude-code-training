@@ -61,7 +61,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-white-50 h-full antialiased dark:bg-gray-950`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-[#f5f0e6] h-full antialiased dark:bg-gray-950`}
       >
         <ThemeProvider
           defaultTheme="system"
@@ -71,12 +71,12 @@ export default async function RootLayout({
           <SidebarProvider defaultOpen={defaultOpen}>
             <AppSidebar />
             <div className="w-full">
-              <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-950">
+              <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-gray-200 bg-[#f5f0e6] px-4 dark:border-gray-800 dark:bg-gray-950">
                 <SidebarTrigger className="-ml-1" />
                 <div className="mr-2 h-4 w-px bg-gray-200 dark:bg-gray-800" />
                 <Breadcrumbs />
               </header>
-              <main className="min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-925">
+              <main className="min-h-[calc(100vh-4rem)] bg-[#f5f0e6] dark:bg-gray-925">
                 {children}
               </main>
             </div>
