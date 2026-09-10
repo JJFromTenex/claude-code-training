@@ -2,13 +2,18 @@ import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Payment, PaymentFilters, PaymentStatus } from "./types"
 
-const STATUSES: readonly (PaymentStatus | "all")[] = [
+/**
+ * The status allowlist, and the order the filter dropdown renders them in.
+ * Exported so the payments page reads statuses from here rather than keeping
+ * a second copy that can drift out of step with what the query accepts.
+ */
+export const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
-  "authorized",
   "captured",
+  "authorized",
   "refunded",
-  "failed",
   "disputed",
+  "failed",
 ]
 
 /**
@@ -77,8 +82,10 @@ export function sortPayments(
   const factor = direction === "asc" ? 1 : -1
   return [...payments].sort((a, b) => {
     if (sort === "amount") {
-      // Sort by the formatted amount so the order matches what the table shows.
-      return String(a.amount).localeCompare(String(b.amount)) * factor
+      // Amounts are integer minor units, so they subtract. Comparing them as
+      // strings ranked 900 above 1000, which reached the export as well as
+      // the table.
+      return (a.amount - b.amount) * factor
     }
     return a.createdAt.localeCompare(b.createdAt) * factor
   })
