@@ -224,6 +224,7 @@ export function IssueCardDialog({
                     id="card-currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value as Currency)}
+                    disabled={Boolean(merchantId)}
                     className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50"
                   >
                     {CURRENCIES.map((code) => (

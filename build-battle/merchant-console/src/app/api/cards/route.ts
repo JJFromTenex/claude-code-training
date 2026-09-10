@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const parsed = validateIssueInput(body, (id) => Boolean(merchantById(id)))
+  const parsed = validateIssueInput(
+    body,
+    (id) => merchantById(id)?.currency ?? null,
+  )
   if (!parsed.ok) {
     return NextResponse.json({ message: parsed.message }, { status: 400 })
   }

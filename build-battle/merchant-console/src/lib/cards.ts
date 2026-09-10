@@ -107,7 +107,7 @@ export interface IssueCardInput {
  */
 export function validateIssueInput(
   body: unknown,
-  merchantExists: (id: string) => boolean,
+  merchantCurrency: (id: string) => Currency | null,
 ): { ok: true; value: IssueCardInput } | { ok: false; message: string } {
   const input = (body ?? {}) as Record<string, unknown>
 
@@ -118,7 +118,8 @@ export function validateIssueInput(
   }
 
   const merchantId = typeof input.merchantId === "string" ? input.merchantId : ""
-  if (!merchantId || !merchantExists(merchantId)) {
+  const settlesIn = merchantId ? merchantCurrency(merchantId) : null
+  if (!merchantId || !settlesIn) {
     return { ok: false, message: "Choose a merchant for this card." }
   }
 
@@ -142,6 +143,14 @@ export function validateIssueInput(
   const currency = input.currency as Currency
   if (!CARD_CURRENCIES.includes(currency)) {
     return { ok: false, message: "Currency must be USD, EUR, or GBP." }
+  }
+  // A card settles in its merchant currency. The form defaults to it, but a
+  // client can send anything, so the pairing is enforced here.
+  if (currency !== settlesIn) {
+    return {
+      ok: false,
+      message: `This merchant settles in ${settlesIn}, so the card must be ${settlesIn}.`,
+    }
   }
 
   const rawCategory = input.category

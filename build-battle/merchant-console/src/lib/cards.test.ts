@@ -25,7 +25,8 @@ function sequence(values: number[]): () => number {
   return () => values[i++ % values.length]
 }
 
-const merchantExists = (id: string) => id === "mch_01"
+const merchantExists = (id: string): "USD" | null =>
+  id === "mch_01" ? "USD" : null
 
 const validInput = {
   nickname: "Ad spend — Q3",
@@ -171,6 +172,15 @@ describe("validateIssueInput", () => {
     expect(
       validateIssueInput({ ...validInput, currency: "JPY" }, merchantExists),
     ).toMatchObject({ ok: false })
+  })
+
+  it("rejects a currency the merchant does not settle in", () => {
+    const result = validateIssueInput(
+      { ...validInput, currency: "GBP" },
+      merchantExists,
+    )
+    expect(result).toMatchObject({ ok: false })
+    if (!result.ok) expect(result.message).toContain("USD")
   })
 
   it("rejects a nickname that is missing or only whitespace", () => {
