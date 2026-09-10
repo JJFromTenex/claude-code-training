@@ -104,7 +104,7 @@ function Stat({
   sub?: string
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+    <div className="rounded-lg border border-gray-200 p-4 shadow-sm dark:border-gray-800 dark:shadow-none">
       <dt className="text-sm text-gray-500">{label}</dt>
       <dd className="mt-2 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
         {value}

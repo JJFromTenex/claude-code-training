@@ -13,6 +13,12 @@ npm run dev
 
 No database, no seed step, no Docker.
 
+- `npm test` — run the full suite once (Vitest, node environment, no jsdom)
+- `npx vitest run src/lib/csv.test.ts` — run a single test file
+- `npm run test:watch` — Vitest in watch mode
+- `npm run build` — production build
+- `npm run lint` — Next.js/ESLint check
+
 ## Data lives in memory
 
 Seed data is JSON, loaded into a store module at boot. Route handlers read and write that store.

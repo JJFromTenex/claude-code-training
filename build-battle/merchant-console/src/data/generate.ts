@@ -1,5 +1,9 @@
+import { generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardCategory,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +152,10 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  // Cards draw from the same PRNG, so they come last: adding them must not
+  // change a single payment that everyone in the room already has.
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +197,64 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+interface SeedCard {
+  merchantId: string
+  nickname: string
+  spendLimit: number
+  spent: number
+  status: CardStatus
+  categoryLock: CardCategory | null
+  /** Days before the anchor date the card was issued. */
+  ageDays: number
+}
+
+/**
+ * A handful of cards so the list, the detail page, and the spend bar have
+ * something to show before ops issues the first real one. Numbers come from
+ * the same generator the route uses, so every last-four is from a Luhn-valid
+ * number on the 4242 BIN. Only the last four survives; the number itself is
+ * dropped on the floor here exactly as it is after a real issue.
+ */
+const SEED_CARDS: SeedCard[] = [
+  // Past 80% of its limit, so the amber state is visible on day one.
+  { merchantId: "mch_01", nickname: "Meta ads", spendLimit: 250000, spent: 212500, status: "active", categoryLock: "advertising", ageDays: 41 },
+  { merchantId: "mch_04", nickname: "Figma seats", spendLimit: 60000, spent: 18000, status: "active", categoryLock: "software", ageDays: 30 },
+  { merchantId: "mch_05", nickname: "Messe Berlin travel", spendLimit: 400000, spent: 0, status: "frozen", categoryLock: "travel", ageDays: 18 },
+  { merchantId: "mch_07", nickname: "Contractor payouts", spendLimit: 1500000, spent: 620000, status: "active", categoryLock: "contractors", ageDays: 9 },
+  { merchantId: "mch_02", nickname: "Old Google ads", spendLimit: 100000, spent: 100000, status: "cancelled", categoryLock: "advertising", ageDays: 77 },
+]
+
+function generateCards(): Card[] {
+  return SEED_CARDS.map((seed, index) => {
+    const merchant = merchants.find((m) => m.id === seed.merchantId)!
+    const createdAt = new Date(
+      GENERATED_AT.getTime() - seed.ageDays * 86_400_000 + between(9, 17) * 3_600_000,
+    ).toISOString()
+    const number = generateCardNumber(rand)
+    const events: Card["events"] = [{ type: "issued", at: createdAt }]
+    if (seed.status !== "active") {
+      events.push({
+        type: seed.status,
+        at: new Date(
+          new Date(createdAt).getTime() + between(1, 5) * 86_400_000,
+        ).toISOString(),
+      })
+    }
+    return {
+      id: `card_${pad(index + 1)}`,
+      merchantId: seed.merchantId,
+      nickname: seed.nickname,
+      last4: number.slice(-4),
+      numberRef: `cn_seed${pad(index + 1, 12)}`,
+      spendLimit: seed.spendLimit,
+      spent: seed.spent,
+      currency: merchant.currency,
+      status: seed.status,
+      categoryLock: seed.categoryLock,
+      createdAt,
+      events,
+    }
+  })
 }

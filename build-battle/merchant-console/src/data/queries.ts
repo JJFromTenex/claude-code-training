@@ -20,6 +20,7 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   const sort = params.get("sort")
   const direction = params.get("direction")
   const page = Number(params.get("page") ?? "1")
+  const isValidPage = Number.isInteger(page) && page > 0
 
   return {
     status: STATUSES.includes(status as PaymentStatus)
@@ -29,7 +30,7 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
     search: params.get("search") ?? undefined,
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
-    page: Number.isFinite(page) && page > 0 ? page : 1,
+    page: isValidPage ? page : 1,
     sort: sort === "amount" ? "amount" : "createdAt",
     direction: direction === "asc" ? "asc" : "desc",
   }
@@ -77,8 +78,7 @@ export function sortPayments(
   const factor = direction === "asc" ? 1 : -1
   return [...payments].sort((a, b) => {
     if (sort === "amount") {
-      // Sort by the formatted amount so the order matches what the table shows.
-      return String(a.amount).localeCompare(String(b.amount)) * factor
+      return (a.amount - b.amount) * factor
     }
     return a.createdAt.localeCompare(b.createdAt) * factor
   })
