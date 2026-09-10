@@ -1,4 +1,3 @@
-import { randomInt, randomUUID } from "node:crypto"
 import { merchantById } from "@/data/merchants"
 import { CardStatus, Currency } from "@/data/types"
 
@@ -37,16 +36,28 @@ export function isLuhnValid(number: string): boolean {
   return luhnCheckDigit(number.slice(0, -1)) === Number(number.slice(-1))
 }
 
+/**
+ * A uniformly random decimal digit from Web Crypto, which both the Node
+ * runtime and the browser bundle provide, so this module carries no Node-only
+ * import. Bytes of 250 and above are rejected to keep the distribution even.
+ */
+function randomDigit(): number {
+  const byte = new Uint8Array(1)
+  do crypto.getRandomValues(byte)
+  while (byte[0] >= 250)
+  return byte[0] % 10
+}
+
 /** A 16-digit number on the test BIN with a valid check digit. Server only. */
 export function generateCardNumber(): string {
   let partial = TEST_BIN
-  while (partial.length < CARD_NUMBER_LENGTH - 1) partial += String(randomInt(10))
+  while (partial.length < CARD_NUMBER_LENGTH - 1) partial += String(randomDigit())
   return partial + luhnCheckDigit(partial)
 }
 
 /** Opaque reference stored in place of the number. */
 export function newNumberRef(): string {
-  return `cnum_${randomUUID().replace(/-/g, "").slice(0, 20)}`
+  return `cnum_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`
 }
 
 /** The only way a card number is ever shown after creation. */
