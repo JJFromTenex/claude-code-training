@@ -98,6 +98,11 @@ export function paginate<T>(rows: T[], page = 1, pageSize = PAGE_SIZE) {
   }
 }
 
+/** How many payments match these filters, before pagination. */
+export function countPayments(filters: PaymentFilters): number {
+  return filterPayments(filters).length
+}
+
 /** Filter, sort, and paginate in one call. Use this rather than composing by hand. */
 export function queryPayments(filters: PaymentFilters) {
   const filtered = filterPayments(filters)

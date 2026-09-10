@@ -1,13 +1,13 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentStatus } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * Ops picks the columns and the scope (NWP-101); the route validates both
+ * against the allowlists here before a name reaches a header or a filename.
+ * The card last four is opt-in — it is absent from DEFAULT_EXPORT_COLUMNS.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,45 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/**
+ * The columns an export includes when ops has not chosen. Everything except
+ * the card last four, which merchants must not receive by default.
+ */
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
+  EXPORT_COLUMNS.filter((column) => column !== "last4")
+
+/**
+ * Column names arrive from the client. Keep only the ones on the allowlist,
+ * in the order asked for, with duplicates collapsed. Never throws, never
+ * substitutes a default — an empty result is the caller's to interpret.
+ */
+export function parseExportColumns(
+  requested: readonly string[],
+): ExportColumn[] {
+  const seen = new Set<ExportColumn>()
+  for (const name of requested) {
+    if ((EXPORT_COLUMNS as readonly string[]).includes(name)) {
+      seen.add(name as ExportColumn)
+    }
+  }
+  return [...seen]
+}
+
+export type ExportScope = "current" | "all"
+
+/**
+ * The filename segment that records what an export covers: "all" for the
+ * whole table, the status for a status-filtered current export, and nothing
+ * for an unfiltered current export.
+ */
+export function exportLabel(
+  scope: ExportScope,
+  status: PaymentStatus | "all",
+): string | undefined {
+  if (scope === "all") return "all"
+  return status === "all" ? undefined : status
+}
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +105,10 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), label?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  const segment = label?.replace(/[^a-z0-9-]/gi, "")
+  return segment
+    ? `payments-${segment}-${day}.csv`
+    : `payments-${day}.csv`
 }
