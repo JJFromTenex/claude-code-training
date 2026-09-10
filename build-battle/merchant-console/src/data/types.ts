@@ -105,7 +105,7 @@ export interface Card {
   id: string
   nickname: string
   merchantId: string
-  /** 4 digits, always "4242" for generated numbers. Stored, not derived. */
+  /** The generated number's trailing 4 digits. The only fragment ever stored. */
   last4: string
   /** Opaque handle. NOT derived from the PAN. */
   reference: string
