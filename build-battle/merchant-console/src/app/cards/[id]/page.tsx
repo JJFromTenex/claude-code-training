@@ -9,6 +9,14 @@ import { cx } from "@/lib/utils"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardStatusActions } from "../card-status-actions"
+import { CATEGORY_LABELS } from "../categories"
+
+const HISTORY_LABELS: Record<string, string> = {
+  issued: "Card issued",
+  frozen: "Frozen",
+  unfrozen: "Unfrozen",
+  cancelled: "Cancelled",
+}
 
 /**
  * Bar widths in 5% steps.
@@ -39,14 +47,6 @@ const WIDTHS: Record<number, string> = {
   90: "w-[90%]",
   95: "w-[95%]",
   100: "w-full",
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  any: "Any category",
-  advertising: "Advertising",
-  software: "Software",
-  contractors: "Contractors",
-  travel: "Travel",
 }
 
 export default async function CardDetail({
@@ -149,7 +149,7 @@ export default async function CardDetail({
         </Field>
         <Field label="Currency">{card.currency}</Field>
         <Field label="Category lock">
-          {CATEGORY_LABELS[card.category] ?? card.category}
+          {CATEGORY_LABELS[card.category]}
         </Field>
         <Field label="Status">
           <StatusBadge status={card.status} />
@@ -161,6 +161,40 @@ export default async function CardDetail({
           {formatInZone(card.createdAt, merchant.timezone)}
         </Field>
       </dl>
+
+      <Divider />
+
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+        History
+      </h2>
+      <ol className="mt-4 space-y-4">
+        {card.history.map((event, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className={cx(
+                "mt-1.5 size-2 shrink-0 rounded-full",
+                event.action === "cancelled"
+                  ? "bg-gray-400 dark:bg-gray-600"
+                  : "bg-blue-500",
+              )}
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm capitalize text-gray-900 dark:text-gray-50">
+                {HISTORY_LABELS[event.action]}
+                {event.detail && (
+                  <span className="ml-2 font-normal normal-case text-gray-500">
+                    {event.detail}
+                  </span>
+                )}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(event.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       {card.status === "cancelled" && (
         <p className="mt-6 text-sm text-gray-500">

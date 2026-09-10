@@ -27,6 +27,27 @@ export function nextCardId(): string {
   return `card_${String(store.cards.length + 1).padStart(4, "0")}`
 }
 
-export function merchantIds(): string[] {
-  return store.merchants.map((merchant) => merchant.id)
+export function issuingMerchants(): { id: string; currency: Card["currency"] }[] {
+  return store.merchants.map((merchant) => ({
+    id: merchant.id,
+    currency: merchant.currency,
+  }))
+}
+
+/**
+ * Idempotency keys seen so far, mapped to the card they created.
+ *
+ * A double-submit — an impatient second click, a retried request — must not
+ * issue two cards with two different numbers against one intent. Lives on the
+ * store so it shares the in-memory lifetime of everything else.
+ */
+const issuedKeys = new Map<string, string>()
+
+export function cardForIdempotencyKey(key: string): Card | undefined {
+  const id = issuedKeys.get(key)
+  return id ? cardById(id) : undefined
+}
+
+export function rememberIdempotencyKey(key: string, cardId: string): void {
+  issuedKeys.set(key, cardId)
 }

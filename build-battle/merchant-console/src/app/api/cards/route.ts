@@ -1,4 +1,11 @@
-import { addCard, allCards, merchantIds, nextCardId } from "@/data/cards"
+import {
+  addCard,
+  allCards,
+  cardForIdempotencyKey,
+  issuingMerchants,
+  nextCardId,
+  rememberIdempotencyKey,
+} from "@/data/cards"
 import { issueCard, validateCardInput } from "@/lib/cards"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -30,9 +37,23 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // A retry or a double-click must not issue a second card against one
+  // intent. Replaying the key returns the original card — and deliberately
+  // no `fullNumber`, because the reveal already happened.
+  const idempotencyKey = request.headers.get("idempotency-key")
+  if (idempotencyKey) {
+    const existing = cardForIdempotencyKey(idempotencyKey)
+    if (existing) {
+      return NextResponse.json(
+        { card: existing, replayed: true },
+        { status: 200 },
+      )
+    }
+  }
+
   const parsed = validateCardInput(
     (body ?? {}) as Record<string, unknown>,
-    merchantIds(),
+    issuingMerchants(),
   )
   if (!parsed.ok) {
     return NextResponse.json({ message: parsed.message }, { status: 400 })
@@ -43,6 +64,7 @@ export async function POST(request: NextRequest) {
     now: new Date(),
   })
   addCard(card)
+  if (idempotencyKey) rememberIdempotencyKey(idempotencyKey, card.id)
 
   // The only response that carries the full number.
   return NextResponse.json({ card, fullNumber }, { status: 201 })

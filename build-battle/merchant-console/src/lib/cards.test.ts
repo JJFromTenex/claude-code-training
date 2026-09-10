@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { Card } from "@/data/types"
 import {
   CARD_BIN,
   MAX_SPEND_LIMIT,
@@ -8,6 +9,7 @@ import {
   issueCard,
   luhnCheckDigit,
   maskCard,
+  recordTransition,
   spendPercent,
   transition,
   validateCardInput,
@@ -20,7 +22,10 @@ import {
  * revived is a spending control that does not control spending.
  */
 
-const MERCHANT_IDS = ["mch_01", "mch_02"]
+const MERCHANTS = [
+  { id: "mch_01", currency: "USD" as const },
+  { id: "mch_02", currency: "GBP" as const },
+]
 
 /** Independent Luhn implementation, so the test does not confirm its own bug. */
 function luhnPasses(number: string): boolean {
@@ -112,7 +117,7 @@ describe("validateCardInput", () => {
   }
 
   it("accepts a well-formed card", () => {
-    expect(validateCardInput(valid, MERCHANT_IDS)).toEqual({
+    expect(validateCardInput(valid, MERCHANTS)).toEqual({
       ok: true,
       value: { ...valid },
     })
@@ -120,19 +125,19 @@ describe("validateCardInput", () => {
 
   it("rejects a missing or unknown merchant", () => {
     expect(
-      validateCardInput({ ...valid, merchantId: undefined }, MERCHANT_IDS),
+      validateCardInput({ ...valid, merchantId: undefined }, MERCHANTS),
     ).toMatchObject({ ok: false })
     expect(
-      validateCardInput({ ...valid, merchantId: "mch_nope" }, MERCHANT_IDS),
+      validateCardInput({ ...valid, merchantId: "mch_nope" }, MERCHANTS),
     ).toMatchObject({ ok: false })
   })
 
   it("rejects a zero or negative spend limit", () => {
     expect(
-      validateCardInput({ ...valid, spendLimit: 0 }, MERCHANT_IDS),
+      validateCardInput({ ...valid, spendLimit: 0 }, MERCHANTS),
     ).toMatchObject({ ok: false })
     expect(
-      validateCardInput({ ...valid, spendLimit: -1 }, MERCHANT_IDS),
+      validateCardInput({ ...valid, spendLimit: -1 }, MERCHANTS),
     ).toMatchObject({ ok: false })
   })
 
@@ -140,41 +145,61 @@ describe("validateCardInput", () => {
     expect(
       validateCardInput(
         { ...valid, spendLimit: MAX_SPEND_LIMIT + 1 },
-        MERCHANT_IDS,
+        MERCHANTS,
       ),
     ).toMatchObject({ ok: false })
     expect(
-      validateCardInput({ ...valid, spendLimit: MAX_SPEND_LIMIT }, MERCHANT_IDS),
+      validateCardInput({ ...valid, spendLimit: MAX_SPEND_LIMIT }, MERCHANTS),
     ).toMatchObject({ ok: true })
   })
 
   it("rejects a limit that is not an integer, so no float money gets in", () => {
     expect(
-      validateCardInput({ ...valid, spendLimit: 250.5 }, MERCHANT_IDS),
+      validateCardInput({ ...valid, spendLimit: 250.5 }, MERCHANTS),
     ).toMatchObject({ ok: false })
     expect(
-      validateCardInput({ ...valid, spendLimit: "25000" }, MERCHANT_IDS),
+      validateCardInput({ ...valid, spendLimit: "25000" }, MERCHANTS),
     ).toMatchObject({ ok: false })
   })
 
   it("rejects a currency outside USD, EUR, GBP", () => {
     expect(
-      validateCardInput({ ...valid, currency: "JPY" }, MERCHANT_IDS),
+      validateCardInput({ ...valid, currency: "JPY" }, MERCHANTS),
     ).toMatchObject({ ok: false })
   })
 
   it("rejects an empty nickname", () => {
     expect(
-      validateCardInput({ ...valid, nickname: "   " }, MERCHANT_IDS),
+      validateCardInput({ ...valid, nickname: "   " }, MERCHANTS),
     ).toMatchObject({ ok: false })
   })
 
   it("falls back to the 'any' category rather than failing", () => {
     const parsed = validateCardInput(
       { ...valid, category: "nonsense" },
-      MERCHANT_IDS,
+      MERCHANTS,
     )
     expect(parsed.ok && parsed.value.category).toBe("any")
+  })
+
+  it("refuses a currency the merchant does not settle in", () => {
+    // mch_02 settles in GBP; a USD card against it would compare a limit
+    // against spend in another currency.
+    const parsed = validateCardInput(
+      { ...valid, merchantId: "mch_02", currency: "USD" },
+      MERCHANTS,
+    )
+    expect(parsed).toMatchObject({ ok: false })
+    expect(parsed.ok === false && parsed.message).toContain("GBP")
+  })
+
+  it("accepts the merchant's own currency", () => {
+    expect(
+      validateCardInput(
+        { ...valid, merchantId: "mch_02", currency: "GBP" },
+        MERCHANTS,
+      ),
+    ).toMatchObject({ ok: true })
   })
 })
 
@@ -207,6 +232,55 @@ describe("issueCard", () => {
     expect(card.status).toBe("active")
     expect(card.spent).toBe(0)
     expect(card.createdAt).toBe("2026-09-10T23:30:00.000Z")
+  })
+
+  it("opens the history with the issue event", () => {
+    const { card } = issueCard(input, {
+      id: "card_0001",
+      now: new Date("2026-09-10T12:00:00.000Z"),
+    })
+    expect(card.history).toHaveLength(1)
+    expect(card.history[0]).toMatchObject({
+      action: "issued",
+      at: "2026-09-10T12:00:00.000Z",
+    })
+  })
+})
+
+describe("recordTransition", () => {
+  const cardAt = (status: Card["status"]): Card =>
+    issueCard(
+      {
+        nickname: "Ad spend",
+        merchantId: "mch_01",
+        spendLimit: 25000,
+        currency: "USD",
+        category: "advertising",
+      },
+      { id: "card_0001", now: new Date("2026-09-10T12:00:00.000Z") },
+    ).card as Card & { status: typeof status }
+
+  it("names a freeze, an unfreeze, and a cancellation", () => {
+    const card = cardAt("active")
+    recordTransition(card, "frozen", new Date("2026-09-11T09:00:00.000Z"))
+    recordTransition(card, "active", new Date("2026-09-12T09:00:00.000Z"))
+    recordTransition(card, "cancelled", new Date("2026-09-13T09:00:00.000Z"))
+
+    expect(card.history.map((event) => event.action)).toEqual([
+      "issued",
+      "frozen",
+      "unfrozen",
+      "cancelled",
+    ])
+  })
+
+  it("appends rather than rewriting, and stamps UTC", () => {
+    const card = cardAt("active")
+    const before = card.history[0]
+    recordTransition(card, "frozen", new Date("2026-09-11T23:45:00.000Z"))
+
+    expect(card.history[0]).toBe(before)
+    expect(card.history[1].at).toBe("2026-09-11T23:45:00.000Z")
   })
 })
 

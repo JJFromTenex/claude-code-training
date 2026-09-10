@@ -195,6 +195,20 @@ function generateCards(): Card[] {
       category: seed.category,
       last4: generateCardNumber(rand).slice(-4),
       createdAt: createdAt.toISOString(),
+      history: [
+        {
+          action: "issued" as const,
+          at: createdAt.toISOString(),
+          detail: `Limit ${seed.limit} ${merchant.currency} minor units`,
+        },
+        // Whatever moved a seeded card off active is part of its history too.
+        ...(seed.status === "frozen"
+          ? [{ action: "frozen" as const, at: createdAt.toISOString() }]
+          : []),
+        ...(seed.status === "cancelled"
+          ? [{ action: "cancelled" as const, at: createdAt.toISOString() }]
+          : []),
+      ],
     }
   })
 }

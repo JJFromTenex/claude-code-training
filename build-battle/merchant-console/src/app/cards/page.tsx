@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardStatusActions } from "./card-status-actions"
+import { CATEGORY_LABELS } from "./categories"
 import { IssueCardDialog } from "./issue-dialog"
 
 export default async function CardsPage() {
@@ -47,6 +48,7 @@ export default async function CardsPage() {
               <TableHeaderCell>Nickname</TableHeaderCell>
               <TableHeaderCell>Merchant</TableHeaderCell>
               <TableHeaderCell>Number</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
               <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>
@@ -58,7 +60,7 @@ export default async function CardsPage() {
           <TableBody>
             {cards.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
                     No cards issued yet
                   </p>
@@ -85,6 +87,9 @@ export default async function CardsPage() {
                   <TableCell>{merchant?.name ?? card.merchantId}</TableCell>
                   <TableCell className="font-mono text-sm text-gray-500">
                     {maskCard(card.last4)}
+                  </TableCell>
+                  <TableCell className="text-gray-500">
+                    {CATEGORY_LABELS[card.category]}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     <span className="font-medium text-gray-900 dark:text-gray-50">

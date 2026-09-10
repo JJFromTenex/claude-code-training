@@ -81,6 +81,14 @@ export interface Payout {
   paymentIds: string[]
 }
 
+/** One entry in a card's history. Append-only: nothing rewrites the past. */
+export interface CardEvent {
+  action: "issued" | "frozen" | "unfrozen" | "cancelled"
+  /** ISO 8601, always UTC. */
+  at: string
+  detail?: string
+}
+
 export interface Card {
   id: string
   nickname: string
@@ -99,6 +107,8 @@ export interface Card {
   last4: string
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Append-only audit trail, oldest first. */
+  history: CardEvent[]
 }
 
 export interface PaymentFilters {

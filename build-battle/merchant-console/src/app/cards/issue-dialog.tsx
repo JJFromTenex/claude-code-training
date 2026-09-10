@@ -25,16 +25,9 @@ import { parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { CATEGORY_LABELS } from "./categories"
 
-const CATEGORY_LABELS: Record<CardCategory, string> = {
-  any: "Any category",
-  advertising: "Advertising",
-  software: "Software",
-  contractors: "Contractors",
-  travel: "Travel",
-}
-
-type Issued = { last4: string; fullNumber: string; nickname: string }
+type Issued = { last4: string; fullNumber: string | null; nickname: string }
 
 /**
  * Issue a card, then reveal its number exactly once.
@@ -53,6 +46,8 @@ export function IssueCardDialog({
   const [issued, setIssued] = useState<Issued | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // One key per filled-in form. A double submit replays rather than issuing twice.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
@@ -69,6 +64,7 @@ export function IssueCardDialog({
     setError(null)
     setIssued(null)
     setSaving(false)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const close = (next: boolean) => {
@@ -91,7 +87,10 @@ export function IssueCardDialog({
     setSaving(true)
     const response = await fetch("/api/cards", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": idempotencyKey,
+      },
       body: JSON.stringify({
         nickname,
         merchantId,
@@ -110,7 +109,9 @@ export function IssueCardDialog({
 
     setIssued({
       last4: body.card.last4,
-      fullNumber: body.fullNumber,
+      // A replayed request returns the original card without the number:
+      // the reveal already happened and does not happen twice.
+      fullNumber: body.fullNumber ?? null,
       nickname: body.card.nickname,
     })
     router.refresh()
@@ -131,15 +132,24 @@ export function IssueCardDialog({
             <DrawerHeader>
               <DrawerTitle>Card issued</DrawerTitle>
               <DrawerDescription>
-                This is the only time the full number is shown. Copy it now.
+                {issued.fullNumber
+                  ? "This is the only time the full number is shown. Copy it now."
+                  : "Already issued — no second reveal."}
               </DrawerDescription>
             </DrawerHeader>
             <DrawerBody className="flex flex-col gap-4">
               <div className="rounded-md border border-gray-200 p-4 dark:border-gray-800">
                 <p className="text-sm text-gray-500">{issued.nickname}</p>
-                <p className="mt-2 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50">
-                  {issued.fullNumber.replace(/(.{4})/g, "$1 ").trim()}
-                </p>
+                {issued.fullNumber ? (
+                  <p className="mt-2 font-mono text-xl tracking-wider text-gray-900 dark:text-gray-50">
+                    {issued.fullNumber.replace(/(.{4})/g, "$1 ").trim()}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    This card was already issued, so the number is not shown
+                    again.
+                  </p>
+                )}
               </div>
               <p className="text-sm text-gray-500">
                 Everywhere else in the console this card appears as{" "}
@@ -183,7 +193,16 @@ export function IssueCardDialog({
                 >
                   Merchant
                 </label>
-                <Select value={merchantId} onValueChange={setMerchantId}>
+                <Select
+                  value={merchantId}
+                  onValueChange={(id) => {
+                    setMerchantId(id)
+                    // A card settles in its merchant's currency, so follow it
+                    // rather than letting the server reject the mismatch.
+                    const merchant = merchants.find((m) => m.id === id)
+                    if (merchant) setCurrency(merchant.currency)
+                  }}
+                >
                   <SelectTrigger id="card-merchant" className="mt-2">
                     <SelectValue placeholder="Choose a merchant" />
                   </SelectTrigger>

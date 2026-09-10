@@ -1,4 +1,10 @@
-import { Card, CardCategory, CardStatus, Currency } from "@/data/types"
+import {
+  Card,
+  CardCategory,
+  CardEvent,
+  CardStatus,
+  Currency,
+} from "@/data/types"
 
 /**
  * Card issuing rules, kept pure so they can be tested without a route.
@@ -120,7 +126,7 @@ export interface CardInput {
  */
 export function validateCardInput(
   input: Partial<Record<keyof CardInput, unknown>>,
-  merchantIds: readonly string[],
+  merchants: readonly { id: string; currency: Currency }[],
 ): Result<CardInput> {
   const nickname =
     typeof input.nickname === "string" ? input.nickname.trim() : ""
@@ -131,10 +137,11 @@ export function validateCardInput(
     return { ok: false, message: "Nickname must be 60 characters or fewer." }
   }
 
-  if (
-    typeof input.merchantId !== "string" ||
-    !merchantIds.includes(input.merchantId)
-  ) {
+  const merchant =
+    typeof input.merchantId === "string"
+      ? merchants.find((m) => m.id === input.merchantId)
+      : undefined
+  if (!merchant) {
     return { ok: false, message: "Choose a merchant for this card." }
   }
 
@@ -156,6 +163,16 @@ export function validateCardInput(
     return { ok: false, message: "Currency must be USD, EUR, or GBP." }
   }
 
+  // A card settles in its merchant's currency. Letting the two differ would
+  // compare a limit against spend in another currency — the money rule says
+  // an amount without its matching currency is a bug even when it looks right.
+  if (input.currency !== merchant.currency) {
+    return {
+      ok: false,
+      message: `This merchant settles in ${merchant.currency}. Issue the card in ${merchant.currency}.`,
+    }
+  }
+
   const category =
     typeof input.category === "string" &&
     CARD_CATEGORIES.includes(input.category as CardCategory)
@@ -166,7 +183,7 @@ export function validateCardInput(
     ok: true,
     value: {
       nickname,
-      merchantId: input.merchantId,
+      merchantId: merchant.id,
       spendLimit,
       currency: input.currency as Currency,
       category,
@@ -196,8 +213,38 @@ export function issueCard(
     category: input.category,
     last4: fullNumber.slice(-4),
     createdAt: options.now.toISOString(),
+    history: [
+      {
+        action: "issued",
+        at: options.now.toISOString(),
+        detail: `Limit ${input.spendLimit} ${input.currency} minor units`,
+      },
+    ],
   }
   return { card, fullNumber }
+}
+
+/** What a status change is called in the history. */
+const EVENT_FOR: Record<CardStatus, CardEvent["action"]> = {
+  active: "unfrozen",
+  frozen: "frozen",
+  cancelled: "cancelled",
+}
+
+/**
+ * Appends a status change to the card's history.
+ *
+ * Append-only on purpose: the trail answers "what happened to this card last
+ * Tuesday", which it cannot do if an entry can be rewritten.
+ */
+export function recordTransition(
+  card: Card,
+  to: CardStatus,
+  now: Date,
+): CardEvent {
+  const event: CardEvent = { action: EVENT_FOR[to], at: now.toISOString() }
+  card.history.push(event)
+  return event
 }
 
 /** Spend as a percentage of the limit, clamped to 0–100. */
