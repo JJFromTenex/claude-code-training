@@ -4,7 +4,9 @@ import {
   DEFAULT_EXPORT_COLUMNS,
   EXPORT_COLUMNS,
   exportFilename,
+  exportScopeToken,
   parseExportColumns,
+  parseExportScope,
   toCsv,
 } from "./csv"
 
@@ -129,6 +131,46 @@ describe("parseExportColumns", () => {
       ok: false,
       message: 'Duplicate column "id"',
     })
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter when the param is absent", () => {
+    expect(parseExportScope(null)).toEqual({ ok: true, scope: "current" })
+  })
+
+  it("accepts the two allowlisted scopes", () => {
+    expect(parseExportScope("current")).toEqual({ ok: true, scope: "current" })
+    expect(parseExportScope("all")).toEqual({ ok: true, scope: "all" })
+  })
+
+  it("rejects anything else and names it", () => {
+    expect(parseExportScope("everything")).toEqual({
+      ok: false,
+      message: 'Unknown scope "everything"',
+    })
+  })
+})
+
+describe("exportScopeToken", () => {
+  it("is the status when exporting a status-filtered view", () => {
+    expect(exportScopeToken("current", { status: "disputed" })).toBe("disputed")
+  })
+
+  it("is 'all' for the all-payments scope, whatever filters are set", () => {
+    expect(exportScopeToken("all", { status: "disputed", search: "rush" })).toBe("all")
+  })
+
+  it("is 'filtered' when only merchant, search, or date filters are set", () => {
+    expect(exportScopeToken("current", { status: "all", merchantId: "mch_01" })).toBe(
+      "filtered",
+    )
+    expect(exportScopeToken("current", { search: "rush" })).toBe("filtered")
+    expect(exportScopeToken("current", { from: "2026-03-01" })).toBe("filtered")
+  })
+
+  it("is 'all' when the current view has no filters at all", () => {
+    expect(exportScopeToken("current", { status: "all", page: 3 })).toBe("all")
   })
 })
 

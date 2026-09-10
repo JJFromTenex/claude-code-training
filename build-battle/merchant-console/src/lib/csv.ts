@@ -1,5 +1,5 @@
 import { merchantById } from "@/data/merchants"
-import { Payment } from "@/data/types"
+import { Payment, PaymentFilters } from "@/data/types"
 import { formatMoney } from "./money"
 
 /**
@@ -28,9 +28,7 @@ export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] =
   EXPORT_COLUMNS.filter((column) => column !== "last4")
 
-export type ExportOptionResult<T> =
-  | { ok: true; columns: T }
-  | { ok: false; message: string }
+type Rejected = { ok: false; message: string }
 
 /**
  * Parse the `columns` query value. `null` (param absent) means the default
@@ -39,7 +37,7 @@ export type ExportOptionResult<T> =
  */
 export function parseExportColumns(
   raw: string | null,
-): ExportOptionResult<readonly ExportColumn[]> {
+): { ok: true; columns: readonly ExportColumn[] } | Rejected {
   if (raw === null) return { ok: true, columns: DEFAULT_EXPORT_COLUMNS }
   if (raw === "") return { ok: false, message: "Select at least one column" }
 
@@ -54,6 +52,37 @@ export function parseExportColumns(
     columns.push(name as ExportColumn)
   }
   return { ok: true, columns }
+}
+
+export const EXPORT_SCOPES = ["current", "all"] as const
+
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
+
+/** Parse the `scope` query value. Absent means the current filter. */
+export function parseExportScope(
+  raw: string | null,
+): { ok: true; scope: ExportScope } | Rejected {
+  if (raw === null) return { ok: true, scope: "current" }
+  if (!EXPORT_SCOPES.includes(raw as ExportScope)) {
+    return { ok: false, message: `Unknown scope "${raw}"` }
+  }
+  return { ok: true, scope: raw as ExportScope }
+}
+
+/**
+ * The word that goes in the filename. Built only from the validated scope
+ * and the allowlisted filters, never from raw query input.
+ */
+export function exportScopeToken(
+  scope: ExportScope,
+  filters: PaymentFilters,
+): string {
+  if (scope === "all") return "all"
+  if (filters.status && filters.status !== "all") return filters.status
+  if (filters.merchantId || filters.search || filters.from || filters.to) {
+    return "filtered"
+  }
+  return "all"
 }
 
 function escapeCell(value: string): string {
