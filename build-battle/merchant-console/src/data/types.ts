@@ -11,6 +11,16 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** `active ⇄ frozen`, either to `cancelled`. `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "contractors"
+  | "travel"
+  | "any"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +79,26 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Spent against the limit so far. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  category: CardCategory
+  /**
+   * Last four of the generated number. The full number is never stored —
+   * it exists only in the creation response. See .claude/rules/cards.md.
+   */
+  last4: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {
