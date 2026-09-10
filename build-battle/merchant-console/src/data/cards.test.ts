@@ -5,14 +5,6 @@ import { cardById, changeCardStatus, issueCard, listCards } from "./cards"
 import { CardFailure, IssueCardSuccess } from "./cards"
 import { MAX_SPEND_LIMIT } from "./types"
 
-/**
- * These run against the process-wide in-memory store, so every test issues its
- * own cards and asserts on those rather than on the store's size. Idempotency
- * keys are unique per test for the same reason.
- *
- * mch_01 settles in USD, mch_05 (Brandt & Sohn) in EUR.
- */
-
 const valid = {
   nickname: "Ad spend",
   merchantId: "mch_01",
@@ -116,7 +108,6 @@ describe("issueCard", () => {
   })
 
   it("rejects a currency the merchant does not settle in", () => {
-    // Brandt & Sohn is EUR; a USD card against it is the wrong-currency bug.
     const failure = rejected({ merchantId: "mch_05", currency: "USD" })
     expect(failure.error).toBe(
       "Brandt & Sohn settles in EUR; issue the card in EUR.",

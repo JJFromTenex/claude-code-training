@@ -4,14 +4,6 @@ import { GENERATED_AT } from "./generate"
 import { dailyVolume } from "./metrics"
 import { store } from "./store"
 
-/**
- * Importing the store runs the deterministic seed anchored at GENERATED_AT,
- * so these expectations are the same on every machine.
- *
- * Two rules are under test: buckets are keyed in UTC, and amounts accumulate
- * as integer minor units.
- */
-
 const DAYS = 30
 const keys = lastUtcDays(DAYS, GENERATED_AT)
 
@@ -42,9 +34,6 @@ describe("dailyVolume", () => {
   })
 
   it("totals the captured payments whose UTC day falls in the window", () => {
-    // Keying by the server's local calendar date shifts payments near
-    // midnight into a neighbouring day, or out of the window entirely, so
-    // this total only comes out right on a UTC machine and by luck.
     const inWindow = new Set(keys)
     const expected = store.payments
       .filter(

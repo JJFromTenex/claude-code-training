@@ -40,8 +40,6 @@ type Issued = {
 
 const labelClass =
   "block text-sm font-medium text-gray-900 dark:text-gray-50"
-
-/** Groups a 16 digit number into fours for the one-time reveal. */
 function groupInFours(value: string): string {
   return value.replace(/(.{4})/g, "$1 ").trim()
 }

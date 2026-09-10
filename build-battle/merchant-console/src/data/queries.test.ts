@@ -2,11 +2,6 @@ import { describe, expect, it } from "vitest"
 import { sortPayments } from "./queries"
 import { Payment } from "./types"
 
-/**
- * Amounts are integer minor units, so they sort as numbers. Sorting them as
- * text puts 900 after 10000, which looks plausible in a table and is wrong.
- */
-
 function payment(id: string, amount: number, createdAt: string): Payment {
   return {
     id,

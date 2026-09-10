@@ -15,14 +15,6 @@ import {
   spendRatio,
 } from "./cards"
 
-/**
- * A card number that fails Luhn, or a status that walks back out of
- * cancelled, is the kind of bug that looks fine in the UI and is only caught
- * by something else refusing the card later. These tests are the something
- * else. Every number here is either the textbook Luhn example or sits on the
- * 4242 test BIN — nothing in this file may resemble a real PAN.
- */
-
 describe("luhnCheckDigit", () => {
   it("matches the textbook example", () => {
     expect(luhnCheckDigit("7992739871")).toBe("3")
@@ -65,7 +57,6 @@ describe("generateCardNumber", () => {
       expect(isValidLuhn(number)).toBe(true)
       seen.add(number)
     }
-    // A generator that returned a constant would still pass everything above.
     expect(seen.size).toBeGreaterThan(1)
   })
 })
@@ -130,7 +121,6 @@ describe("spendRatio", () => {
 describe("isSpendWarning", () => {
   it("stays quiet below the threshold", () => {
     expect(isSpendWarning(0, 25000)).toBe(false)
-    // One minor unit short of 80%: the boundary is inclusive, so this is not a warning.
     expect(isSpendWarning(19999, 25000)).toBe(false)
   })
 
