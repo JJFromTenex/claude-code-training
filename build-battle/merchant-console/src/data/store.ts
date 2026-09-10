@@ -1,6 +1,6 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Card, Dispute, Payment, Payout, Refund } from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +19,10 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  /** Issued in the console. Nothing is seeded: spend would have to be invented. */
+  cards: Card[]
+  /** Idempotency-Key → card id, so a retried issue request cannot mint twice. */
+  cardIssueKeys: Map<string, string>
 }
 
 declare global {
@@ -28,7 +32,15 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  return {
+    merchants,
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: [],
+    cardIssueKeys: new Map(),
+  }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
