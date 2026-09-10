@@ -16,13 +16,10 @@ Ops asks the platform team to create virtual cards by hand. It takes hours, happ
 - `src/app/` has overview, payments, disputes and payouts but no `/cards` route or card component; `src/app/api/` has only `payments/route.ts` and `payments/export/route.ts`, both `GET`, so no mutating handler, no POST precedent and no error body exist. This ticket sets one.
 - `src/data/types.ts`: `CURRENCIES`, `CARD_STATUSES`, `CARD_CATEGORIES`, `MAX_SPEND_LIMIT`, `CardEvent`, `Card`. `Card` stores `last4` and `numberRef`, never a number; `Payment` has no `cardId`, so spend cannot be derived.
 - `src/data/store.ts`: in-memory, empty `cards: Card[]`, cached on `globalThis.__northwindStore`, so an older dev server needs restarting.
-- `src/lib/money.ts` and `src/lib/dates.ts`: `formatMoney`, `sumMinorUnits`, `parseAmountToMinorUnits` (the one boundary parser), `formatDate` (UTC) and `formatInZone` (merchant timezone).
 - `src/data/merchants.ts`: ten merchants with `currency` and `timezone`, plus `merchantById`. Nothing validates currency against the merchant's.
 - `src/data/queries.ts` and `src/data/metrics.ts`, neither tested: `sortPayments` compares amounts as strings, so `9000` sorts above `25000`, and `dailyVolume` buckets server-local not UTC while accumulating major units as floats.
-- `src/app/payments/page.tsx` and `disputes/page.tsx` read the store directly; no page fetches client-side today.
 - `src/components/Drawer.tsx`: Radix Dialog underneath, giving dialog role, accessible title, focus trap and Escape. It is the only overlay in `src/components/`, and the `Dialog` that `.claude/rules/components.md` names does not exist.
 - `src/components/Input.tsx` renders no label, so labels are written explicitly; `src/components/ui/payments/StatusBadge.tsx` spans payment, dispute and payout statuses via `AnyStatus`.
-- `src/app/siteConfig.ts` and `src/components/ui/navigation/` hold hardcoded nav with no `cards` entry.
 
 ## Domain rules
 
