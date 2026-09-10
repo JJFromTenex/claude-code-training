@@ -25,6 +25,34 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/**
+ * The columns ops gets unless they say otherwise. Card last-four is off by
+ * default (NWP-101): most exports go to a merchant and must not carry it.
+ */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+/**
+ * Column names arrive from the client, so they are checked against the
+ * EXPORT_COLUMNS allowlist here — never interpolated anywhere. Order is the
+ * caller's; unknown names are dropped and duplicates collapse to the first.
+ */
+export function parseColumns(input: string | null | undefined): ExportColumn[] {
+  if (!input) return []
+  const allowed = new Set<string>(EXPORT_COLUMNS)
+  const seen = new Set<string>()
+  const columns: ExportColumn[] = []
+  for (const raw of input.split(",")) {
+    const name = raw.trim()
+    if (allowed.has(name) && !seen.has(name)) {
+      seen.add(name)
+      columns.push(name as ExportColumn)
+    }
+  }
+  return columns
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +94,12 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Filename reflects the scope and the date, e.g. `payments-disputed-2026-08-13.csv`.
+ * With no scope slug it falls back to the plain `payments-<date>.csv`.
+ */
+export function exportFilename(scopeSlug?: string, date = new Date()): string {
+  const stamp = date.toISOString().slice(0, 10)
+  const slug = scopeSlug?.trim().toLowerCase()
+  return slug ? `payments-${slug}-${stamp}.csv` : `payments-${stamp}.csv`
 }

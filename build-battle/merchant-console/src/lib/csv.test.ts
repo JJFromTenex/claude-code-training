@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -78,8 +84,45 @@ describe("toCsv", () => {
 
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
+    expect(exportFilename(undefined, new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("puts the scope slug in the name, e.g. payments-disputed-<date>.csv", () => {
+    expect(exportFilename("disputed", new Date("2026-08-13T09:00:00.000Z"))).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+  })
+})
+
+/**
+ * NWP-101: ops chooses which columns ship and card last-four is off by
+ * default. Column names arrive from the client, so parseColumns is the
+ * server-side allowlist — the route never writes what this rejects.
+ */
+describe("column selection", () => {
+  it("keeps only the requested columns, in the order requested", () => {
+    expect(toCsv([payment], ["amount", "id"])).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
+    )
+  })
+
+  it("excludes card last-four from the default column set", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    // Otherwise the default is the full contract.
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
+
+  it("treats an empty or all-unknown selection as no columns", () => {
+    expect(parseColumns("")).toEqual([])
+    expect(parseColumns(null)).toEqual([])
+    expect(parseColumns("bogus, drop table, ")).toEqual([])
+  })
+
+  it("allowlists names, preserves order, and drops unknowns and duplicates", () => {
+    expect(parseColumns("amount, evil, id, amount")).toEqual(["amount", "id"])
   })
 })
