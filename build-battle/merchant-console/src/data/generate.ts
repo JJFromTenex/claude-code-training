@@ -1,5 +1,8 @@
+import { generateCardNumber, lastFour } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,58 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/** Nicknames read the way ops actually labels a card: what it pays for. */
+const CARD_NICKNAMES = [
+  "Ad spend — Meta",
+  "Ad spend — Google",
+  "Contractor tools",
+  "Vendor subscriptions",
+  "Shipping supplies",
+  "Cloud hosting",
+  "Design software",
+  "Trade show travel",
+  "Packaging samples",
+  "Recruiting ads",
+] as const
+
+function generateCards(): Card[] {
+  const cards: Card[] = []
+
+  CARD_NICKNAMES.forEach((nickname, index) => {
+    const merchant = merchants[index % merchants.length]
+    const number = generateCardNumber(rand)
+
+    // A spread of utilisation so the detail view has a full bar, a nearly
+    // exhausted one, and a card nobody has touched yet.
+    const spendLimit = between(50_00, 5_000_00)
+    const utilisation = [0, 0.12, 0.41, 0.67, 0.84, 0.96][index % 6]
+    const spent = Math.round(spendLimit * utilisation)
+
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(3, 110))
+    createdAt.setUTCHours(between(9, 18), between(0, 59), 0, 0)
+
+    const status: CardStatus =
+      index === 4 ? "frozen" : index === 7 ? "cancelled" : "active"
+
+    cards.push({
+      id: `card_${pad(index + 1, 4)}`,
+      nickname,
+      merchantId: merchant.id,
+      spendLimit,
+      currency: merchant.currency,
+      status,
+      spent,
+      last4: lastFour(number),
+      createdAt: createdAt.toISOString(),
+    })
+  })
+
+  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

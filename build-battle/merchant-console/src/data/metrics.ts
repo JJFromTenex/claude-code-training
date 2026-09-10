@@ -1,16 +1,25 @@
-import { lastUtcDays } from "@/lib/dates"
+import { lastUtcDays, utcDayKey } from "@/lib/dates"
 import { GENERATED_AT } from "./generate"
 import { store } from "./store"
 
 /**
- * Dashboard metrics. Everything here is reported in USD minor units for the
- * headline figures, because the overview is an internal ops screen rather
- * than a merchant statement.
+ * Dashboard metrics, in integer minor units.
+ *
+ * KNOWN LIMITATION: the headline figures add USD, EUR, and GBP amounts
+ * together without converting, and the overview renders the result with a
+ * dollar sign. The number is a mixed-currency total, not a USD one, and it
+ * overstates nothing and understates nothing consistently — it is simply not
+ * a currency. Summing across currencies breaks the money rule; the fix needs
+ * either an FX source or per-currency reporting, and neither is in scope here.
+ * Do not build on these two fields until that is resolved.
  */
 
 export interface DailyVolume {
+  /** UTC calendar day, YYYY-MM-DD. */
   date: string
+  /** Integer minor units. */
   captured: number
+  /** Integer minor units. */
   refunded: number
 }
 
@@ -21,28 +30,22 @@ export function dailyVolume(days = 30): DailyVolume[] {
   )
 
   for (const payment of store.payments) {
-    // Bucket by calendar date.
-    const key = new Date(payment.createdAt).toLocaleDateString("en-CA")
-    const bucket = buckets.get(key)
+    // Bucket by UTC calendar day. The keys above are UTC, so reading the day
+    // in server local time would file late-UTC payments under the wrong date
+    // — or drop them off the oldest edge entirely.
+    const bucket = buckets.get(utcDayKey(payment.createdAt))
     if (!bucket) continue
 
+    // Minor units the whole way. An amount is never accumulated as a float.
     if (payment.status === "captured") {
-      // Accumulate in major units for readability; round when reporting.
-      bucket.captured += payment.amount / 100
+      bucket.captured += payment.amount
     }
     if (payment.status === "refunded") {
-      bucket.refunded += payment.amount / 100
+      bucket.refunded += payment.amount
     }
   }
 
-  return keys.map((date) => {
-    const bucket = buckets.get(date)!
-    return {
-      date,
-      captured: Math.round(bucket.captured * 100),
-      refunded: Math.round(bucket.refunded * 100),
-    }
-  })
+  return keys.map((date) => buckets.get(date)!)
 }
 
 export function headlineMetrics() {
@@ -50,6 +53,7 @@ export function headlineMetrics() {
   const refunded = store.payments.filter((p) => p.status === "refunded")
 
   // Gross volume is everything that moved through the platform.
+  // Mixed currency — see the limitation at the top of this file.
   const grossVolume =
     captured.reduce((sum, p) => sum + p.amount, 0) +
     refunded.reduce((sum, p) => sum + p.amount, 0)

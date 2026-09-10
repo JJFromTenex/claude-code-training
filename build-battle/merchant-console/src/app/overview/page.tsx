@@ -11,10 +11,11 @@ export default function OverviewPage() {
   const metrics = headlineMetrics()
   const volume = dailyVolume(30)
 
+  // Minor units all the way to the chart; VolumeChart formats them.
   const chartData = volume.map((day) => ({
     date: day.date.slice(5),
-    Captured: day.captured / 100,
-    Refunded: day.refunded / 100,
+    Captured: day.captured,
+    Refunded: day.refunded,
   }))
 
   const recent = [...store.payments]

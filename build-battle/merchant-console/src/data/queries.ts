@@ -116,3 +116,23 @@ export function refundsForPayment(paymentId: string) {
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
 }
+
+/** Issued cards, newest first. */
+export function listCards() {
+  return [...store.cards].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )
+}
+
+export function cardById(id: string) {
+  return store.cards.find((c) => c.id === id) ?? null
+}
+
+/** Next free card id. Scans the highest suffix so ids never collide. */
+export function nextCardId() {
+  const highest = store.cards.reduce((max, card) => {
+    const n = Number(card.id.replace("card_", ""))
+    return Number.isFinite(n) && n > max ? n : max
+  }, 0)
+  return `card_${String(highest + 1).padStart(4, "0")}`
+}
