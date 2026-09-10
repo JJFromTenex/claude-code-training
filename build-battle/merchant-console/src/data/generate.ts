@@ -1,7 +1,11 @@
+import { cardReference, generateCardNumber } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
@@ -148,7 +152,70 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+
+  // Cards are generated last on purpose: `rand` is one generator shared by
+  // every record above, so drawing from it earlier would shift every payment,
+  // dispute and payout in the app.
+  const cards = generateCards()
+
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_NICKNAMES = [
+  "Google Ads — brand",
+  "AWS production",
+  "Figma seats",
+  "Contractor — design",
+  "Meta Ads — retargeting",
+  "Notion workspace",
+  "Travel — sales team",
+  "Datadog monitoring",
+] as const
+
+/**
+ * A handful of cards that already exist, so the list has something in it and
+ * the spend bar has something to draw. Ratios are fixed rather than random:
+ * one card sits past 80% so the amber state is always reachable.
+ */
+function generateCards(): Card[] {
+  const plan: {
+    ratio: number
+    status: CardStatus
+    category: MerchantCategory | null
+    limit: number
+  }[] = [
+    { ratio: 0.12, status: "active", category: "advertising", limit: 500_00 },
+    { ratio: 0.47, status: "active", category: "software", limit: 250_00 },
+    { ratio: 0.86, status: "active", category: "software", limit: 120_00 },
+    { ratio: 0.33, status: "frozen", category: "contractors", limit: 300_00 },
+    { ratio: 0.94, status: "active", category: "advertising", limit: 750_00 },
+    { ratio: 0.05, status: "active", category: null, limit: 100_00 },
+    { ratio: 0.61, status: "cancelled", category: "travel", limit: 400_00 },
+    { ratio: 0, status: "active", category: "utilities", limit: 200_00 },
+  ]
+
+  return plan.map((entry, index) => {
+    const merchant = merchants[index % merchants.length]
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(3, 90))
+    createdAt.setUTCHours(between(0, 23), between(0, 59), 0, 0)
+
+    const number = generateCardNumber(rand)
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      merchantId: merchant.id,
+      nickname: CARD_NICKNAMES[index],
+      spendLimit: entry.limit,
+      spend: Math.round(entry.limit * entry.ratio),
+      currency: merchant.currency as Currency,
+      status: entry.status,
+      last4: number.slice(-4),
+      reference: cardReference(rand),
+      category: entry.category,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
