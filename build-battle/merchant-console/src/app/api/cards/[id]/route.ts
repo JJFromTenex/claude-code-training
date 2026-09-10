@@ -1,6 +1,6 @@
 import { cardById } from "@/data/cards"
 import { CardStatus } from "@/data/types"
-import { recordTransition, transition } from "@/lib/cards"
+import { recordTransition, transition } from "@/data/card-rules"
 import { NextRequest, NextResponse } from "next/server"
 
 const STATUSES: readonly CardStatus[] = ["active", "frozen", "cancelled"]

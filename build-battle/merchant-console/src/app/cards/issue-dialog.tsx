@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { CardCategory, Currency } from "@/data/types"
-import { CARD_CATEGORIES, CURRENCIES, maskCard } from "@/lib/cards"
+import { CARD_CATEGORIES, CURRENCIES, maskCard } from "@/data/card-rules"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"

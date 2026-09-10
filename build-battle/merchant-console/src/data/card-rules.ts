@@ -4,10 +4,16 @@ import {
   CardEvent,
   CardStatus,
   Currency,
-} from "@/data/types"
+} from "./types"
 
 /**
- * Card issuing rules, kept pure so they can be tested without a route.
+ * Card issuing rules: number generation, the status state machine, and
+ * server-side validation.
+ *
+ * Lives beside the card store the way `queries.ts` lives beside payments —
+ * this is card domain logic, not a cross-cutting helper like money or dates.
+ * Deliberately pure and store-free, so `generate.ts` can use it at seed time
+ * without a circular import, and so every rule is testable without a route.
  *
  * The full card number is deliberately not part of the `Card` record. It is
  * returned once, alongside the record, and the caller is responsible for

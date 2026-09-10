@@ -1,4 +1,4 @@
-import { generateCardNumber } from "@/lib/cards"
+import { generateCardNumber } from "@/data/card-rules"
 import { sumMinorUnits } from "@/lib/money"
 import { merchants } from "./merchants"
 import {

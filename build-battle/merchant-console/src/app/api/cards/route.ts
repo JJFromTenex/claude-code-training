@@ -6,7 +6,7 @@ import {
   nextCardId,
   rememberIdempotencyKey,
 } from "@/data/cards"
-import { issueCard, validateCardInput } from "@/lib/cards"
+import { issueCard, validateCardInput } from "@/data/card-rules"
 import { NextRequest, NextResponse } from "next/server"
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { Card } from "@/data/types"
+import { Card } from "./types"
 import {
   CARD_BIN,
   MAX_SPEND_LIMIT,
@@ -13,7 +13,7 @@ import {
   spendPercent,
   transition,
   validateCardInput,
-} from "./cards"
+} from "./card-rules"
 
 /**
  * A card number that fails Luhn is rejected by every downstream system, and a
