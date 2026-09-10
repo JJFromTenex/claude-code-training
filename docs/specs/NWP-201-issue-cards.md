@@ -1,7 +1,6 @@
 # SPEC · NWP-201 — Issue virtual cards from the console
 
-> Written before any code. Generated with `/spec`, then edited by a human.
-> Load it as context when you build: `@docs/specs/NWP-201-issue-cards.md`
+> Written before any code. Load with `@docs/specs/NWP-201-issue-cards.md`.
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Mahmood Mahmood
