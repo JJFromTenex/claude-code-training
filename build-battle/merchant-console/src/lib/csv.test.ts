@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
  * support ticket rather than a stack trace. These tests pin the escaping and
- * the column contract; NWP-101 changes which columns ship, not how a cell is
- * written, and these should still pass afterwards.
+ * the column contract. NWP-101 changed which columns ship and made one
+ * deliberate change to how a cell is written — the formula guard — and the
+ * original eight tests still pass unchanged.
  */
 
 const payment: Payment = {
@@ -76,10 +84,125 @@ describe("toCsv", () => {
   })
 })
 
-describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+describe("toCsv formula guard", () => {
+  // Excel treats a leading one of these as a formula. Merchants open these files.
+  it.each(["=", "+", "@", "\t"])(
+    "prefixes a cell starting with %j so it is read as text",
+    (prefix) => {
+      const risky = { ...payment, description: `${prefix}SUM(1)` }
+      const body = toCsv([risky], ["description"]).split("\n")[1]
+      expect(body).toBe(`'${prefix}SUM(1)`)
+    },
+  )
+
+  it("prefixes and quotes a cell starting with a carriage return", () => {
+    const risky = { ...payment, description: "\rSUM(1)" }
+    const body = toCsv([risky], ["description"]).split("\n").slice(1).join("\n")
+    expect(body).toBe(`"'\rSUM(1)"`)
+  })
+
+  it("still quotes a guarded cell that contains a comma", () => {
+    const risky = { ...payment, description: "=SUM(1,2)" }
+    const body = toCsv([risky], ["description"]).split("\n")[1]
+    expect(body).toBe(`"'=SUM(1,2)"`)
+  })
+
+  it("leaves a negative amount alone, since '-' is how refunds are formatted", () => {
+    const refund = { ...payment, amount: -500 }
+    expect(toCsv([refund], ["amount"])).toBe(["amount", "-$5.00"].join("\n"))
+  })
+
+  it("quotes a bare carriage return inside a cell", () => {
+    const split = { ...payment, description: "line\rbreak" }
+    const body = toCsv([split], ["description"]).split("\n")[1]
+    expect(body).toBe(`"line\rbreak"`)
+  })
+})
+
+describe("parseExportColumns", () => {
+  const params = (query: string) => new URLSearchParams(query)
+
+  it("returns the defaults when no columns are named, and they exclude the card last four", () => {
+    const columns = parseExportColumns(params("")) ?? []
+    expect(columns).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(columns).not.toContain("last4")
+    expect(toCsv([payment], columns).split("\n")[0]).not.toContain("last4")
+  })
+
+  it("returns a subset in the order it was requested", () => {
+    const columns = parseExportColumns(params("columns=amount,id")) ?? []
+    expect(columns).toEqual(["amount", "id"])
+    expect(toCsv([payment], columns)).toBe(
+      ["amount,id", "$250.00,pay_0001"].join("\n"),
     )
+  })
+
+  it("includes the card last four only when it is asked for", () => {
+    expect(parseExportColumns(params("columns=id,last4"))).toEqual([
+      "id",
+      "last4",
+    ])
+  })
+
+  it("treats an empty selection as invalid rather than producing an empty file", () => {
+    expect(parseExportColumns(params("columns="))).toBeNull()
+    expect(parseExportColumns(params("columns=,,"))).toBeNull()
+    expect(parseExportColumns(params("columns=%20"))).toBeNull()
+  })
+
+  it("rejects a column it does not know, including a case mismatch", () => {
+    expect(parseExportColumns(params("columns=id,drop_table"))).toBeNull()
+    expect(parseExportColumns(params("columns=Last4"))).toBeNull()
+  })
+
+  it("accepts repeated params, trims whitespace, and dedupes keeping first order", () => {
+    expect(
+      parseExportColumns(params("columns=id&columns=%20amount%20,id")),
+    ).toEqual(["id", "amount"])
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter, which is what the old link did", () => {
+    expect(parseExportScope(new URLSearchParams(""))).toBe("filter")
+  })
+
+  it("accepts the two known scopes and nothing else", () => {
+    expect(parseExportScope(new URLSearchParams("scope=all"))).toBe("all")
+    expect(parseExportScope(new URLSearchParams("scope=filter"))).toBe("filter")
+    expect(parseExportScope(new URLSearchParams("scope=nope"))).toBeNull()
+    expect(parseExportScope(new URLSearchParams("scope=ALL"))).toBeNull()
+  })
+})
+
+describe("exportFilename", () => {
+  const date = new Date("2026-03-14T23:00:00.000Z")
+
+  it("stamps the UTC date, so two exports on the same day collide by design", () => {
+    expect(exportFilename("filter", "all", date)).toBe(
+      "payments-filtered-2026-03-14.csv",
+    )
+  })
+
+  it("names the active status when the current filter has one", () => {
+    expect(exportFilename("filter", "disputed", date)).toBe(
+      "payments-disputed-2026-03-14.csv",
+    )
+  })
+
+  it("says 'all' for the whole table regardless of the filter", () => {
+    expect(exportFilename("all", "disputed", date)).toBe(
+      "payments-all-2026-03-14.csv",
+    )
+  })
+
+  it("only ever contains header-safe characters", () => {
+    for (const status of ["all", "captured", "disputed", undefined] as const) {
+      for (const scope of ["filter", "all"] as const) {
+        expect(exportFilename(scope, status, date)).toMatch(
+          /^payments-[a-z]+-\d{4}-\d{2}-\d{2}\.csv$/,
+        )
+      }
+    }
   })
 })
