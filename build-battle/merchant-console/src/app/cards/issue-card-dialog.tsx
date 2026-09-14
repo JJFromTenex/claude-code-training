@@ -21,7 +21,12 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
-import { CARD_CATEGORIES, CARD_CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
+import {
+  CARD_CATEGORIES,
+  CARD_CATEGORY_LABELS,
+  MAX_SPEND_LIMIT,
+  maskCardNumber,
+} from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -230,7 +235,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                     required
                   />
                   <p id={`${ids}-limit-help`} className="text-xs text-gray-500">
-                    Up to {formatMoney(5_000_000, currency)}.
+                    Up to {formatMoney(MAX_SPEND_LIMIT, currency)}.
                   </p>
                 </div>
                 <div className="flex flex-col gap-1.5">

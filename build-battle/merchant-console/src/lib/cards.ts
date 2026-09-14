@@ -11,6 +11,9 @@ import { CardCategory, CardStatus } from "@/data/types"
 export const TEST_BIN = "4242"
 export const CARD_NUMBER_LENGTH = 16
 
+/** Highest spend limit a card can be issued with, in integer minor units. */
+export const MAX_SPEND_LIMIT = 5_000_000
+
 export const CARD_CATEGORIES: readonly CardCategory[] = [
   "any",
   "advertising",

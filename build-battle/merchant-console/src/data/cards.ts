@@ -1,5 +1,6 @@
 import {
   CARD_CATEGORIES,
+  MAX_SPEND_LIMIT,
   canTransition,
   generateCardNumber,
   lastFour,
@@ -17,8 +18,6 @@ import { Card, CardCategory, CardStatus, Currency } from "./types"
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
 const CARD_STATUSES: readonly CardStatus[] = ["active", "frozen", "cancelled"]
 
-/** Integer minor units. 5,000,000 is the ceiling the ticket sets. */
-export const MAX_SPEND_LIMIT = 5_000_000
 const MAX_NICKNAME_LENGTH = 60
 
 export interface IssueCardInput {
@@ -61,7 +60,10 @@ export function parseIssueCardInput(body: unknown): ParseResult<IssueCardInput> 
   }
   if (spendLimit <= 0) return { ok: false, error: "Spend limit must be greater than zero." }
   if (spendLimit > MAX_SPEND_LIMIT) {
-    return { ok: false, error: "Spend limit cannot exceed 5,000,000 minor units." }
+    return {
+      ok: false,
+      error: `Spend limit cannot exceed ${MAX_SPEND_LIMIT.toLocaleString("en-US")} minor units.`,
+    }
   }
 
   const currency = body.currency

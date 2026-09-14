@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { MAX_SPEND_LIMIT, parseIssueCardInput } from "./cards"
+import { MAX_SPEND_LIMIT } from "@/lib/cards"
+import { parseIssueCardInput } from "./cards"
 
 const valid = {
   merchantId: "mch_01",
