@@ -2,6 +2,7 @@ import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById } from "@/data/merchants"
 import { dailyVolume, headlineMetrics } from "@/data/metrics"
 import { store } from "@/data/store"
+import { Currency } from "@/data/types"
 import { formatDate } from "@/lib/dates"
 import { formatMoney, formatMoneyCompact } from "@/lib/money"
 import Link from "next/link"
@@ -9,13 +10,8 @@ import { VolumeChart } from "./volume-chart"
 
 export default function OverviewPage() {
   const metrics = headlineMetrics()
-  const volume = dailyVolume(30)
-
-  const chartData = volume.map((day) => ({
-    date: day.date.slice(5),
-    Captured: day.captured / 100,
-    Refunded: day.refunded / 100,
-  }))
+  const chartCurrency: Currency = "USD"
+  const volume = dailyVolume(30, chartCurrency)
 
   const recent = [...store.payments]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -25,9 +21,13 @@ export default function OverviewPage() {
     <div className="border-t border-gray-200 p-4 sm:p-6 dark:border-gray-800">
       <dl className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Stat
-          label="Gross volume"
-          value={formatMoneyCompact(metrics.grossVolume, "USD")}
-          sub="Last 120 days"
+          label="Net volume"
+          value={metrics.volume
+            .map((v) => formatMoneyCompact(v.net, v.currency))
+            .join(" · ")}
+          sub={`Last 120 days · refunds of ${metrics.volume
+            .map((v) => formatMoneyCompact(v.refunded, v.currency))
+            .join(" · ")} deducted`}
         />
         <Stat
           label="Payments"
@@ -37,7 +37,10 @@ export default function OverviewPage() {
         <Stat
           label="Open disputes"
           value={String(metrics.openDisputes)}
-          sub={`${formatMoney(metrics.disputedAmount, "USD")} at risk`}
+          sub={`${metrics.disputedByCurrency
+            .filter((d) => d.amount > 0)
+            .map((d) => formatMoney(d.amount, d.currency))
+            .join(" · ") || "nothing"} at risk`}
         />
       </dl>
 
@@ -46,9 +49,9 @@ export default function OverviewPage() {
           Daily volume
         </h2>
         <p className="mt-0.5 text-sm/6 text-gray-500">
-          Captured against refunded over the last 30 days.
+          Captured against refunded over the last 30 days, {chartCurrency} merchants, UTC days.
         </p>
-        <VolumeChart data={chartData} />
+        <VolumeChart data={volume} currency={chartCurrency} />
       </div>
 
       <div className="mt-10">
