@@ -111,7 +111,8 @@ export function issueCard(input: IssueCardInput): IssueResult {
   }
 
   const number = generateCardNumber()
-  const seq = store.cards.length + 1
+  // Next id from the highest existing one, so ids never collide even if a card is ever removed.
+  const seq = store.cards.reduce((max, c) => Math.max(max, Number(c.id.slice(5))), 0) + 1
   const createdAt = new Date().toISOString()
   const card: Card = {
     id: `card_${pad(seq, 4)}`,
