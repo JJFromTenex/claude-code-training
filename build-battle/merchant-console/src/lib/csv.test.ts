@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportLabel,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +83,54 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps only allowlisted columns, in the order requested", () => {
+    expect(parseExportColumns("amount,id,bogus")).toEqual(["amount", "id"])
+  })
+
+  it("leaves the card last four out of the default set", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).toEqual([...DEFAULT_EXPORT_COLUMNS])
+    expect(columns).not.toContain("last4")
+    expect(EXPORT_COLUMNS).toContain("last4")
+  })
+
+  it("includes the card last four only when it is asked for", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("returns nothing for an empty selection, rather than falling back", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("bogus")).toEqual([])
+  })
+
+  it("ignores a column repeated in the query string", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+    expect(
+      exportFilename("filtered", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-filtered-2026-03-14.csv")
+  })
+
+  it("names the status when the export is scoped to one", () => {
+    expect(
+      exportFilename(
+        exportLabel("filtered", "disputed"),
+        new Date("2026-08-13T10:00:00.000Z"),
+      ),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
+  it("says all when the export ignores the filters", () => {
+    expect(
+      exportFilename(
+        exportLabel("all", "disputed"),
+        new Date("2026-08-13T10:00:00.000Z"),
+      ),
+    ).toBe("payments-all-2026-08-13.csv")
   })
 })
