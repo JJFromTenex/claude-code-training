@@ -1,10 +1,5 @@
-import {
-  CARD_CATEGORIES,
-  MAX_SPEND_LIMIT,
-  canTransition,
-  generateCardNumber,
-  lastFour,
-} from "@/lib/cards"
+import { CARD_CATEGORIES, MAX_SPEND_LIMIT, canTransition } from "@/lib/cards"
+import { generateCardNumber, lastFour } from "./card-number"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardCategory, CardStatus, Currency } from "./types"
@@ -76,7 +71,7 @@ export function parseIssueCardInput(body: unknown): ParseResult<IssueCardInput> 
 
   const idempotencyKey = body.idempotencyKey
   if (idempotencyKey !== undefined && (typeof idempotencyKey !== "string" || !/^[\w-]{8,64}$/.test(idempotencyKey))) {
-    return { ok: false, error: "Idempotency key must be 8-64 letters, digits, - or _." }
+    return { ok: false, error: "Idempotency key must be 8-64 characters." }
   }
 
   return {
@@ -100,7 +95,7 @@ export function parseCardStatus(value: unknown): CardStatus | null {
 
 const pad = (n: number, width: number) => String(n).padStart(width, "0")
 
-/** Idempotency keys already used, so a retried POST returns the same card. Lives with the store. */
+/** Keys already used, so a retried POST returns the same card instead of a second one. */
 const issuedByKey = new Map<string, string>()
 
 export type IssueResult =

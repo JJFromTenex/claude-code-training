@@ -26,12 +26,7 @@ function Field({ id, label, children }: { id: string; label: string; children: R
   )
 }
 
-/**
- * The server does the real validation; checks here only save a round trip.
- * The full number is shown once, on the success screen, and dropped from
- * state on close. A fresh idempotency key per open means a retried submit
- * cannot issue two cards.
- */
+/** Server validates; the number is shown once and dropped on close; a per-open idempotency key stops double issue. */
 export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const ids = useId()
@@ -46,7 +41,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
   const [issued, setIssued] = useState<Issued | null>(null)
 
   const merchant = merchants.find((m) => m.id === merchantId)
-  // Cards are issued in the merchant's settlement currency; the server rejects anything else.
+  // Issued in the merchant's settlement currency; the server rejects anything else.
   const currency: Currency = merchant?.currency ?? "USD"
 
   function onOpenChange(next: boolean) {
@@ -105,8 +100,7 @@ export function IssueCardDialog({ merchants }: { merchants: MerchantOption[] }) 
                 </p>
               </div>
               <p className="text-sm text-gray-900 dark:text-gray-50">
-                {issued.card.nickname} · {merchant?.name} · {formatMoney(issued.card.spendLimit, issued.card.currency)}{" "}
-                {issued.card.currency} · {CARD_CATEGORY_LABELS[issued.card.category]} ·{" "}
+                {issued.card.nickname} · {formatMoney(issued.card.spendLimit, issued.card.currency)} {issued.card.currency} · ref{" "}
                 <span className="font-mono">{issued.card.numberRef}</span>
               </p>
             </DrawerBody>
