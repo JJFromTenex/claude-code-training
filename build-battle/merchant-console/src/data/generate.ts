@@ -1,5 +1,7 @@
 import { merchants } from "./merchants"
+import { generateCardNumber, lastFour } from "@/lib/cards"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +150,45 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * A few issued cards so the list, detail, and spend bar have something to
+ * show on first load. Numbers come from the same generator the route uses,
+ * on the 4242 BIN, and only the last four are kept — the seed never holds a
+ * full number either.
+ */
+function generateCards(): Card[] {
+  const seeds: Array<
+    Pick<Card, "merchantId" | "nickname" | "category" | "spendLimit" | "spent" | "status"> & {
+      daysAgo: number
+    }
+  > = [
+    { merchantId: "mch_01", nickname: "Meta ads", category: "advertising", spendLimit: 250_000, spent: 218_400, status: "active", daysAgo: 41 },
+    { merchantId: "mch_04", nickname: "Figma seats", category: "software", spendLimit: 60_000, spent: 12_000, status: "active", daysAgo: 30 },
+    { merchantId: "mch_05", nickname: "Messe Berlin travel", category: "travel", spendLimit: 400_000, spent: 400_000, status: "frozen", daysAgo: 18 },
+    { merchantId: "mch_07", nickname: "Contractor payroll", category: "contractors", spendLimit: 1_500_000, spent: 375_000, status: "active", daysAgo: 9 },
+    { merchantId: "mch_03", nickname: "Old supplies card", category: "office_supplies", spendLimit: 20_000, spent: 19_950, status: "cancelled", daysAgo: 77 },
+  ]
+
+  return seeds.map((seed, index) => {
+    const merchant = merchants.find((m) => m.id === seed.merchantId)!
+    const number = generateCardNumber(rand)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(8, 18), between(0, 59), between(0, 59), 0)
+    const { daysAgo: _daysAgo, ...rest } = seed
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      ...rest,
+      last4: lastFour(number),
+      numberRef: `cn_${pad(index + 1, 6)}`,
+      currency: merchant.currency,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
