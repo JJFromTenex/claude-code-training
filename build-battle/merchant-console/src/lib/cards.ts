@@ -1,11 +1,8 @@
 import { CardCategory, CardStatus } from "@/data/types"
 
 /**
- * Card numbers, masking, and the status state machine.
- *
- * Every generated number starts with the 4242 test BIN, so nothing here can
- * ever resemble a real PAN. The full number exists in exactly one place: the
- * creation response. Records keep the last four and a reference.
+ * Card numbers, masking, and the status state machine. Every generated number
+ * starts with the 4242 test BIN, so nothing here can resemble a real PAN.
  */
 
 export const TEST_BIN = "4242"
@@ -54,10 +51,7 @@ export function isLuhnValid(number: string): boolean {
   return luhnCheckDigit(number.slice(0, -1)) === number.slice(-1)
 }
 
-/**
- * Generate a 16-digit number on the test BIN with a valid check digit.
- * `random` is injectable so the seed can produce deterministic cards.
- */
+/** 16 digits on the test BIN with a valid check digit. `random` is injectable for tests. */
 export function generateCardNumber(random: () => number = Math.random): string {
   const bodyLength = CARD_NUMBER_LENGTH - TEST_BIN.length - 1
   let body = ""

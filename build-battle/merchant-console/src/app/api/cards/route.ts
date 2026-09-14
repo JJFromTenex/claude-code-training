@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
 
-  const { card, number } = issueCard(parsed.value)
-  return NextResponse.json({ card, number }, { status: 201 })
+  const result = issueCard(parsed.value)
+  if (result.replayed) return NextResponse.json({ card: result.card, replayed: true })
+  return NextResponse.json({ card: result.card, number: result.number }, { status: 201 })
 }

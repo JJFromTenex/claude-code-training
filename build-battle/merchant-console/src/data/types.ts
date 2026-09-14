@@ -98,6 +98,8 @@ export interface Card {
   spent: number
   currency: Currency
   status: CardStatus
+  /** Every status the card has held, oldest first. UTC timestamps. */
+  history: { status: CardStatus; at: string }[]
   /** ISO 8601, always UTC. */
   createdAt: string
 }

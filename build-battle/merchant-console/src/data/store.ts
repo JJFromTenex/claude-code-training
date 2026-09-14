@@ -28,8 +28,9 @@ declare global {
 }
 
 function createStore(): Store {
-  const { payments, refunds, disputes, payouts, cards } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards }
+  const { payments, refunds, disputes, payouts } = generate()
+  // Cards are issued from the console, never seeded: nothing here may resemble a real card.
+  return { merchants, payments, refunds, disputes, payouts, cards: [] }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
