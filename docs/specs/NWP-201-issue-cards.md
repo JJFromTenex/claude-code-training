@@ -18,12 +18,12 @@ Ops asks the platform team for a virtual card over Slack; it takes hours, happen
 
 | Rule | Source | If ignored |
 | --- | --- | --- |
-| Money is integer minor units; `$250.00` is `25000` | `merchant-console/CLAUDE.md` §1, `.claude/rules/money.md` | the wrong-limit bug this ticket exists for |
-| `4242` BIN + valid Luhn, generated server-side | `.claude/rules/cards.md` | something resembling a real PAN |
-| Full number returned once; records hold last4 + reference | `.claude/rules/cards.md`, `api-routes.md` | numbers leak through list/detail |
-| `active ⇄ frozen`, either → `cancelled` (terminal); guard on the server | `.claude/rules/cards.md` | a cancelled card comes back |
-| Every client field allowlisted on the server | `.claude/rules/api-routes.md` | `currency: "XYZ"` reaches the store |
-| Existing components, labelled inputs, no DB/ORM | `.claude/rules/components.md`, ticket | second dialog impl; wasted clock |
+| Money is integer minor units; `$250.00` is `25000` | `build-battle/merchant-console/CLAUDE.md` §1, `build-battle/merchant-console/.claude/rules/money.md` | the wrong-limit bug this ticket exists for |
+| `4242` BIN + valid Luhn, generated server-side | `build-battle/merchant-console/.claude/rules/cards.md` | something resembling a real PAN |
+| Full number returned once; records hold last4 + reference | `build-battle/merchant-console/.claude/rules/cards.md`, `build-battle/merchant-console/.claude/rules/api-routes.md` | numbers leak through list/detail |
+| `active ⇄ frozen`, either → `cancelled` (terminal); guard on the server | `build-battle/merchant-console/.claude/rules/cards.md` | a cancelled card comes back |
+| Every client field allowlisted on the server | `build-battle/merchant-console/.claude/rules/api-routes.md` | `currency: "XYZ"` reaches the store |
+| Existing components, labelled inputs, no DB/ORM | `build-battle/merchant-console/.claude/rules/components.md`, the ticket | second dialog impl; wasted clock |
 
 ## Approach
 
