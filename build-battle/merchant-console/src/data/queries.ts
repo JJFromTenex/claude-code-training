@@ -35,6 +35,17 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   }
 }
 
+export type ExportScope = "filter" | "all"
+
+/**
+ * NWP-101: ops chooses between exporting the current filter or every
+ * payment. Same allowlist discipline as parseFilters — an unrecognized or
+ * missing value falls back to "filter", the safer, narrower default.
+ */
+export function parseExportScope(value: string | null): ExportScope {
+  return value === "all" ? "all" : "filter"
+}
+
 /**
  * The one payment query builder. Every list, export, and metric goes through
  * it. A second implementation is a defect, not a shortcut.

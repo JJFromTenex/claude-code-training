@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,43 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a requested subset in the order given, not the canonical order", () => {
+    expect(parseExportColumns(["amount", "id"])).toEqual(["amount", "id"])
+  })
+
+  it("excludes card last four by default — NWP-101's whole point", () => {
+    const defaults = parseExportColumns(null)
+    expect(defaults).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(defaults).not.toContain("last4")
+  })
+
+  it("keeps an explicit empty selection empty, rather than falling back to the default", () => {
+    expect(parseExportColumns([])).toEqual([])
+  })
+
+  it("drops unknown column names instead of passing them through", () => {
+    // Column names arrive from the client — this is the allowlist NWP-101's
+    // notes call for. A bogus or malicious value is silently dropped, never
+    // forwarded to toCsv or a filename.
+    expect(parseExportColumns(["id", "'; DROP TABLE payments; --"])).toEqual(["id"])
+  })
+
+  it("de-duplicates a repeated column, keeping its first position", () => {
+    expect(parseExportColumns(["amount", "id", "amount"])).toEqual(["amount", "id"])
+  })
+})
+
 describe("exportFilename", () => {
-  it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
+  it("stamps the UTC date and the scope label, so two exports on the same day collide by design", () => {
+    expect(exportFilename("disputed", new Date("2026-03-14T23:00:00.000Z"))).toBe(
+      "payments-disputed-2026-03-14.csv",
+    )
+  })
+
+  it("uses the scope label as given — the route decides what it is (a status, 'all', or 'filtered')", () => {
+    expect(exportFilename("all", new Date("2026-01-01T00:00:00.000Z"))).toBe(
+      "payments-all-2026-01-01.csv",
     )
   })
 })

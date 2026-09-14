@@ -25,6 +25,35 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/** What ops gets when they haven't chosen columns explicitly. Card last four
+ * is opt-in, not opt-out — see NWP-101. */
+export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+function isExportColumn(value: string): value is ExportColumn {
+  return (EXPORT_COLUMNS as readonly string[]).includes(value)
+}
+
+/**
+ * Column names arrive from the client — validate against the allowlist
+ * before they reach toCsv or a filename, never interpolate them anywhere.
+ *
+ * `null` (the param was absent) means "ops didn't choose" → the default
+ * set. An explicit `[]` means ops deselected every column and stays `[]` —
+ * the route decides what to do with that (reject the request), and the
+ * dialog decides what to do with that (disable Download). Order is
+ * preserved and unknown/duplicate values are dropped silently.
+ */
+export function parseExportColumns(requested: string[] | null): ExportColumn[] {
+  if (requested === null) return DEFAULT_EXPORT_COLUMNS
+  const seen = new Set<ExportColumn>()
+  for (const value of requested) {
+    if (isExportColumn(value)) seen.add(value)
+  }
+  return [...seen]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +95,12 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * `scopeLabel` names what's in the file — a status like "disputed", "all"
+ * for the all-payments scope, or "filtered" as a fallback — so
+ * `payments-disputed-2026-08-13.csv` says what it is before it's opened.
+ * The route decides the label; this just stamps it next to the UTC date.
+ */
+export function exportFilename(scopeLabel: string, date = new Date()): string {
+  return `payments-${scopeLabel}-${date.toISOString().slice(0, 10)}.csv`
 }
