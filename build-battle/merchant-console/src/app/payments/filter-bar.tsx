@@ -25,7 +25,7 @@ export function PaymentsFilterBar({
   merchants,
   current,
 }: {
-  statuses: string[]
+  statuses: readonly string[]
   merchants: { id: string; name: string }[]
   current: { status: string; merchantId: string; search: string }
 }) {

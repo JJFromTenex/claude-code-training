@@ -80,7 +80,7 @@ export function ExportDialog({
           Export
         </Button>
       </DrawerTrigger>
-      <DrawerContent>
+      <DrawerContent className="inset-0 m-auto h-fit max-h-[90vh] max-sm:inset-x-0 sm:inset-y-0 sm:right-0 data-[state=closed]:!animate-hide data-[state=open]:!animate-dialogOverlayShow">
         <DrawerHeader>
           <DrawerTitle>Export payments</DrawerTitle>
           <DrawerDescription>
@@ -164,8 +164,12 @@ export function ExportDialog({
           </DrawerClose>
           {columns.length === 0 ? (
             <div className="flex flex-col items-end gap-1">
-              <Button disabled>Download</Button>
-              <p className="text-xs text-gray-500">Select at least one column.</p>
+              <Button disabled aria-describedby="export-columns-hint">
+                Download
+              </Button>
+              <p id="export-columns-hint" className="text-xs text-gray-500">
+                Select at least one column.
+              </p>
             </div>
           ) : (
             <Button asChild onClick={() => setOpen(false)}>

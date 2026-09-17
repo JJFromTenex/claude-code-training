@@ -10,22 +10,17 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { merchantById, merchants } from "@/data/merchants"
-import { filterPayments, parseFilters, queryPayments } from "@/data/queries"
-import { PaymentStatus } from "@/data/types"
+import {
+  filterPayments,
+  parseFilters,
+  PAYMENT_STATUS_OPTIONS,
+  queryPayments,
+} from "@/data/queries"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { ExportDialog } from "./export-dialog"
 import { PaymentsFilterBar } from "./filter-bar"
-
-const STATUSES: (PaymentStatus | "all")[] = [
-  "all",
-  "captured",
-  "authorized",
-  "refunded",
-  "disputed",
-  "failed",
-]
 
 export default async function PaymentsPage({
   searchParams,
@@ -51,7 +46,7 @@ export default async function PaymentsPage({
     <section aria-label="Payments">
       <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:p-6">
         <PaymentsFilterBar
-          statuses={STATUSES}
+          statuses={PAYMENT_STATUS_OPTIONS}
           merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
           current={{
             status: (filters.status as string) ?? "all",

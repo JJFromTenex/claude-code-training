@@ -2,13 +2,13 @@ import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Payment, PaymentFilters, PaymentStatus } from "./types"
 
-const STATUSES: readonly (PaymentStatus | "all")[] = [
+export const PAYMENT_STATUS_OPTIONS: readonly (PaymentStatus | "all")[] = [
   "all",
-  "authorized",
   "captured",
+  "authorized",
   "refunded",
-  "failed",
   "disputed",
+  "failed",
 ]
 
 /**
@@ -22,7 +22,7 @@ export function parseFilters(params: URLSearchParams): PaymentFilters {
   const page = Number(params.get("page") ?? "1")
 
   return {
-    status: STATUSES.includes(status as PaymentStatus)
+    status: PAYMENT_STATUS_OPTIONS.includes(status as PaymentStatus)
       ? (status as PaymentStatus)
       : "all",
     merchantId: params.get("merchantId") ?? undefined,
