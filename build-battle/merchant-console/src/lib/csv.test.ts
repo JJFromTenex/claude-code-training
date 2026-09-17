@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  buildExportHref,
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -74,6 +82,15 @@ describe("toCsv", () => {
   it("emits a header even with no rows", () => {
     expect(toCsv([], ["id"])).toBe("id")
   })
+
+  it("with DEFAULT_EXPORT_COLUMNS, omits last4 and keeps amount/currency separate", () => {
+    const lines = toCsv([payment], DEFAULT_EXPORT_COLUMNS).split("\n")
+    expect(lines[0]).not.toContain("last4")
+    expect(lines[0]).toContain("amount")
+    expect(lines[0]).toContain("currency")
+    const cells = lines[1].split(",")
+    expect(cells[lines[0].split(",").indexOf("amount")]).toBe("$250.00")
+  })
 })
 
 describe("exportFilename", () => {
@@ -81,5 +98,80 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("includes a valid label in the filename", () => {
+    expect(exportFilename(new Date("2026-08-13T12:00:00.000Z"), "disputed")).toBe(
+      "payments-disputed-2026-08-13.csv",
+    )
+    expect(exportFilename(new Date("2026-08-13T12:00:00.000Z"), "all")).toBe(
+      "payments-all-2026-08-13.csv",
+    )
+  })
+
+  it("ignores a label that does not match the allowlist pattern", () => {
+    expect(exportFilename(new Date("2026-08-13T12:00:00.000Z"), "../x")).toBe(
+      "payments-2026-08-13.csv",
+    )
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("is EXPORT_COLUMNS without last4", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+  })
+})
+
+describe("parseExportScope", () => {
+  it('returns "all" only for exactly "all"', () => {
+    expect(parseExportScope("all")).toBe("all")
+  })
+
+  it('defaults to "current" for null or anything else', () => {
+    expect(parseExportScope(null)).toBe("current")
+    expect(parseExportScope("weird")).toBe("current")
+    expect(parseExportScope("ALL")).toBe("current")
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("preserves the order given", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("drops unknown or injected column names", () => {
+    expect(parseExportColumns("id,evil;DROP,__proto__,,constructor")).toEqual(["id"])
+  })
+
+  it("dedupes, keeping the first occurrence", () => {
+    expect(parseExportColumns("id,amount,id")).toEqual(["id", "amount"])
+  })
+
+  it("returns an empty list when every column is invalid", () => {
+    expect(parseExportColumns("nope,also-nope")).toEqual([])
+  })
+
+  it("returns an empty list for null", () => {
+    expect(parseExportColumns(null)).toEqual([])
+  })
+})
+
+describe("buildExportHref", () => {
+  it("strips page and keeps filters for the current scope", () => {
+    const href = buildExportHref("status=disputed&search=acme&page=2", "current", [
+      "id",
+      "amount",
+    ])
+    expect(href).toBe(
+      "/api/payments/export?status=disputed&search=acme&scope=current&columns=id%2Camount",
+    )
+  })
+
+  it("drops all existing params for the all scope", () => {
+    const href = buildExportHref("status=disputed&search=acme&page=2", "all", ["id"])
+    expect(href).toBe("/api/payments/export?scope=all&columns=id")
   })
 })

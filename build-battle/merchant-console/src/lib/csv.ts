@@ -25,6 +25,29 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+export const DEFAULT_EXPORT_COLUMNS: readonly ExportColumn[] = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+export const EXPORT_SCOPES = ["current", "all"] as const
+export type ExportScope = (typeof EXPORT_SCOPES)[number]
+
+export function parseExportScope(raw: string | null): ExportScope {
+  return raw === "all" ? "all" : "current"
+}
+
+export function parseExportColumns(raw: string | null): ExportColumn[] {
+  if (!raw) return []
+  const isExportColumn = (value: string): value is ExportColumn =>
+    (EXPORT_COLUMNS as readonly string[]).includes(value)
+  const seen = new Set<ExportColumn>()
+  for (const part of raw.split(",")) {
+    const trimmed = part.trim()
+    if (isExportColumn(trimmed)) seen.add(trimmed)
+  }
+  return [...seen]
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +89,23 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+export function exportFilename(date = new Date(), label?: string): string {
+  const stamp = date.toISOString().slice(0, 10)
+  const safeLabel = label && /^[a-z_]+$/.test(label) ? label : undefined
+  return safeLabel ? `payments-${safeLabel}-${stamp}.csv` : `payments-${stamp}.csv`
+}
+
+export function buildExportHref(
+  query: string,
+  scope: ExportScope,
+  columns: readonly ExportColumn[],
+): string {
+  const params =
+    scope === "all" ? new URLSearchParams() : new URLSearchParams(query)
+  params.delete("page")
+  params.delete("scope")
+  params.delete("columns")
+  params.set("scope", scope)
+  params.set("columns", columns.join(","))
+  return `/api/payments/export?${params.toString()}`
 }
