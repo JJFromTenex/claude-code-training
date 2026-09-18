@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +82,43 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a subset of columns in the order requested, not the declaration order", () => {
+    expect(parseExportColumns("amount,id")).toEqual(["amount", "id"])
+  })
+
+  it("excludes card last-four by default when no columns param is given", () => {
+    const columns = parseExportColumns(null)
+    expect(columns).toEqual(DEFAULT_EXPORT_COLUMNS)
+    expect(columns).not.toContain("last4")
+  })
+
+  it("drops unknown names and duplicates rather than trusting the client", () => {
+    expect(parseExportColumns("id,bogus,id,amount")).toEqual(["id", "amount"])
+  })
+
+  it("returns an empty selection when nothing valid was requested", () => {
+    expect(parseExportColumns("")).toEqual([])
+    expect(parseExportColumns("bogus,nonsense")).toEqual([])
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
-    expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
-      "payments-2026-03-14.csv",
-    )
+    expect(
+      exportFilename("current", "disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-disputed-2026-03-14.csv")
+  })
+
+  it("uses 'all' for the all-payments scope regardless of status", () => {
+    expect(
+      exportFilename("all", "disputed", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-all-2026-03-14.csv")
+  })
+
+  it("uses 'filtered' for a current-filter export with no single status", () => {
+    expect(
+      exportFilename("current", "all", new Date("2026-03-14T23:00:00.000Z")),
+    ).toBe("payments-filtered-2026-03-14.csv")
   })
 })
