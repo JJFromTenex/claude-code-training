@@ -4,12 +4,19 @@ The internal tool support and ops staff use to look up a payment, refund it, wor
 
 Northwind Payments is fictional. Every merchant, cardholder, amount, and card in this app is generated.
 
-## Run it
+## Commands
 
 ```bash
 npm install
-npm run dev
+npm run dev          # dev server, http://localhost:3000
+npm run build
+npm run lint
+npm test              # vitest run — full suite
+npm run test:watch
 ```
+
+Run a single test file: `npx vitest run src/lib/csv.test.ts`
+Run tests matching a name: `npx vitest run -t "some test name"`
 
 No database, no seed step, no Docker.
 
@@ -46,6 +53,18 @@ These four explain most of the code, and breaking them is how bugs get in here.
 - Generated numbers use the `4242` test BIN and a valid Luhn check digit. Nothing here may resemble a real PAN.
 - The full number is returned exactly once, in the creation response. After that, last four only.
 - Status is a state machine: `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal.
+
+## Architecture
+
+Request flow is one straight line, and every layer only talks to the one next to it:
+
+`src/data/generate.ts` seeds payments, refunds, disputes, and payouts once. `src/data/store.ts` holds them in memory — kept on `globalThis` specifically so Next's dev-server module reloading doesn't hand a request a fresh, empty store. Every query and route handler reads and writes that same object.
+
+`src/data/queries.ts` is the query builder referenced throughout this file: `parseFilters` turns request params into an allowlisted `PaymentFilters`, and `filterPayments` → `sortPayments` → `paginate` (composed as `queryPayments`) is the only filtering path. `GET /api/payments` and `GET /api/payments/export` both call into it rather than each filtering independently — extend it rather than adding a parallel one.
+
+`src/lib/csv.ts` is a pure serializer, decoupled from HTTP: `Payment[]` plus a column list in, a CSV string out. The export route currently hardcodes the full column set and exports only the filtered set the query builder returns, not just the visible page.
+
+`src/lib/money.ts` and `src/lib/dates.ts` are the only sanctioned places for currency formatting and timezone conversion — everything upstream of them stays in integer minor units and UTC ISO strings.
 
 ## Layout
 
