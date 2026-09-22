@@ -1,4 +1,7 @@
-export type Currency = "USD" | "EUR" | "GBP"
+/** The supported currencies, and the allowlist server-side validation uses. */
+export const CURRENCIES = ["USD", "EUR", "GBP"] as const
+
+export type Currency = (typeof CURRENCIES)[number]
 
 export type PaymentStatus =
   | "authorized"
@@ -10,6 +13,8 @@ export type PaymentStatus =
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
+
+export type CardStatus = "active" | "frozen" | "cancelled"
 
 export interface Merchant {
   id: string
@@ -69,6 +74,22 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four of the generated number. The full number is never stored. */
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {

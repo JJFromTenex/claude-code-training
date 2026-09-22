@@ -1,5 +1,6 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +149,47 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  return { payments, refunds, disputes, payouts, cards: generateCards() }
+}
+
+/** Days before the anchor date, as a UTC timestamp. */
+function daysBeforeAnchor(days: number): string {
+  const date = new Date(GENERATED_AT)
+  date.setUTCDate(date.getUTCDate() - days)
+  return date.toISOString()
+}
+
+/**
+ * Two cards, spelled out rather than generated: one comfortably under its
+ * limit and one past 80%, so spend against the limit is visible on both sides
+ * of the threshold. They carry last4 only — the full number exists once, in
+ * the creation response, and is never stored.
+ */
+function generateCards(): Card[] {
+  return [
+    {
+      id: "card_0001",
+      nickname: "Ad spend — Meta",
+      merchantId: "mch_01",
+      last4: "8291",
+      spendLimit: 250_000,
+      spend: 41_250,
+      currency: "USD",
+      status: "active",
+      createdAt: daysBeforeAnchor(18),
+    },
+    {
+      id: "card_0002",
+      nickname: "Contractor tools",
+      merchantId: "mch_04",
+      last4: "3117",
+      spendLimit: 120_000,
+      spend: 103_500,
+      currency: "GBP",
+      status: "frozen",
+      createdAt: daysBeforeAnchor(45),
+    },
+  ]
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
