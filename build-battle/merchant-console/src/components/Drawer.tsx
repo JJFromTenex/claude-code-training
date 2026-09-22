@@ -53,12 +53,15 @@ const DrawerOverlay = React.forwardRef<
         "bg-black/30",
         // transition
         "data-[state=open]:animate-dialogOverlayShow data-[state=closed]:animate-hide",
+        // Radix does not unmount these under React 19, and a finished exit
+        // animation reverts to the base style, so a closed drawer stayed fully
+        // visible and clickable. Gate visibility on the state instead.
+        "data-[state=closed]:hidden",
         className,
       )}
       {...props}
       style={{
         animationDuration: "400ms",
-        animationFillMode: "backwards",
       }}
     />
   )
@@ -72,24 +75,27 @@ const DrawerContent = React.forwardRef<
 >(({ className, ...props }, forwardedRef) => {
   return (
     <DrawerPortal>
-      <DrawerOverlay>
-        <DrawerPrimitives.Content
-          ref={forwardedRef}
-          className={cx(
-            // base
-            "fixed inset-y-2 mx-auto flex w-[95vw] flex-1 flex-col overflow-y-auto rounded-md border p-4 shadow-lg focus:outline-none max-sm:inset-x-2 sm:inset-y-2 sm:right-2 sm:max-w-lg sm:p-6",
-            // border color
-            "border-gray-200 dark:border-gray-900",
-            // background color
-            "bg-white dark:bg-[#090E1A]",
-            // transition
-            "data-[state=closed]:animate-drawerSlideRightAndFade data-[state=open]:animate-drawerSlideLeftAndFade",
-            focusRing,
-            className,
-          )}
-          {...props}
-        />
-      </DrawerOverlay>
+      {/* Overlay and Content are siblings here, which is the structure Radix
+          documents; they used to be nested, which gave Content its stacking
+          context for free and is why it now needs z-50 explicitly. */}
+      <DrawerOverlay />
+      <DrawerPrimitives.Content
+        ref={forwardedRef}
+        className={cx(
+          // base
+          "fixed inset-y-2 z-50 mx-auto flex w-[95vw] flex-1 flex-col overflow-y-auto rounded-md border p-4 shadow-lg focus:outline-none max-sm:inset-x-2 sm:inset-y-2 sm:right-2 sm:max-w-lg sm:p-6",
+          // border color
+          "border-gray-200 dark:border-gray-900",
+          // background color
+          "bg-white dark:bg-[#090E1A]",
+          // transition
+          "data-[state=closed]:animate-drawerSlideRightAndFade data-[state=open]:animate-drawerSlideLeftAndFade",
+          "data-[state=closed]:hidden",
+          focusRing,
+          className,
+        )}
+        {...props}
+      />
     </DrawerPortal>
   )
 })
