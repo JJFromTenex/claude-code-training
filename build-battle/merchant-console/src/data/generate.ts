@@ -1,5 +1,7 @@
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatusChange,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +150,9 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+
+  return { payments, refunds, disputes, payouts, cards }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +194,82 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+/**
+ * A handful of issued cards so the list, the spend bar, and the frozen and
+ * cancelled states have something to show at boot. Records carry the last
+ * four and a reference only; no seed card has ever had a full number.
+ */
+function generateCards(): Card[] {
+  const issuedAt = (daysAgo: number) =>
+    new Date(GENERATED_AT.getTime() - daysAgo * 86_400_000).toISOString()
+
+  const seeds: Omit<Card, "history">[] = [
+    {
+      id: "card_000001",
+      nickname: "Ad spend · Meta",
+      merchantId: "mch_01",
+      category: "advertising",
+      spendLimit: 250000,
+      spent: 212500,
+      currency: "USD",
+      status: "active",
+      last4: "0017",
+      reference: "ref_seed_0000000001",
+      createdAt: issuedAt(41),
+    },
+    {
+      id: "card_000002",
+      nickname: "Figma seats",
+      merchantId: "mch_04",
+      category: "software",
+      spendLimit: 60000,
+      spent: 14400,
+      currency: "GBP",
+      status: "active",
+      last4: "4242",
+      reference: "ref_seed_0000000002",
+      createdAt: issuedAt(27),
+    },
+    {
+      id: "card_000003",
+      nickname: "Contractor · Q3 build",
+      merchantId: "mch_05",
+      category: "contractors",
+      spendLimit: 1200000,
+      spent: 480000,
+      currency: "EUR",
+      status: "frozen",
+      last4: "8830",
+      reference: "ref_seed_0000000003",
+      createdAt: issuedAt(12),
+    },
+    {
+      id: "card_000004",
+      nickname: "Trade show travel",
+      merchantId: "mch_07",
+      category: "travel",
+      spendLimit: 400000,
+      spent: 400000,
+      currency: "USD",
+      status: "cancelled",
+      last4: "5561",
+      reference: "ref_seed_0000000004",
+      createdAt: issuedAt(63),
+    },
+  ]
+
+  return seeds.map((seed) => {
+    const history: CardStatusChange[] = [{ status: "active", at: seed.createdAt }]
+    if (seed.status !== "active") {
+      history.push({
+        status: seed.status,
+        at: new Date(
+          new Date(seed.createdAt).getTime() + 5 * 86_400_000,
+        ).toISOString(),
+      })
+    }
+    return { ...seed, history }
+  })
 }

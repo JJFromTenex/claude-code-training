@@ -11,6 +11,9 @@ const SYMBOLS: Record<Currency, string> = {
   GBP: "£",
 }
 
+/** The currencies the console knows. Client input is checked against this. */
+export const CURRENCIES = Object.keys(SYMBOLS) as readonly Currency[]
+
 /** Render minor units for display. The only place a decimal point appears. */
 export function formatMoney(minorUnits: number, currency: Currency): string {
   const negative = minorUnits < 0
