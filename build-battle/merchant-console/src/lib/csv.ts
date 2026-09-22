@@ -25,6 +25,38 @@ export const EXPORT_COLUMNS = [
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
 
+/**
+ * The columns ops gets by default. Card last four is off: most exports go to a
+ * merchant, and an unmasked last four in one of those is the near-miss NWP-101
+ * is here to prevent. Ops opts back in per export.
+ */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+)
+
+/**
+ * Turn a client-supplied `columns` value into a validated column list.
+ *
+ * Column names arrive from the client, so they are checked against
+ * EXPORT_COLUMNS before they reach the serializer or the filename. Unknown
+ * names are dropped, duplicates collapse, and the caller's order is kept so the
+ * file matches what ops asked for. An empty or all-invalid input yields [].
+ */
+export function parseColumns(param: string | null): ExportColumn[] {
+  if (!param) return []
+  const allowed = new Set<string>(EXPORT_COLUMNS)
+  const seen = new Set<ExportColumn>()
+  const columns: ExportColumn[] = []
+  for (const raw of param.split(",")) {
+    const name = raw.trim()
+    if (allowed.has(name) && !seen.has(name as ExportColumn)) {
+      seen.add(name as ExportColumn)
+      columns.push(name as ExportColumn)
+    }
+  }
+  return columns
+}
+
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
   return value
@@ -66,6 +98,12 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Download filename. The optional slug reflects the export scope so ops can
+ * tell files apart on disk, for example `payments-disputed-2026-08-13.csv`.
+ * The date is the UTC day, matching how the rest of the app buckets.
+ */
+export function exportFilename(date = new Date(), slug?: string): string {
+  const day = date.toISOString().slice(0, 10)
+  return slug ? `payments-${slug}-${day}.csv` : `payments-${day}.csv`
 }
