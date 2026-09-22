@@ -1,5 +1,6 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +149,7 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  return { payments, refunds, disputes, payouts, cards: generateCards() }
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
@@ -190,4 +191,69 @@ function generatePayouts(payments: Payment[]): Payout[] {
   }
 
   return payouts
+}
+
+/**
+ * Seeded cards, hard-coded rather than generated so the set is identical on
+ * every machine. Spend is deliberately non-zero: nothing in this app ever
+ * spends on a card, and a detail page where every card reads 0% proves
+ * nothing about the spend-against-limit display.
+ */
+function generateCards(): Card[] {
+  const issuedAt = (daysAgo: number) => {
+    const at = new Date(GENERATED_AT)
+    at.setUTCDate(at.getUTCDate() - daysAgo)
+    return at.toISOString()
+  }
+
+  return [
+    {
+      id: "card_000001",
+      nickname: "Meta ads — Q3",
+      merchantId: "mch_01",
+      spendLimit: 500_000,
+      spent: 212_500,
+      currency: "USD",
+      status: "active",
+      last4: "4242",
+      reference: "cref_seed_000001",
+      createdAt: issuedAt(34),
+    },
+    {
+      id: "card_000002",
+      nickname: "Figma seats",
+      merchantId: "mch_02",
+      spendLimit: 120_000,
+      spent: 104_000,
+      currency: "USD",
+      status: "active",
+      last4: "1881",
+      reference: "cref_seed_000002",
+      createdAt: issuedAt(21),
+    },
+    {
+      id: "card_000003",
+      nickname: "Contractor — Rivera",
+      merchantId: "mch_03",
+      spendLimit: 250_000,
+      spent: 0,
+      currency: "USD",
+      status: "frozen",
+      last4: "5310",
+      reference: "cref_seed_000003",
+      createdAt: issuedAt(12),
+    },
+    {
+      id: "card_000004",
+      nickname: "Legacy AWS",
+      merchantId: "mch_04",
+      spendLimit: 100_000,
+      spent: 98_000,
+      currency: "GBP",
+      status: "cancelled",
+      last4: "7702",
+      reference: "cref_seed_000004",
+      createdAt: issuedAt(63),
+    },
+  ]
 }

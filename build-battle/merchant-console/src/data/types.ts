@@ -82,3 +82,28 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units. Never a float. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  last4: string
+  /** Opaque stand-in for the network reference. Never the full number. */
+  reference: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+/**
+ * The only shape that carries a full card number. Returned once, by the
+ * create handler, and never stored.
+ */
+export type IssuedCard = Card & { number: string }
