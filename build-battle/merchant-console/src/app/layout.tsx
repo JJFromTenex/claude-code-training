@@ -76,7 +76,7 @@ export default async function RootLayout({
                 <div className="mr-2 h-4 w-px bg-gray-200 dark:bg-gray-800" />
                 <Breadcrumbs />
               </header>
-              <main className="min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-925">
+              <main className="min-h-[calc(100vh-4rem)] bg-[#722F37] dark:bg-[#4A1F25]">
                 {children}
               </main>
             </div>
