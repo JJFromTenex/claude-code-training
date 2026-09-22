@@ -65,6 +65,13 @@ export function IssueCardDialog({
   const currency = selectedMerchant?.currency ?? ""
 
   function handleOpenChange(nextOpen: boolean) {
+    // A submit in flight owns a requestId that hasn't been handed to the
+    // parent list yet. Closing now (Escape, overlay click, or Cancel) would
+    // either orphan the card the request is about to create, or - on retry
+    // with a freshly minted requestId - duplicate it. Block the close until
+    // the request settles; the form's own disabled state already signals why.
+    if (!nextOpen && submitting) return
+
     if (nextOpen) {
       // Freshly opened for a new attempt: a fresh requestId and a blank form.
       setRequestId(crypto.randomUUID())
@@ -295,7 +302,7 @@ export function IssueCardDialog({
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="secondary">
+                <Button type="button" variant="secondary" disabled={submitting}>
                   Cancel
                 </Button>
               </DialogClose>
