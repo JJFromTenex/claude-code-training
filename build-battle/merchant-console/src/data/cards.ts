@@ -6,6 +6,7 @@ import {
   MAX_SPEND_LIMIT,
 } from "@/lib/cards"
 import { CURRENCIES } from "@/lib/money"
+import { pad } from "./generate"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardCategory, CardStatus, Currency } from "./types"
@@ -117,8 +118,6 @@ export function listCards(): Card[] {
 export function cardById(id: string): Card | null {
   return store.cards.find((c) => c.id === id) ?? null
 }
-
-const pad = (n: number, width = 6) => String(n).padStart(width, "0")
 
 /**
  * Creates the card and returns the full number alongside it, once. The

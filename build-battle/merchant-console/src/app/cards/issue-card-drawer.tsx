@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
-import { CARD_CATEGORIES } from "@/lib/cards"
+import { CARD_CATEGORIES, MAX_SPEND_LIMIT } from "@/lib/cards"
 import { CURRENCIES, formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -69,6 +69,9 @@ export function IssueCardDrawer({
 
   const update = (changes: Partial<typeof form>) =>
     setForm((current) => ({ ...current, ...changes }))
+
+  const merchant = merchants.find((m) => m.id === form.merchantId)
+  const currencyMismatch = merchant && merchant.currency !== form.currency
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -131,7 +134,7 @@ export function IssueCardDrawer({
           Issue card
         </Button>
       </DrawerTrigger>
-      <DrawerContent aria-describedby={undefined}>
+      <DrawerContent>
         {issued ? (
           <>
             <DrawerHeader>
@@ -275,9 +278,15 @@ export function IssueCardDrawer({
                 </div>
               </div>
               <p className="-mt-2 text-xs text-gray-500">
-                Up to {formatMoney(5_000_000, form.currency)}. The limit cannot
-                be changed after issue.
+                Up to {formatMoney(MAX_SPEND_LIMIT, form.currency)}. The limit
+                cannot be changed after issue.
               </p>
+              {currencyMismatch && (
+                <p className="-mt-2 text-xs text-amber-700 dark:text-amber-500">
+                  {merchant.name} settles in {merchant.currency}. Issuing in{" "}
+                  {form.currency} is allowed but unusual.
+                </p>
+              )}
 
               <div>
                 <label

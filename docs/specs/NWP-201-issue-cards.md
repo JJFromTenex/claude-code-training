@@ -58,10 +58,12 @@ Cards get their own vertical slice that mirrors payments: a `Card` type, a `card
 | `src/data/cards.ts` | add | seed cards, `listCards`, `cardById`, `parseIssueCardInput`, `issueCard`, `changeCardStatus` |
 | `src/data/cards.test.ts` | add | server-side validation cases from the ticket |
 | `src/data/store.ts` | change | `cards` on the store |
+| `src/data/generate.ts` | change | four seed cards beside the other seed data; `pad` exported for card ids |
 | `src/app/api/cards/route.ts` | add | `GET` list, `POST` issue (the one response with the full number) |
 | `src/app/api/cards/[id]/route.ts` | add | `GET` detail, `PATCH` status transition |
 | `src/app/cards/page.tsx` | add | list at `/cards`, empty state |
 | `src/app/cards/[id]/page.tsx` | add | detail, spend against limit, history |
+| `src/app/cards/not-found.tsx` | add | written 404 for an unknown card id |
 | `src/app/cards/issue-card-drawer.tsx` | add | client form, server errors shown, reveal-once success screen |
 | `src/app/cards/status-actions.tsx` | add | freeze/unfreeze/cancel without reload |
 | `src/components/ui/cards/SpendProgress.tsx` | add | bar, amber past 80% |

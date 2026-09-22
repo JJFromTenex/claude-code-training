@@ -54,7 +54,8 @@ const REASON_CODES = [
   "13.7 Cancelled Merchandise",
 ]
 
-const pad = (n: number, width = 6) => String(n).padStart(width, "0")
+/** Zero-padded sequence for ids like pay_000123. Shared with cards. */
+export const pad = (n: number, width = 6) => String(n).padStart(width, "0")
 
 /** The anchor date. Fixed, so "the last 30 days" is stable across runs. */
 export const GENERATED_AT = new Date("2026-08-13T00:00:00.000Z")

@@ -17,6 +17,7 @@ import Link from "next/link"
 import { IssueCardDrawer } from "./issue-card-drawer"
 import { CardStatusActions } from "./status-actions"
 
+/** The list reads the in-memory store on every request; never prerender it. */
 export const dynamic = "force-dynamic"
 
 export default function CardsPage() {
