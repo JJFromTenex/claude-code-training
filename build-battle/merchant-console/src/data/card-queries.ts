@@ -1,5 +1,6 @@
 import { canTransition } from "@/lib/card-status"
-import { cardReference, generateCardNumber, nextCardId } from "@/lib/cards"
+import { cardReference, generateCardNumber } from "@/lib/card-number"
+import { nextCardId } from "@/lib/cards"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardStatus, Currency, IssuedCard } from "./types"
@@ -68,9 +69,15 @@ export function parseCardInput(
   }
 }
 
-/** Every issued card, newest first. */
-export function listCards(): Card[] {
-  return [...store.cards].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+/**
+ * Every issued card, newest first. Cancelled cards are held back unless asked
+ * for: they are terminal, they accumulate, and ops is normally looking at the
+ * cards that can still spend.
+ */
+export function listCards({ includeCancelled = false } = {}): Card[] {
+  return [...store.cards]
+    .filter((card) => includeCancelled || card.status !== "cancelled")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 export function cardById(id: string): Card | null {

@@ -7,8 +7,12 @@ import { NextRequest, NextResponse } from "next/server"
  * cannot leak from here. The create response is the one exception, and the
  * request body is never logged.
  */
-export function GET() {
-  return NextResponse.json({ cards: listCards() })
+export function GET(request: NextRequest) {
+  // Only the literal "1" opts in, so anything else a client sends is ignored
+  // rather than interpreted.
+  const includeCancelled =
+    request.nextUrl.searchParams.get("includeCancelled") === "1"
+  return NextResponse.json({ cards: listCards({ includeCancelled }) })
 }
 
 export async function POST(request: NextRequest) {

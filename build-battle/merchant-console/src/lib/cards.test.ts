@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { Card } from "@/data/types"
 import {
-  generateCardNumber,
+  spendPercentage,
   isValidLuhn,
   luhnCheckDigit,
   maskCardNumber,
   nextCardId,
+  SPEND_AMBER_AT,
   TEST_BIN,
 } from "./cards"
 
@@ -43,27 +44,6 @@ describe("isValidLuhn", () => {
   })
 })
 
-describe("generateCardNumber", () => {
-  it("returns sixteen digits on the test BIN", () => {
-    const number = generateCardNumber()
-    expect(number).toHaveLength(16)
-    expect(number.startsWith(TEST_BIN)).toBe(true)
-    expect(/^\d{16}$/.test(number)).toBe(true)
-  })
-
-  it("is Luhn-valid every time", () => {
-    // A generator that is right nine times in ten still ships a bad card, so
-    // this asserts across a thousand rather than one.
-    for (let i = 0; i < 1000; i++) {
-      expect(isValidLuhn(generateCardNumber())).toBe(true)
-    }
-  })
-
-  it("does not repeat itself", () => {
-    expect(generateCardNumber()).not.toBe(generateCardNumber())
-  })
-})
-
 describe("maskCardNumber", () => {
   it("renders the house mask", () => {
     expect(maskCardNumber("4242")).toBe("•••• 4242")
@@ -93,5 +73,27 @@ describe("nextCardId", () => {
     expect(nextCardId([card("card_000004"), card("card_000002")])).toBe(
       "card_000005",
     )
+  })
+})
+
+describe("spendPercentage", () => {
+  it("floors rather than rounds up", () => {
+    // 86.67% must not read as 87, and 99.9% must never read as spent out.
+    expect(spendPercentage(104_000, 120_000)).toBe(86)
+    expect(spendPercentage(99_999, 100_000)).toBe(99)
+  })
+
+  it("handles the ends of the range", () => {
+    expect(spendPercentage(0, 100_000)).toBe(0)
+    expect(spendPercentage(100_000, 100_000)).toBe(100)
+  })
+
+  it("returns zero rather than dividing by zero", () => {
+    expect(spendPercentage(500, 0)).toBe(0)
+  })
+
+  it("crosses the amber threshold where the seeded card sits", () => {
+    expect(spendPercentage(104_000, 120_000)).toBeGreaterThanOrEqual(SPEND_AMBER_AT)
+    expect(spendPercentage(212_500, 500_000)).toBeLessThan(SPEND_AMBER_AT)
   })
 })
