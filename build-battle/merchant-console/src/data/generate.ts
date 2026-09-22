@@ -1,5 +1,6 @@
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +149,61 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  return { payments, refunds, disputes, payouts, cards: generateCards() }
+}
+
+/**
+ * A few cards so the list, detail, and spend progress have something to show
+ * at boot. Numbers are on the `4242` test BIN like every other card here, and
+ * only the last four is ever stored.
+ */
+function generateCards(): Card[] {
+  const issued = [
+    {
+      id: "card_000001",
+      nickname: "Meta Ads — Q3",
+      merchantId: "mch_01",
+      last4: "4318",
+      reference: "cref_seed01",
+      spendLimit: 500_000,
+      spend: 431_200,
+      currency: "USD" as const,
+      status: "active" as const,
+      category: "advertising" as const,
+      daysAgo: 12,
+    },
+    {
+      id: "card_000002",
+      nickname: "Figma + design tools",
+      merchantId: "mch_03",
+      last4: "9072",
+      reference: "cref_seed02",
+      spendLimit: 120_000,
+      spend: 42_500,
+      currency: "EUR" as const,
+      status: "active" as const,
+      category: "software" as const,
+      daysAgo: 30,
+    },
+    {
+      id: "card_000003",
+      nickname: "Contractor — Nov",
+      merchantId: "mch_05",
+      last4: "5561",
+      reference: "cref_seed03",
+      spendLimit: 250_000,
+      spend: 0,
+      currency: "GBP" as const,
+      status: "frozen" as const,
+      category: "contractors" as const,
+      daysAgo: 4,
+    },
+  ]
+
+  return issued.map(({ daysAgo, ...card }) => ({
+    ...card,
+    createdAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+  }))
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

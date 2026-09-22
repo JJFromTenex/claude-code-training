@@ -71,6 +71,38 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "contractors"
+  | "travel"
+  | "any"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /**
+   * The last four of the generated number. The full number is returned once,
+   * in the issue response, and is never stored or re-read.
+   */
+  last4: string
+  /** Non-secret handle for the generated number, safe to show and log. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** Restricts what the card may be used for. `any` is no lock. */
+  category: MerchantCategory
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string

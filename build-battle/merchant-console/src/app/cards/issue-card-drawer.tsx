@@ -1,0 +1,312 @@
+"use client"
+
+import { Button } from "@/components/Button"
+import {
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/Drawer"
+import { Input } from "@/components/Input"
+import type { MerchantCategory } from "@/data/types"
+import { maskCardNumber } from "@/lib/card-mask"
+import { parseAmountToMinorUnits } from "@/lib/money"
+import { Check, Copy, Plus } from "lucide-react"
+import { useRouter } from "next/navigation"
+import * as React from "react"
+
+const CURRENCIES = ["USD", "EUR", "GBP"] as const
+
+const CATEGORIES: { value: MerchantCategory; label: string }[] = [
+  { value: "any", label: "No lock — any category" },
+  { value: "advertising", label: "Advertising" },
+  { value: "software", label: "Software & subscriptions" },
+  { value: "contractors", label: "Contractors" },
+  { value: "travel", label: "Travel" },
+]
+
+type Issued = { last4: string; number: string; nickname: string }
+
+export function IssueCardDrawer({
+  merchants,
+}: {
+  merchants: { id: string; name: string }[]
+}) {
+  const router = useRouter()
+  const [open, setOpen] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [issued, setIssued] = React.useState<Issued | null>(null)
+  const [copied, setCopied] = React.useState(false)
+
+  function close() {
+    setOpen(false)
+    // The full number lives only in this component's state, and only until the
+    // success screen closes. There is nowhere to read it back from.
+    setIssued(null)
+    setError(null)
+    setCopied(false)
+  }
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    setSubmitting(true)
+
+    const form = new FormData(event.currentTarget)
+    const rawLimit = String(form.get("spendLimit") ?? "")
+    const spendLimit = parseAmountToMinorUnits(rawLimit)
+
+    if (spendLimit === null) {
+      setError("Enter a spend limit like 250 or 250.00.")
+      setSubmitting(false)
+      return
+    }
+
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nickname: String(form.get("nickname") ?? ""),
+          merchantId: String(form.get("merchantId") ?? ""),
+          spendLimit,
+          currency: String(form.get("currency") ?? ""),
+          category: String(form.get("category") ?? "any"),
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        // The server's message is the one the user sees — client checks are a
+        // convenience, the server is the enforcement.
+        setError(data?.error ?? "Could not issue the card. Try again.")
+        return
+      }
+
+      setIssued({
+        last4: data.card.last4,
+        number: data.number,
+        nickname: data.card.nickname,
+      })
+      router.refresh()
+    } catch {
+      setError("Could not reach the server. Check your connection and retry.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={(next) => (next ? setOpen(true) : close())}
+    >
+      <DrawerTrigger asChild>
+        <Button className="gap-2 py-1.5">
+          <Plus className="-ml-0.5 size-4 shrink-0" aria-hidden="true" />
+          Issue card
+        </Button>
+      </DrawerTrigger>
+
+      <DrawerContent className="sm:max-w-lg">
+        {issued ? (
+          <>
+            <DrawerHeader>
+              <DrawerTitle>Card issued</DrawerTitle>
+              <DrawerDescription>
+                This is the only time the full number is shown. Copy it now —
+                it is not stored and cannot be retrieved later.
+              </DrawerDescription>
+            </DrawerHeader>
+            <DrawerBody>
+              <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                <p className="text-sm text-gray-500">{issued.nickname}</p>
+                <p className="mt-2 font-mono text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
+                  {issued.number.replace(/(.{4})/g, "$1 ").trim()}
+                </p>
+                <Button
+                  variant="secondary"
+                  className="mt-4 gap-2 py-1.5"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(issued.number)
+                      setCopied(true)
+                    } catch {
+                      setError("Copy failed — select the number and copy it.")
+                    }
+                  }}
+                >
+                  {copied ? (
+                    <Check className="size-4 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <Copy className="size-4 shrink-0" aria-hidden="true" />
+                  )}
+                  {copied ? "Copied" : "Copy number"}
+                </Button>
+              </div>
+              <p className="mt-4 text-sm text-gray-500">
+                Everywhere else this card appears as{" "}
+                <span className="font-medium text-gray-900 dark:text-gray-50">
+                  {maskCardNumber(issued.last4)}
+                </span>
+                .
+              </p>
+              {error && (
+                <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-500">
+                  {error}
+                </p>
+              )}
+            </DrawerBody>
+            <DrawerFooter>
+              <Button onClick={close}>Done</Button>
+            </DrawerFooter>
+          </>
+        ) : (
+          <form onSubmit={onSubmit} className="flex h-full flex-col">
+            <DrawerHeader>
+              <DrawerTitle>Issue a virtual card</DrawerTitle>
+              <DrawerDescription>
+                Single merchant, always virtual, with a limit from the moment it
+                exists.
+              </DrawerDescription>
+            </DrawerHeader>
+            <DrawerBody className="space-y-4">
+              <div>
+                <label
+                  htmlFor="nickname"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                >
+                  Nickname
+                </label>
+                <Input
+                  id="nickname"
+                  name="nickname"
+                  required
+                  maxLength={60}
+                  placeholder="Meta Ads — Q4"
+                  className="mt-2"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="merchantId"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                >
+                  Merchant
+                </label>
+                <select
+                  id="merchantId"
+                  name="merchantId"
+                  required
+                  defaultValue=""
+                  className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
+                >
+                  <option value="" disabled>
+                    Select a merchant
+                  </option>
+                  {merchants.map((merchant) => (
+                    <option key={merchant.id} value={merchant.id}>
+                      {merchant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="spendLimit"
+                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                  >
+                    Spend limit
+                  </label>
+                  <Input
+                    id="spendLimit"
+                    name="spendLimit"
+                    required
+                    inputMode="decimal"
+                    placeholder="2500.00"
+                    className="mt-2"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Up to 50,000.00 per card.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="currency"
+                    className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                  >
+                    Currency
+                  </label>
+                  <select
+                    id="currency"
+                    name="currency"
+                    required
+                    defaultValue="USD"
+                    className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
+                  >
+                    {CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="category"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                >
+                  Category lock
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  defaultValue="any"
+                  className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
+                >
+                  {CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                >
+                  {error}
+                </p>
+              )}
+            </DrawerBody>
+            <DrawerFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={close}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={submitting} disabled={submitting}>
+                {submitting ? "Issuing" : "Issue card"}
+              </Button>
+            </DrawerFooter>
+          </form>
+        )}
+      </DrawerContent>
+    </Drawer>
+  )
+}
