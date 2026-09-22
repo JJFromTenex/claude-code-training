@@ -72,7 +72,7 @@ export default function OverviewPage() {
               <div className="min-w-0">
                 <Link
                   href={`/payments/${payment.id}`}
-                  className="text-sm font-medium text-gray-900 hover:underline dark:text-gray-50"
+                  className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
                 >
                   {merchantById(payment.merchantId)?.name}
                 </Link>
