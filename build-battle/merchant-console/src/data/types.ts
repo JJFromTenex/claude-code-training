@@ -11,6 +11,8 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +71,32 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+/**
+ * A virtual card issued to a merchant.
+ *
+ * The full PAN is never stored: it exists only in the one-time creation
+ * response. The record keeps the last four and an opaque reference. Amounts are
+ * integer minor units in the card's currency.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  /** Amount spent against the limit, integer minor units, same currency. */
+  spend: number
+  currency: Currency
+  /** The card's actual last four digits (number uses the 4242 BIN). Mask with
+   *  this, never a hardcoded "4242". The full PAN is never kept. */
+  last4: string
+  /** Opaque handle to the generated card; not the PAN. */
+  reference: string
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {
