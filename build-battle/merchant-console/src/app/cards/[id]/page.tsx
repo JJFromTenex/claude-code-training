@@ -1,21 +1,13 @@
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { maskCardNumber } from "@/lib/card-mask"
+import { categoryLabel, maskCardNumber } from "@/lib/card-display"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import type { ReactNode } from "react"
 import { CardStatusActions } from "../card-status-actions"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  any: "No lock",
-  advertising: "Advertising",
-  software: "Software & subscriptions",
-  contractors: "Contractors",
-  travel: "Travel",
-}
 
 export default async function CardDetailPage({
   params,
@@ -108,9 +100,7 @@ export default async function CardDetailPage({
           <span className="font-mono">{card.reference}</span>
         </Field>
         <Field label="Merchant">{merchant?.name ?? card.merchantId}</Field>
-        <Field label="Category lock">
-          {CATEGORY_LABELS[card.category] ?? card.category}
-        </Field>
+        <Field label="Category lock">{categoryLabel(card.category)}</Field>
         <Field label="Spend limit">
           {formatMoney(card.spendLimit, card.currency)}
         </Field>

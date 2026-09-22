@@ -9,7 +9,7 @@ import {
   luhnCheckDigit,
 
 } from "./cards"
-import { maskCardNumber } from "./card-mask"
+import { maskCardNumber } from "./card-display"
 
 describe("luhnCheckDigit", () => {
   it("completes a known Luhn-valid number", () => {

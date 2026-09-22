@@ -12,22 +12,22 @@ import {
   DrawerTrigger,
 } from "@/components/Drawer"
 import { Input } from "@/components/Input"
-import type { MerchantCategory } from "@/data/types"
-import { maskCardNumber } from "@/lib/card-mask"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/Select"
+import {
+  CARD_CATEGORY_OPTIONS,
+  CARD_CURRENCY_OPTIONS,
+  maskCardNumber,
+} from "@/lib/card-display"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { Check, Copy, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
-
-const CURRENCIES = ["USD", "EUR", "GBP"] as const
-
-const CATEGORIES: { value: MerchantCategory; label: string }[] = [
-  { value: "any", label: "No lock — any category" },
-  { value: "advertising", label: "Advertising" },
-  { value: "software", label: "Software & subscriptions" },
-  { value: "contractors", label: "Contractors" },
-  { value: "travel", label: "Travel" },
-]
 
 type Issued = { last4: string; number: string; nickname: string }
 
@@ -60,6 +60,15 @@ export function IssueCardDrawer({
     const form = new FormData(event.currentTarget)
     const rawLimit = String(form.get("spendLimit") ?? "")
     const spendLimit = parseAmountToMinorUnits(rawLimit)
+
+    // Checked here rather than with `required`: Radix Select puts the native
+    // control in a visually-hidden, unfocusable select, and browsers refuse to
+    // report a validation message on one.
+    if (!form.get("merchantId")) {
+      setError("Select a merchant.")
+      setSubmitting(false)
+      return
+    }
 
     if (spendLimit === null) {
       setError("Enter a spend limit like 250 or 250.00.")
@@ -200,22 +209,18 @@ export function IssueCardDrawer({
                 >
                   Merchant
                 </label>
-                <select
-                  id="merchantId"
-                  name="merchantId"
-                  required
-                  defaultValue=""
-                  className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
-                >
-                  <option value="" disabled>
-                    Select a merchant
-                  </option>
-                  {merchants.map((merchant) => (
-                    <option key={merchant.id} value={merchant.id}>
-                      {merchant.name}
-                    </option>
-                  ))}
-                </select>
+                <Select name="merchantId">
+                  <SelectTrigger id="merchantId" className="mt-2 w-full">
+                    <SelectValue placeholder="Select a merchant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {merchants.map((merchant) => (
+                      <SelectItem key={merchant.id} value={merchant.id}>
+                        {merchant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -245,19 +250,18 @@ export function IssueCardDrawer({
                   >
                     Currency
                   </label>
-                  <select
-                    id="currency"
-                    name="currency"
-                    required
-                    defaultValue="USD"
-                    className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
-                  >
-                    {CURRENCIES.map((currency) => (
-                      <option key={currency} value={currency}>
-                        {currency}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="currency" defaultValue="USD">
+                    <SelectTrigger id="currency" className="mt-2 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CARD_CURRENCY_OPTIONS.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -268,18 +272,18 @@ export function IssueCardDrawer({
                 >
                   Category lock
                 </label>
-                <select
-                  id="category"
-                  name="category"
-                  defaultValue="any"
-                  className="mt-2 block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-50 dark:focus:ring-blue-500/30"
-                >
-                  {CATEGORIES.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
+                <Select name="category" defaultValue="any">
+                  <SelectTrigger id="category" className="mt-2 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARD_CATEGORY_OPTIONS.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {error && (

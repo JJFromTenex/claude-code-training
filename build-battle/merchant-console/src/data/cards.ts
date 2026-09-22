@@ -1,8 +1,8 @@
 import {
-  canTransition,
-  generateCardNumber,
-  lastFour,
-} from "@/lib/cards"
+  CARD_CATEGORY_OPTIONS,
+  CARD_CURRENCY_OPTIONS,
+} from "@/lib/card-display"
+import { canTransition, generateCardNumber, lastFour } from "@/lib/cards"
 import { merchantById } from "./merchants"
 import { store } from "./store"
 import { Card, CardStatus, Currency, MerchantCategory } from "./types"
@@ -16,15 +16,12 @@ import { Card, CardStatus, Currency, MerchantCategory } from "./types"
  * their own parsing.
  */
 
-export const CARD_CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
+// Derived from the display options so the validator and the form can never
+// disagree about what a valid currency or category is.
+export const CARD_CURRENCIES: readonly Currency[] = CARD_CURRENCY_OPTIONS
 
-export const CARD_CATEGORIES: readonly MerchantCategory[] = [
-  "any",
-  "advertising",
-  "software",
-  "contractors",
-  "travel",
-]
+export const CARD_CATEGORIES: readonly MerchantCategory[] =
+  CARD_CATEGORY_OPTIONS.map((option) => option.value)
 
 export const CARD_STATUSES: readonly CardStatus[] = [
   "active",

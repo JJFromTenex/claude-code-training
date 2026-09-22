@@ -5,7 +5,7 @@
 
 **Ticket:** [NWP-201](../tickets/NWP-201.md)
 **Author:** Kadin (with Claude Code)
-**Status:** building
+**Status:** done
 
 ## Problem
 
@@ -54,9 +54,10 @@ Add cards as a first-class domain that mirrors how payments already work: pure h
 | File | Add or change | Why |
 | --- | --- | --- |
 | `src/data/types.ts` | change | Add `Card`, `CardStatus`, `MerchantCategory` next to the existing domain types |
-| `src/lib/cards.ts` | add | Pure helpers: Luhn check digit, `4242`-BIN number generation, `maskCardNumber`, the transition table |
+| `src/lib/cards.ts` | add | Server-side pure helpers: Luhn check digit, `4242`-BIN number generation, the transition table |
+| `src/lib/card-display.ts` | add | Client-safe display module: `maskCardNumber`, the category and currency option lists, `categoryLabel`. Separate from the generator so a `"use client"` import cannot pull PAN generation into the browser bundle |
 | `src/lib/cards.test.ts` | add | Unit tests beside the helper, per repo convention: BIN prefix, Luhn validity, allowed/blocked transitions |
-| `src/data/cards.ts` | add | The one card query builder: `issueCard`, `listCards`, `cardById`, `transitionCard`, `parseIssueCardInput` (server-side allowlist validation) |
+| `src/data/cards.ts` | add | The one card query builder: `issueCard`, `listCards`, `cardById`, `transitionCard`, plus server-side allowlist validation (`parseIssueCardInput`, `parseCardStatus`) and the limits and allowlists those enforce, derived from the shared option lists |
 | `src/data/store.ts` | change | Add `cards: Card[]` to the `Store` interface and `createStore()` |
 | `src/data/generate.ts` | change | Seed a few cards so list/detail/progress are demonstrable at boot |
 | `src/app/api/cards/route.ts` | add | `GET` list (masked), `POST` issue (returns the PAN exactly once) |
@@ -84,9 +85,10 @@ Add cards as a first-class domain that mirrors how payments already work: pure h
 | Issue a card | Submit the drawer form in the browser; the new row appears in `/cards` |
 | Card list at `/cards` | Screenshot showing nickname, merchant, masked number, limit, status, created date |
 | Card detail | Open a card; full record plus spend-against-limit renders |
-| Generated numbers, server-side, `4242` BIN + Luhn | `src/lib/cards.test.ts`: asserts prefix and Luhn over 200 generations; generation is only imported by server modules |
-| Reveal once, mask forever | `curl` POST shows `number`; `curl` GET of the same card has no `number` field; UI shows `•••• 4242` in list and detail |
-| Server-side validation | `curl` with missing merchant / `0` / `-1` / `5000001` / `"JPY"` each returns `400` and a message |
+| Generated numbers, server-side, `4242` BIN + Luhn | `src/lib/cards.test.ts`: asserts prefix and Luhn over 200 generations. Generation stays out of the client bundle because the generator lives in `src/lib/cards.ts` while the client imports display helpers from `src/lib/card-display.ts` — the two are deliberately separate modules |
+| Reveal once, mask forever | node `fetch` POST shows `number`; a `GET` of the same card has no `number` field; UI shows `•••• <last4>` in list and detail, and the number is absent from the DOM once the success screen closes |
+| Server-side validation | node `fetch` with missing merchant / `0` / `-1` / `5000001` / non-integer / `"JPY"` / empty nickname each returns `400` and a message |
+| Stretch: merchant category lock | Chosen in the drawer, validated against the allowlist in `parseIssueCardInput`, rendered on the detail page via `categoryLabel()`. Drawer and detail read from the same option list, so the labels cannot drift |
 | Stretch: freeze/unfreeze without reload | Click freeze in the list; badge changes with no navigation |
 | Stretch: spend progress amber past 80% | Seeded card at >80% renders the amber bar |
 | Stretch: tests | `npm test` output |

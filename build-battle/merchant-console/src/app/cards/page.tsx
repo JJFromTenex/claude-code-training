@@ -10,7 +10,7 @@ import {
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { listCards } from "@/data/cards"
 import { merchantById, merchants } from "@/data/merchants"
-import { maskCardNumber } from "@/lib/card-mask"
+import { maskCardNumber } from "@/lib/card-display"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
