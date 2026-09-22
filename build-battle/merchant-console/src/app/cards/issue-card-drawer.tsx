@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { Card, CardCategory, Currency } from "@/data/types"
-import { CARD_CATEGORIES, MAX_SPEND_LIMIT } from "@/lib/cards"
+import { CARD_CATEGORIES, MAX_SPEND_LIMIT, NICKNAME_MAX } from "@/lib/cards"
 import { CURRENCIES, formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -151,10 +151,8 @@ export function IssueCardDrawer({
                 closes it is masked everywhere, and it cannot be retrieved
                 again.
               </p>
-              <p
-                className="rounded-md border border-gray-200 bg-gray-50 p-4 text-center font-mono text-lg tracking-widest text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50"
-                aria-label="Full card number"
-              >
+              <p className="rounded-md border border-gray-200 bg-gray-50 p-4 text-center font-mono text-lg tracking-widest text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-50">
+                <span className="sr-only">Full card number </span>
                 {issued.number.replace(/(\d{4})(?=\d)/g, "$1 ")}
               </p>
               <Button
@@ -192,7 +190,7 @@ export function IssueCardDrawer({
                   id="card-nickname"
                   name="nickname"
                   required
-                  maxLength={40}
+                  maxLength={NICKNAME_MAX}
                   value={form.nickname}
                   onChange={(event) => update({ nickname: event.target.value })}
                   placeholder="Ad spend · Meta"

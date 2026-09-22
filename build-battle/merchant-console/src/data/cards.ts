@@ -4,6 +4,7 @@ import {
   canTransition,
   generateCardNumber,
   MAX_SPEND_LIMIT,
+  NICKNAME_MAX,
 } from "@/lib/cards"
 import { CURRENCIES } from "@/lib/money"
 import { pad } from "./generate"
@@ -28,8 +29,6 @@ export interface IssueCardInput {
 
 export type Validation<T> =
   { ok: true; value: T } | { ok: false; message: string }
-
-const NICKNAME_MAX = 40
 
 /**
  * Anything from the client is checked against an allowlist before it reaches
@@ -70,7 +69,7 @@ export function parseIssueCardInput(body: unknown): Validation<IssueCardInput> {
   if (spendLimit > MAX_SPEND_LIMIT) {
     return {
       ok: false,
-      message: "Spend limit cannot exceed 5,000,000 minor units.",
+      message: `Spend limit cannot exceed ${MAX_SPEND_LIMIT.toLocaleString("en-US")} minor units.`,
     }
   }
 
@@ -162,7 +161,7 @@ export function changeCardStatus(id: string, to: CardStatus): StatusChange {
       message:
         card.status === "cancelled"
           ? "A cancelled card cannot be changed."
-          : `A ${card.status} card cannot become ${to}.`,
+          : `Cannot change a ${card.status} card to ${to}.`,
     }
   }
   card.status = to

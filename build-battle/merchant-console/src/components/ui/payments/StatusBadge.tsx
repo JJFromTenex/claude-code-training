@@ -45,10 +45,7 @@ const DOTS: Record<AnyStatus, string> = {
   cancelled: "bg-gray-500 dark:bg-gray-500",
 }
 
-const VARIANTS: Record<
-  AnyStatus,
-  "default" | "neutral" | "success" | "error" | "warning"
-> = {
+const VARIANTS: Record<AnyStatus, "default" | "neutral" | "success" | "error" | "warning"> = {
   authorized: "default",
   captured: "success",
   refunded: "neutral",

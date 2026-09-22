@@ -4,7 +4,7 @@ import { Button } from "@/components/Button"
 import { CardStatus } from "@/data/types"
 import { nextStatuses } from "@/lib/cards"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const ACTION_LABELS: Record<CardStatus, string> = {
   active: "Unfreeze",
@@ -29,6 +29,17 @@ export function CardStatusActions({
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // The Button component disables itself while loading, which drops keyboard
+  // focus. Put it back on the toggle once the refreshed status arrives.
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const restoreFocus = useRef(false)
+  useEffect(() => {
+    if (restoreFocus.current) {
+      restoreFocus.current = false
+      toggleRef.current?.focus()
+    }
+  }, [status])
+
   const moves = nextStatuses(status)
   if (moves.length === 0) return null
 
@@ -49,6 +60,7 @@ export function CardStatusActions({
         return
       }
       setConfirmingCancel(false)
+      restoreFocus.current = to !== "cancelled"
       router.refresh()
     } catch {
       setError("The console could not reach the server. Try again.")
@@ -92,8 +104,11 @@ export function CardStatusActions({
             </Button>
           </span>
         ) : (
+          // Stable key: the same element toggles between Freeze and Unfreeze,
+          // so keyboard focus survives the refresh.
           <Button
-            key={to}
+            key="toggle"
+            ref={toggleRef}
             variant="secondary"
             className="py-1"
             isLoading={pending === to}

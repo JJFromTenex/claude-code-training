@@ -89,8 +89,7 @@ export function generate() {
       createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
 
       const status = statusFor()
-      const method =
-        rand() < 0.82 ? "card" : rand() < 0.6 ? "wallet" : "bank_transfer"
+      const method = rand() < 0.82 ? "card" : rand() < 0.6 ? "wallet" : "bank_transfer"
       const amount = between(450, 480_00)
 
       const payment: Payment = {
@@ -101,9 +100,7 @@ export function generate() {
         status,
         method,
         cardBrand:
-          method === "card"
-            ? pick(["visa", "mastercard", "amex"] as const)
-            : null,
+          method === "card" ? pick(["visa", "mastercard", "amex"] as const) : null,
         last4: method === "card" ? String(between(1000, 9999)) : null,
         createdAt: createdAt.toISOString(),
         description: pick(DESCRIPTIONS),
@@ -129,9 +126,7 @@ export function generate() {
       }
 
       if (status === "disputed") {
-        const openedAt = new Date(
-          createdAt.getTime() + between(2, 10) * 86_400_000,
-        )
+        const openedAt = new Date(createdAt.getTime() + between(2, 10) * 86_400_000)
         disputes.push({
           id: `dp_${pad(++disputeSeq)}`,
           paymentId: payment.id,

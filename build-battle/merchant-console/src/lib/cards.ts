@@ -13,6 +13,9 @@ export const CARD_NUMBER_LENGTH = 16
 /** Spend limits are integer minor units, capped by the ticket. */
 export const MAX_SPEND_LIMIT = 5_000_000
 
+/** Longest nickname the form accepts and the server stores. */
+export const NICKNAME_MAX = 40
+
 export const CARD_STATUSES: readonly CardStatus[] = [
   "active",
   "frozen",
