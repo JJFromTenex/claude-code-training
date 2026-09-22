@@ -12,10 +12,17 @@ import * as React from "react"
  */
 export function CardStatusActions({
   cardId,
+  cardNickname,
   status,
   size = "default",
 }: {
   cardId: string
+  /**
+   * Used only for the buttons' accessible names. In a list every row has a
+   * "Freeze" and a "Cancel", so without this a screen reader announces the
+   * same two names on every row with no way to tell the cards apart.
+   */
+  cardNickname: string
   status: CardStatus
   size?: "default" | "compact"
 }) {
@@ -52,6 +59,7 @@ export function CardStatusActions({
   }
 
   const buttonClass = size === "compact" ? "py-1 text-xs" : "py-1.5"
+  const freezeLabel = status === "active" ? "Freeze" : "Unfreeze"
 
   return (
     <div className="flex items-center justify-end gap-2">
@@ -63,15 +71,17 @@ export function CardStatusActions({
       <Button
         variant="secondary"
         className={buttonClass}
+        aria-label={`${freezeLabel} card ${cardNickname}`}
         disabled={pending !== null}
         isLoading={pending === (status === "active" ? "frozen" : "active")}
         onClick={() => transition(status === "active" ? "frozen" : "active")}
       >
-        {status === "active" ? "Freeze" : "Unfreeze"}
+        {freezeLabel}
       </Button>
       <Button
         variant="ghost"
         className={buttonClass}
+        aria-label={`Cancel card ${cardNickname}`}
         disabled={pending !== null}
         isLoading={pending === "cancelled"}
         onClick={() => transition("cancelled")}
