@@ -11,6 +11,43 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type CardCategory =
+  | "software"
+  | "advertising"
+  | "travel"
+  | "office_supplies"
+  | "professional_services"
+  | "other"
+
+export interface CardStatusEvent {
+  from: CardStatus | null
+  to: CardStatus
+  at: string // ISO 8601, UTC
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  category: CardCategory
+  currency: Currency
+  /** Integer minor units. */
+  limit: number
+  /** Integer minor units. 0 at issue and stays 0 — see spec for why. */
+  spent: number
+  status: CardStatus
+  /** Last four digits only. The full number is never stored anywhere. */
+  last4: string
+  /** Opaque reference, not a way to reconstruct the full number. */
+  numberRef: string
+  /** Client-supplied idempotency key from issue time, or null. */
+  requestId: string | null
+  createdAt: string // ISO 8601, UTC
+  history: CardStatusEvent[]
+}
+
 export interface Merchant {
   id: string
   name: string
