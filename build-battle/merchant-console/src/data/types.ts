@@ -11,6 +11,9 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** `active ⇄ frozen`, either to `cancelled`. `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +72,27 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, spent against the limit. */
+  spent: number
+  currency: Currency
+  status: CardStatus
+  /** The only part of the number that is ever stored. */
+  last4: string
+  /**
+   * Stands in for the issuer's token. Stored, opaque, and useless for
+   * reconstructing the number — the number itself is never persisted.
+   */
+  reference: string
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {

@@ -1,5 +1,8 @@
+import { generateCardNumber, generateCardReference } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +151,66 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_NICKNAMES = [
+  "Meta ad spend",
+  "Google Ads",
+  "Vendor subscriptions",
+  "Contractor tools",
+  "Cloud hosting",
+  "Office supplies",
+  "Travel — sales team",
+  "Shopify apps",
+  "Freelance design",
+  "Trade show booth",
+]
+
+/**
+ * Cards that already exist when ops opens the console, so the list, the
+ * detail, and the spend bar have something to show on a fresh dev server.
+ * Spend is stored on the record the way a payout stores its net: there is no
+ * card transaction model, and inventing one is not this ticket.
+ */
+function generateCards(): Card[] {
+  const cards: Card[] = []
+
+  CARD_NICKNAMES.forEach((nickname, index) => {
+    const merchant = pick(merchants)
+    // Limits land on round hundreds of minor units, the way someone typing
+    // "500" into a form would produce them.
+    const spendLimit = between(5, 50) * 10_000
+    // One card is deliberately past 80% so the amber threshold is visible,
+    // and one is untouched so an empty bar is too.
+    const share =
+      index === 0 ? 0.92 : index === 1 ? 0 : between(5, 75) / 100
+    const status: CardStatus =
+      index === 3 ? "frozen" : index === 7 ? "cancelled" : "active"
+
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - between(1, 90))
+    createdAt.setUTCHours(between(0, 23), between(0, 59), 0, 0)
+
+    // Generated, used for the last four, and dropped. Nothing keeps the number.
+    const number = generateCardNumber(rand)
+
+    cards.push({
+      id: `card_${pad(index + 1, 4)}`,
+      nickname,
+      merchantId: merchant.id,
+      spendLimit,
+      spent: Math.round(spendLimit * share),
+      currency: merchant.currency as Currency,
+      status,
+      last4: number.slice(-4),
+      reference: generateCardReference(rand),
+      createdAt: createdAt.toISOString(),
+    })
+  })
+
+  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
