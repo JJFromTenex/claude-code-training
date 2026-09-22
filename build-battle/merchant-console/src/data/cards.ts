@@ -1,6 +1,6 @@
 import { canTransition, generateCardNumber } from "@/lib/cards"
 import { store } from "./store"
-import { Card, CardStatus, Currency } from "./types"
+import { Card, CardCategory, CardStatus, Currency } from "./types"
 
 /**
  * Card reads and writes against the in-memory store. Mirrors the shape of
@@ -14,6 +14,7 @@ export interface IssueCardInput {
   /** Integer minor units, already validated at the route boundary. */
   limit: number
   currency: Currency
+  category: CardCategory
 }
 
 /** The one-time issue result. The full number is here and nowhere else. */
@@ -42,6 +43,7 @@ export function issueCard(input: IssueCardInput): IssuedCard {
     limit: input.limit,
     spend: 0,
     currency: input.currency,
+    category: input.category,
     last4: fullNumber.slice(-4),
     reference: newReference(),
     status: "active",

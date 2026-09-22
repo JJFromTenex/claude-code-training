@@ -3,6 +3,7 @@ import {
   CARD_BIN,
   canTransition,
   generateCardNumber,
+  isCardCategory,
   isLuhnValid,
   isSpendHigh,
   luhnCheckDigit,
@@ -60,6 +61,17 @@ describe("spend progress", () => {
     expect(isSpendHigh(20000, 25000)).toBe(false) // exactly 80%
     expect(isSpendHigh(21000, 25000)).toBe(true) // 84%
     expect(isSpendHigh(0, 25000)).toBe(false)
+  })
+})
+
+describe("isCardCategory (allowlist guard)", () => {
+  it("accepts a known category and rejects anything else", () => {
+    expect(isCardCategory("advertising")).toBe(true)
+    expect(isCardCategory("software")).toBe(true)
+    expect(isCardCategory("gambling")).toBe(false)
+    expect(isCardCategory("")).toBe(false)
+    expect(isCardCategory(undefined)).toBe(false)
+    expect(isCardCategory(42)).toBe(false)
   })
 })
 

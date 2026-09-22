@@ -1,7 +1,7 @@
 import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
-import { isSpendHigh, maskCard, spendPercent } from "@/lib/cards"
+import { CARD_CATEGORY_LABELS, isSpendHigh, maskCard, spendPercent } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -53,6 +53,7 @@ export default async function CardDetailPage({
 
       <dl className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Field label="Merchant" value={merchant?.name ?? card.merchantId} />
+        <Field label="Category" value={CARD_CATEGORY_LABELS[card.category]} />
         <Field label="Currency" value={card.currency} />
         <Field label="Spend limit" value={formatMoney(card.limit, card.currency)} />
         <Field label="Spent" value={formatMoney(card.spend, card.currency)} />

@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { maskCard } from "@/lib/cards"
+import { CARD_CATEGORIES, CARD_CATEGORY_LABELS, maskCard } from "@/lib/cards"
+import { CardCategory } from "@/data/types"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -34,6 +35,7 @@ export function IssueCardDrawer({ merchants }: { merchants: MerchantOption[] }) 
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
   const [currency, setCurrency] = useState<string>("USD")
+  const [category, setCategory] = useState<CardCategory>("advertising")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<
@@ -45,6 +47,7 @@ export function IssueCardDrawer({ merchants }: { merchants: MerchantOption[] }) 
     setMerchantId("")
     setLimit("")
     setCurrency("USD")
+    setCategory("advertising")
     setError(null)
     setRevealed(null)
     setSubmitting(false)
@@ -68,7 +71,7 @@ export function IssueCardDrawer({ merchants }: { merchants: MerchantOption[] }) 
       const res = await fetch("/api/cards", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nickname, merchantId, limit, currency }),
+        body: JSON.stringify({ nickname, merchantId, limit, currency, category }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -166,6 +169,29 @@ export function IssueCardDrawer({ merchants }: { merchants: MerchantOption[] }) 
                     {merchants.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label
+                  htmlFor="card-category"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
+                >
+                  Spend category
+                </label>
+                <Select
+                  value={category}
+                  onValueChange={(value) => setCategory(value as CardCategory)}
+                >
+                  <SelectTrigger id="card-category" className="mt-1.5">
+                    <SelectValue placeholder="Choose a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARD_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {CARD_CATEGORY_LABELS[c]}
                       </SelectItem>
                     ))}
                   </SelectContent>

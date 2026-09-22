@@ -1,7 +1,8 @@
 import { issueCard, listCards } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { isCardCategory } from "@/lib/cards"
 import { parseAmountToMinorUnits } from "@/lib/money"
-import { Currency } from "@/data/types"
+import { CardCategory, Currency } from "@/data/types"
 import { NextRequest, NextResponse } from "next/server"
 
 const CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
@@ -44,6 +45,11 @@ export async function POST(request: NextRequest) {
     return bad("Currency must be one of USD, EUR, GBP.")
   }
 
+  if (!isCardCategory(body.category)) {
+    return bad("A valid spend category is required.")
+  }
+  const category: CardCategory = body.category
+
   // The limit may arrive as a string ("250.00") or a number; normalize, then
   // convert to minor units once at this boundary.
   const rawLimit =
@@ -63,6 +69,7 @@ export async function POST(request: NextRequest) {
     merchantId,
     limit,
     currency: currency as Currency,
+    category,
   })
 
   return NextResponse.json({ card, fullNumber }, { status: 201 })

@@ -1,4 +1,4 @@
-import { CardStatus } from "@/data/types"
+import { CardCategory, CardStatus } from "@/data/types"
 
 /**
  * Virtual-card helpers: number generation, masking, and the status state
@@ -61,6 +61,29 @@ export function generateCardNumber(): string {
 /** The masked form shown everywhere except the one-time reveal. */
 export function maskCard(last4: string): string {
   return `•••• ${last4}`
+}
+
+/** The spend categories a card can be locked to, and their display labels. */
+export const CARD_CATEGORIES: readonly CardCategory[] = [
+  "advertising",
+  "software",
+  "travel",
+  "contractors",
+  "office",
+  "other",
+]
+
+export const CARD_CATEGORY_LABELS: Record<CardCategory, string> = {
+  advertising: "Advertising",
+  software: "Software & SaaS",
+  travel: "Travel",
+  contractors: "Contractors",
+  office: "Office & supplies",
+  other: "Other",
+}
+
+export function isCardCategory(value: unknown): value is CardCategory {
+  return typeof value === "string" && CARD_CATEGORIES.includes(value as CardCategory)
 }
 
 /**

@@ -13,6 +13,15 @@ export type PayoutStatus = "paid" | "in_transit" | "pending"
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
+/** The spend category a card is locked to at issue time. */
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "office"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -89,6 +98,8 @@ export interface Card {
   /** Amount spent against the limit, integer minor units, same currency. */
   spend: number
   currency: Currency
+  /** Spend category the card is locked to, chosen at issue time. */
+  category: CardCategory
   /** The card's actual last four digits (number uses the 4242 BIN). Mask with
    *  this, never a hardcoded "4242". The full PAN is never kept. */
   last4: string

@@ -9,7 +9,7 @@ import {
 } from "@/components/Table"
 import { listCards } from "@/data/cards"
 import { merchantById, merchants } from "@/data/merchants"
-import { maskCard } from "@/lib/cards"
+import { CARD_CATEGORY_LABELS, maskCard } from "@/lib/cards"
 import { formatDate } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
@@ -72,6 +72,9 @@ export default function CardsPage() {
                   >
                     {card.nickname}
                   </Link>
+                  <p className="text-xs text-gray-500">
+                    {CARD_CATEGORY_LABELS[card.category]}
+                  </p>
                 </TableCell>
                 <TableCell>{merchantById(card.merchantId)?.name}</TableCell>
                 <TableCell className="tabular-nums text-gray-500">
