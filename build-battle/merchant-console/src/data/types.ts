@@ -11,6 +11,20 @@ export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
 
+/** `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal. */
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+/**
+ * What a card may be spent on. Advisory metadata today: there is no
+ * authorization path here to enforce it against.
+ */
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "contractors"
+  | "travel"
+  | "office_supplies"
+
 export interface Merchant {
   id: string
   name: string
@@ -69,6 +83,33 @@ export interface Payout {
   currency: Currency
   status: PayoutStatus
   paymentIds: string[]
+}
+
+/**
+ * A virtual card. Single-merchant, always virtual, and limited from the moment
+ * it exists.
+ *
+ * The full number is never a field here. It is returned exactly once, in the
+ * creation response, and what survives is the last four plus a reference.
+ */
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four digits of the generated number. Never the whole PAN. */
+  last4: string
+  /** Opaque handle for the generated number. Not the number, not derivable from it. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units, in the same currency as the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  /** Chosen at issue time. `null` means the card is not category-locked. */
+  categoryLock: MerchantCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
 }
 
 export interface PaymentFilters {

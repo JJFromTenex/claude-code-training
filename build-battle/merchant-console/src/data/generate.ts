@@ -1,5 +1,11 @@
+import {
+  generateCardNumber,
+  generateCardReference,
+  last4Of,
+} from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
   Currency,
   Dispute,
   Payment,
@@ -148,7 +154,98 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  return { payments, refunds, disputes, payouts, cards: generateCards() }
+}
+
+/**
+ * Cards ops has already issued, so the list, the status badges, and the spend
+ * bar all have something to show on a cold boot.
+ *
+ * Numbers come from the real generator and are thrown away immediately: only
+ * the last four and a reference survive, exactly as a newly issued card does.
+ * Nothing here is a hand-written number, so no literal that could resemble a
+ * PAN exists in the repository. Both generators are driven by this module's
+ * PRNG rather than the CSPRNG, so the seed stays deterministic.
+ */
+function generateCards(): Card[] {
+  const randomDigit = () => Math.floor(rand() * 10)
+  const randomByte = () => Math.floor(rand() * 256)
+
+  /** Days before `GENERATED_AT` that each seeded card was issued. */
+  const seeds: (Omit<Card, "last4" | "reference" | "createdAt"> & {
+    daysAgo: number
+  })[] = [
+    {
+      id: "card_000001",
+      nickname: "Search ads — Q3",
+      merchantId: "mch_01",
+      spendLimit: 500_000,
+      // 86% of the limit: the card the spend bar should flag amber.
+      spend: 431_250,
+      currency: "USD",
+      status: "active",
+      categoryLock: "advertising",
+      daysAgo: 46,
+    },
+    {
+      id: "card_000002",
+      nickname: "Design contractor retainer",
+      merchantId: "mch_04",
+      spendLimit: 250_000,
+      spend: 80_000,
+      currency: "GBP",
+      status: "active",
+      categoryLock: "contractors",
+      daysAgo: 31,
+    },
+    {
+      id: "card_000003",
+      nickname: "SaaS subscriptions",
+      merchantId: "mch_05",
+      spendLimit: 120_000,
+      spend: 116_400,
+      currency: "EUR",
+      status: "frozen",
+      categoryLock: "software",
+      daysAgo: 19,
+    },
+    {
+      id: "card_000004",
+      nickname: "Trade show travel",
+      merchantId: "mch_02",
+      spendLimit: 300_000,
+      spend: 0,
+      currency: "USD",
+      status: "active",
+      categoryLock: null,
+      daysAgo: 8,
+    },
+    {
+      id: "card_000005",
+      nickname: "Warehouse supplies — closed account",
+      merchantId: "mch_10",
+      spendLimit: 75_000,
+      spend: 74_980,
+      currency: "USD",
+      status: "cancelled",
+      categoryLock: "office_supplies",
+      daysAgo: 63,
+    },
+  ]
+
+  return seeds.map(({ daysAgo, ...seed }) => {
+    const number = generateCardNumber(randomDigit)
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - daysAgo)
+    createdAt.setUTCHours(between(8, 18), between(0, 59), 0, 0)
+
+    return {
+      ...seed,
+      last4: last4Of(number),
+      reference: generateCardReference(randomByte),
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
