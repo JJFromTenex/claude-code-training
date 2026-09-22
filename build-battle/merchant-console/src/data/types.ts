@@ -7,6 +7,10 @@ export type PaymentStatus =
   | "failed"
   | "disputed"
 
+export type PaymentMethod = "card" | "wallet" | "bank_transfer"
+
+export type CardBrand = "visa" | "mastercard" | "amex"
+
 export type DisputeStatus = "needs_response" | "under_review" | "won" | "lost"
 
 export type PayoutStatus = "paid" | "in_transit" | "pending"
@@ -28,8 +32,8 @@ export interface Payment {
   amount: number
   currency: Currency
   status: PaymentStatus
-  method: "card" | "wallet" | "bank_transfer"
-  cardBrand: "visa" | "mastercard" | "amex" | null
+  method: PaymentMethod
+  cardBrand: CardBrand | null
   last4: string | null
   /** ISO 8601, always UTC. */
   createdAt: string
@@ -77,8 +81,30 @@ export interface PaymentFilters {
   search?: string
   from?: string
   to?: string
+  method?: PaymentMethod | "all"
+  /** Only meaningful when method is "card"; dropped otherwise. */
+  cardBrand?: CardBrand | "all"
+  /** Gates the amount range: without it, min/max are dropped. */
+  currency?: Currency
+  /** Integer minor units, converted from client input at the boundary. */
+  minAmount?: number
+  maxAmount?: number
   page?: number
   pageSize?: number
-  sort?: "createdAt" | "amount"
+  sort?: PaymentSort
   direction?: "asc" | "desc"
+}
+
+export type PaymentSort = "createdAt" | "amount" | "merchant" | "status"
+
+export interface CurrencyTotal {
+  currency: Currency
+  /** Integer minor units. */
+  amount: number
+}
+
+export interface PaymentSummary {
+  count: number
+  /** One entry per currency present. Amounts are never summed across currencies. */
+  totals: CurrencyTotal[]
 }
