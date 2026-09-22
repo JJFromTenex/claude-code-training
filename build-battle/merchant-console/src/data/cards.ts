@@ -26,8 +26,7 @@ export interface IssueCardInput {
 }
 
 export type Validation<T> =
-  | { ok: true; value: T }
-  | { ok: false; message: string }
+  { ok: true; value: T } | { ok: false; message: string }
 
 const NICKNAME_MAX = 40
 
@@ -41,26 +40,37 @@ export function parseIssueCardInput(body: unknown): Validation<IssueCardInput> {
   }
   const input = body as Record<string, unknown>
 
-  const nickname = typeof input.nickname === "string" ? input.nickname.trim() : ""
+  const nickname =
+    typeof input.nickname === "string" ? input.nickname.trim() : ""
   if (!nickname) return { ok: false, message: "Nickname is required." }
   if (nickname.length > NICKNAME_MAX) {
-    return { ok: false, message: `Nickname must be ${NICKNAME_MAX} characters or fewer.` }
+    return {
+      ok: false,
+      message: `Nickname must be ${NICKNAME_MAX} characters or fewer.`,
+    }
   }
 
-  const merchantId = typeof input.merchantId === "string" ? input.merchantId : ""
+  const merchantId =
+    typeof input.merchantId === "string" ? input.merchantId : ""
   if (!merchantId || !merchantById(merchantId)) {
     return { ok: false, message: "Choose a merchant." }
   }
 
   const spendLimit = input.spendLimit
   if (typeof spendLimit !== "number" || !Number.isInteger(spendLimit)) {
-    return { ok: false, message: "Spend limit must be a whole number of minor units." }
+    return {
+      ok: false,
+      message: "Spend limit must be a whole number of minor units.",
+    }
   }
   if (spendLimit <= 0) {
     return { ok: false, message: "Spend limit must be greater than zero." }
   }
   if (spendLimit > MAX_SPEND_LIMIT) {
-    return { ok: false, message: "Spend limit cannot exceed 5,000,000 minor units." }
+    return {
+      ok: false,
+      message: "Spend limit cannot exceed 5,000,000 minor units.",
+    }
   }
 
   const currency = input.currency
@@ -91,7 +101,10 @@ export function parseCardStatus(body: unknown): Validation<CardStatus> {
       ? (body as Record<string, unknown>).status
       : undefined
   if (!CARD_STATUSES.includes(status as CardStatus)) {
-    return { ok: false, message: "Status must be active, frozen, or cancelled." }
+    return {
+      ok: false,
+      message: "Status must be active, frozen, or cancelled.",
+    }
   }
   return { ok: true, value: status as CardStatus }
 }
@@ -112,7 +125,10 @@ const pad = (n: number, width = 6) => String(n).padStart(width, "0")
  * record keeps the last four and an opaque reference; the number is not
  * stored anywhere and cannot be read back.
  */
-export function issueCard(input: IssueCardInput): { card: Card; number: string } {
+export function issueCard(input: IssueCardInput): {
+  card: Card
+  number: string
+} {
   const number = generateCardNumber()
   const createdAt = new Date().toISOString()
   const card: Card = {
@@ -134,8 +150,7 @@ export function issueCard(input: IssueCardInput): { card: Card; number: string }
 }
 
 export type StatusChange =
-  | { ok: true; card: Card }
-  | { ok: false; status: 404 | 409; message: string }
+  { ok: true; card: Card } | { ok: false; status: 404 | 409; message: string }
 
 /** Guards the state machine on the server. The UI only mirrors it. */
 export function changeCardStatus(id: string, to: CardStatus): StatusChange {

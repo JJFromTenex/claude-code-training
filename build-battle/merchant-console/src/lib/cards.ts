@@ -32,7 +32,11 @@ export function luhnCheckDigit(digits: string): string {
   let sum = 0
   // Walk right to left. The check digit will sit at position 0, so the
   // rightmost payload digit is doubled.
-  for (let i = digits.length - 1, double = true; i >= 0; i--, double = !double) {
+  for (
+    let i = digits.length - 1, double = true;
+    i >= 0;
+    i--, double = !double
+  ) {
     let d = Number(digits[i])
     if (double) {
       d *= 2

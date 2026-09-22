@@ -22,8 +22,12 @@ describe("parseIssueCardInput", () => {
   })
 
   it("rejects a missing or unknown merchant", () => {
-    expect(parseIssueCardInput({ ...good, merchantId: undefined }).ok).toBe(false)
-    expect(parseIssueCardInput({ ...good, merchantId: "mch_99" }).ok).toBe(false)
+    expect(parseIssueCardInput({ ...good, merchantId: undefined }).ok).toBe(
+      false,
+    )
+    expect(parseIssueCardInput({ ...good, merchantId: "mch_99" }).ok).toBe(
+      false,
+    )
   })
 
   it("rejects a zero or negative limit", () => {
@@ -32,8 +36,12 @@ describe("parseIssueCardInput", () => {
   })
 
   it("rejects a limit above 5,000,000 minor units and accepts the cap", () => {
-    expect(parseIssueCardInput({ ...good, spendLimit: 5_000_001 }).ok).toBe(false)
-    expect(parseIssueCardInput({ ...good, spendLimit: 5_000_000 }).ok).toBe(true)
+    expect(parseIssueCardInput({ ...good, spendLimit: 5_000_001 }).ok).toBe(
+      false,
+    )
+    expect(parseIssueCardInput({ ...good, spendLimit: 5_000_000 }).ok).toBe(
+      true,
+    )
   })
 
   it("rejects a limit that is not an integer, including strings", () => {

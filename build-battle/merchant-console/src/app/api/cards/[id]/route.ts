@@ -20,7 +20,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ message: "Request body must be JSON." }, { status: 400 })
+    return NextResponse.json(
+      { message: "Request body must be JSON." },
+      { status: 400 },
+    )
   }
 
   const parsed = parseCardStatus(body)
@@ -30,7 +33,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 
   const result = changeCardStatus(id, parsed.value)
   if (!result.ok) {
-    return NextResponse.json({ message: result.message }, { status: result.status })
+    return NextResponse.json(
+      { message: result.message },
+      { status: result.status },
+    )
   }
   return NextResponse.json(result.card)
 }

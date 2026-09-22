@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ message: "Request body must be JSON." }, { status: 400 })
+    return NextResponse.json(
+      { message: "Request body must be JSON." },
+      { status: 400 },
+    )
   }
 
   const parsed = parseIssueCardInput(body)
