@@ -49,11 +49,7 @@ export default async function CardDetailPage({
             {maskCardNumber(card.last4)}
           </p>
         </div>
-        <CardStatusActions
-          cardId={card.id}
-          cardNickname={card.nickname}
-          status={card.status}
-        />
+        <CardStatusActions cardId={card.id} status={card.status} />
       </div>
 
       <div className="mt-8 max-w-xl rounded-lg border border-gray-200 p-4 dark:border-gray-800">

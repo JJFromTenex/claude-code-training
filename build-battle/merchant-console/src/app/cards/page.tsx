@@ -90,7 +90,6 @@ export default function CardsPage() {
                   <TableCell>
                     <CardStatusActions
                       cardId={card.id}
-                      cardNickname={card.nickname}
                       status={card.status}
                       size="compact"
                     />

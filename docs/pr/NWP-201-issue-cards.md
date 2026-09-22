@@ -48,7 +48,7 @@ Browser pass at `localhost:3000/cards`, driven with Playwright:
 - Nested-portal check: with the merchant listbox open, Escape closes the popover and leaves the drawer open. Focus returns to the trigger.
 - The list re-renders with the new card via `router.refresh()`, no full page reload.
 
-`npm test` — **75 tests passing across 5 files**, 47 new for this ticket. Broken down in the Tie-breaks section below.
+`npm test` — **41 tests passing across 4 files.** 13 are new in `src/lib/cards.test.ts`: Luhn validity over 200 consecutive generations, the `4242` BIN prefix and 16-digit length on every one, `lastFour` and `maskCardNumber`, and every legal and illegal status transition including `cancelled` as terminal.
 
 `npx tsc --noEmit` — clean, exit 0.
 
@@ -89,42 +89,8 @@ Server-side validation — each of these returned `400` with a message safe to s
 - [x] **Freeze and unfreeze from the list.** `src/app/cards/card-status-actions.tsx`. `PATCH` transitions verified at the API; the no-full-reload path uses `router.refresh()` and was confirmed in the browser.
 - [x] **Spend progress, amber past 80%.** `src/app/cards/[id]/page.tsx`. The seeded card `Meta Ads — Q3` sits at 431,200 of 500,000 (86%), rendering the amber bar; `role="progressbar"` with `aria-valuenow` for screen readers.
 - [x] **Merchant category lock.** Chosen at issue time, validated against the allowlist in `parseIssueCardInput`, shown on the detail page. The drawer and the detail page read the same option list, so their labels cannot drift.
-- [x] **Tests.** `src/lib/cards.test.ts` and `src/data/cards.test.ts`, each beside the code it covers. 75 passing, 47 new. See Tie-breaks.
+- [x] **Tests.** `src/lib/cards.test.ts`, beside the code it covers, `npm test` passing.
 - [x] **Empty and error states.** Written empty state in `src/app/cards/page.tsx`; the drawer and status actions surface the server's own message rather than a generic one. The `Select a merchant.` path was exercised in the browser.
-
-## Tie-breaks
-
-### Tests
-
-**75 passing across 5 files**, 47 of them new for this ticket.
-
-- `src/lib/cards.test.ts` (13) — the pure helpers: Luhn validity over 200 consecutive generations, `4242` prefix and 16-digit length on every one, check-digit maths against the canonical test PAN, masking, and the full transition table including `cancelled` as terminal and same-state transitions rejected.
-- `src/data/cards.test.ts` (34) — the server-side guards the rules actually ride on: `parseIssueCardInput` against 14 hostile inputs (non-object body, `null`, blank and over-long nicknames, missing and unknown merchants, zero/negative/over-max/non-integer/string limits, unsupported and lowercase currencies, unknown category), the exact `5000000` boundary accepted, **mass-assignment rejected** (client-supplied `status`, `spend`, `id`, `last4` are dropped), `parseCardStatus`, and `transitionCard` proving `cancelled` is terminal, that an illegal transition never mutates the store, and that a missing card reports rather than throws.
-- `issueCard` is asserted to store only `last4` — `JSON.stringify(card)` is checked not to contain the generated number, and the `reference` is checked not to contain the number or even the last four.
-
-### Keyboard and screen-reader behaviour
-
-Audited in the browser, not assumed. Verified working:
-
-| Behaviour | Result |
-| --- | --- |
-| Issue button reachable and operable by keyboard | Focusable; opens the drawer |
-| Focus moves into the dialog on open | Yes |
-| Dialog has an accessible name and description | `Issue a virtual card` + description via `aria-describedby` |
-| Escape closes the drawer | Yes, and **focus returns to the trigger** |
-| Escape inside an open select | Closes the popover only, drawer stays open |
-| Select opens from the keyboard | `ArrowDown` opens the listbox, focus moves into the options, `aria-expanded` flips |
-| Every form control resolves to a label | 5/5, checked by resolving accessible names the way a screen reader does |
-| Errors announced | `role="alert"` on both the drawer and the row actions |
-| Spend bar | `role="progressbar"` with `aria-valuenow/min/max` and a label |
-| Headings | `h1` → `h2`, no skipped levels |
-| Buttons with no discernible text | None |
-
-**One real defect found and fixed here.** In the list, every row rendered buttons named only "Freeze" and "Cancel". A screen-reader user pulling up a button list or tabbing the table heard the same two names 65 times with no way to tell which card they belonged to. The row actions now take the card's nickname and expose `Freeze card <nickname>` / `Cancel card <nickname>` as their accessible names, while the visible label stays short. Re-verified: names are now unique per row.
-
-### Diff size
-
-Two feature commits plus this one. The change reuses rather than adds: `formatMoney` / `parseAmountToMinorUnits` (`src/lib/money.ts`), `formatDate` (`src/lib/dates.ts`), the existing `StatusBadge` (extended by three statuses rather than duplicated), `Table`, `Drawer`, `Input`, `Button`, and `Select`. No new dependencies. The only new modules are the ones the ticket requires: the card domain, its two routes, and its two pages.
 
 ## Bugs fixed along the way
 
