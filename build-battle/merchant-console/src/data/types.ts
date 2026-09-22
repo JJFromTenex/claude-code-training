@@ -71,6 +71,32 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "shipping"
+  | "office_supplies"
+  | "travel"
+
+export interface Card {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four digits of the generated number. The number itself is never stored. */
+  last4: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  currency: Currency
+  status: CardStatus
+  /** Integer minor units. There is no transaction system yet, so this stays 0. */
+  spent: number
+  categoryLock: MerchantCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string
