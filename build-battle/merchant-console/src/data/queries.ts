@@ -1,6 +1,8 @@
+import { canTransition } from "@/lib/cardStatus"
+import { generateCardNumber } from "@/lib/luhn"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Payment, PaymentFilters, PaymentStatus } from "./types"
+import { Card, CardStatus, Currency, Payment, PaymentFilters, PaymentStatus } from "./types"
 
 const STATUSES: readonly (PaymentStatus | "all")[] = [
   "all",
@@ -115,4 +117,128 @@ export function refundsForPayment(paymentId: string) {
 
 export function disputeForPayment(paymentId: string) {
   return store.disputes.find((d) => d.paymentId === paymentId) ?? null
+}
+
+/**
+ * Cards. Kept in the same module as the rest of the data access, next to
+ * the payment queries above, per the file's actual purpose.
+ */
+
+const CARD_CURRENCIES: readonly Currency[] = ["USD", "EUR", "GBP"]
+const CARD_STATUSES: readonly CardStatus[] = ["active", "frozen", "cancelled"]
+const MAX_LIMIT_MINOR_UNITS = 5_000_000
+
+export interface CreateCardInput {
+  nickname: string
+  merchantId: string
+  limit: number
+  currency: Currency
+}
+
+export type Validated<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string }
+
+/**
+ * Anything from the client is checked against an allowlist before it
+ * reaches the store. Route handlers call this rather than trusting the body.
+ */
+export function validateCardInput(body: unknown): Validated<CreateCardInput> {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "Request body must be an object." }
+  }
+
+  const { nickname, merchantId, limit, currency } = body as Record<
+    string,
+    unknown
+  >
+
+  if (typeof nickname !== "string" || nickname.trim().length === 0) {
+    return { ok: false, error: "Nickname is required." }
+  }
+  if (typeof merchantId !== "string" || !merchantById(merchantId)) {
+    return { ok: false, error: "A valid merchant is required." }
+  }
+  const merchant = merchantById(merchantId)!
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit <= 0) {
+    return {
+      ok: false,
+      error: "Limit must be a positive whole number of minor units.",
+    }
+  }
+  if (limit > MAX_LIMIT_MINOR_UNITS) {
+    return {
+      ok: false,
+      error: `Limit cannot exceed ${MAX_LIMIT_MINOR_UNITS} minor units.`,
+    }
+  }
+  if (!CARD_CURRENCIES.includes(currency as Currency)) {
+    return { ok: false, error: "Currency must be USD, EUR, or GBP." }
+  }
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `${merchant.name} settles in ${merchant.currency}. Issue this card in ${merchant.currency}.`,
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      nickname: nickname.trim(),
+      merchantId,
+      limit,
+      currency: currency as Currency,
+    },
+  }
+}
+
+export function listCards(): Card[] {
+  return store.cards
+}
+
+export function cardById(id: string): Card | null {
+  return store.cards.find((c) => c.id === id) ?? null
+}
+
+/**
+ * Generates the full number, stores only the last four, and returns the
+ * full number once. Nothing else in this module can ever read it again.
+ */
+export function createCard(input: CreateCardInput): { card: Card; number: string } {
+  const number = generateCardNumber()
+  const card: Card = {
+    id: `card_${String(store.cards.length + 1).padStart(6, "0")}`,
+    nickname: input.nickname,
+    merchantId: input.merchantId,
+    limit: input.limit,
+    currency: input.currency,
+    status: "active",
+    last4: number.slice(-4),
+    spend: 0,
+    createdAt: new Date().toISOString(),
+  }
+  store.cards.push(card)
+  return { card, number }
+}
+
+/** Guards the transition through cardStatus.ts before writing it. */
+export function setCardStatus(
+  id: string,
+  status: CardStatus,
+): Validated<Card> {
+  const card = cardById(id)
+  if (!card) return { ok: false, error: "Card not found." }
+  if (!CARD_STATUSES.includes(status)) {
+    return { ok: false, error: "Status must be active, frozen, or cancelled." }
+  }
+  if (!canTransition(card.status, status)) {
+    return {
+      ok: false,
+      error: `Cannot move a ${card.status} card to ${status}.`,
+    }
+  }
+
+  card.status = status
+  return { ok: true, value: card }
 }
