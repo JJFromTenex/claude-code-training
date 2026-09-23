@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  parseExportColumns,
+  parseExportScope,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -76,10 +83,63 @@ describe("toCsv", () => {
   })
 })
 
+describe("parseExportColumns", () => {
+  it("keeps a requested subset in the order given", () => {
+    const parsed = parseExportColumns("amount,id")
+    expect(parsed).toEqual({ ok: true, value: ["amount", "id"] })
+    if (!parsed.ok) return
+    expect(toCsv([payment], parsed.value)).toBe(
+      ["amount,id", '$250.00,pay_0001'].join("\n"),
+    )
+  })
+
+  it("leaves the card last four out when no columns are requested", () => {
+    const parsed = parseExportColumns(null)
+    expect(parsed).toEqual({ ok: true, value: [...DEFAULT_EXPORT_COLUMNS] })
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    const csv = toCsv([payment], DEFAULT_EXPORT_COLUMNS)
+    expect(csv.split("\n")[0]).not.toContain("last4")
+    expect(csv).not.toContain("4242")
+  })
+
+  it("rejects an empty selection rather than writing an empty file", () => {
+    expect(parseExportColumns("").ok).toBe(false)
+    expect(parseExportColumns(" , ").ok).toBe(false)
+  })
+
+  it("rejects a column that is not on the allowlist", () => {
+    expect(parseExportColumns("id,card_number")).toEqual({
+      ok: false,
+      error: "Unknown export column: card_number.",
+    })
+  })
+
+  it("collapses duplicates and trims whitespace", () => {
+    expect(parseExportColumns(" id , amount,id")).toEqual({
+      ok: true,
+      value: ["id", "amount"],
+    })
+  })
+})
+
+describe("parseExportScope", () => {
+  it("defaults to the current filter and rejects anything unknown", () => {
+    expect(parseExportScope(null)).toEqual({ ok: true, value: "filter" })
+    expect(parseExportScope("all")).toEqual({ ok: true, value: "all" })
+    expect(parseExportScope("everything").ok).toBe(false)
+  })
+})
+
 describe("exportFilename", () => {
   it("stamps the UTC date, so two exports on the same day collide by design", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("names the scope ahead of the date", () => {
+    expect(
+      exportFilename(new Date("2026-03-14T23:00:00.000Z"), "disputed"),
+    ).toBe("payments-disputed-2026-03-14.csv")
   })
 })
