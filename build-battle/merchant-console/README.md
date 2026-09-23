@@ -23,7 +23,7 @@ Vitest, node environment, no DOM. The suite covers the money, date, and CSV
 helpers — the three places a quiet mistake costs real money. It runs in under
 a second, which is the point: it is meant to run before every push.
 
-Data lives in an in-memory store loaded from JSON at boot. Anything you create lasts for the life of the dev server and resets on restart. That is deliberate — see [`CLAUDE.md`](./CLAUDE.md).
+Data lives in an in-memory store, generated deterministically at boot by `src/data/generate.ts`. Anything you create lasts for the life of the dev server and resets on restart. That is deliberate — see [`CLAUDE.md`](./CLAUDE.md).
 
 ## The rules of this codebase
 
@@ -41,7 +41,7 @@ Read [`CLAUDE.md`](./CLAUDE.md) before writing code. The short version:
 | `src/app/` | The console routes: overview, payments, disputes, payouts |
 | `src/app/api/` | Route handlers. The query builder behind `GET /api/payments` is the one to reuse |
 | `src/components/` | Tremor-based UI primitives and the console's own components |
-| `src/data/` | Seed JSON, the in-memory store, and types |
+| `src/data/` | Seed generator, the in-memory store, the query builder, and types |
 | `src/lib/` | Money, date, and CSV helpers, each with a `.test.ts` beside it |
 
 ## Your ticket

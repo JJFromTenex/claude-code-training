@@ -11,6 +11,10 @@ Closes NWP-____
 
 <!-- One short paragraph. What does this do that the app could not do before? -->
 
+## Business impact
+
+<!-- One line, in terms the ops or finance team would recognize. For example: "Ops can send merchant exports without hand-deleting card numbers, saving 3–4 hours a month." -->
+
 ## How I verified it
 
 <!-- The commands you ran and what you saw. Paste the test summary line. Say what you clicked and what appeared. -->
