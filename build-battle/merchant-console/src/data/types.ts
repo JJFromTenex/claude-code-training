@@ -82,3 +82,19 @@ export interface PaymentFilters {
   sort?: "createdAt" | "amount"
   direction?: "asc" | "desc"
 }
+
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export interface Card {
+  id: string
+  merchantId: string
+  nickname: string
+  /** Last 4 digits only. Full number generated server-side, shown once on creation. */
+  last4: string
+  /** Integer minor units. Never a float. */
+  limit: number
+  currency: Currency
+  status: CardStatus
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
