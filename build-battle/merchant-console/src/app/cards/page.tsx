@@ -33,7 +33,11 @@ export default function CardsPage() {
           </p>
         </div>
         <IssueCardDrawer
-          merchants={merchants.map((m) => ({ id: m.id, name: m.name }))}
+          merchants={merchants.map((m) => ({
+            id: m.id,
+            name: m.name,
+            currency: m.currency,
+          }))}
         />
       </div>
 

@@ -1,13 +1,28 @@
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import type { CardEventKind } from "@/data/types"
 import { categoryLabel, maskCardNumber } from "@/lib/card-display"
-import { formatDate } from "@/lib/dates"
+import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import type { ReactNode } from "react"
 import { CardStatusActions } from "../card-status-actions"
+
+const EVENT_LABELS: Record<CardEventKind, string> = {
+  issued: "Card issued",
+  frozen: "Frozen",
+  unfrozen: "Unfrozen",
+  cancelled: "Cancelled",
+}
+
+const EVENT_DOTS: Record<CardEventKind, string> = {
+  issued: "bg-emerald-500",
+  frozen: "bg-blue-500",
+  unfrozen: "bg-emerald-500",
+  cancelled: "bg-gray-400 dark:bg-gray-600",
+}
 
 export default async function CardDetailPage({
   params,
@@ -18,7 +33,7 @@ export default async function CardDetailPage({
   const card = cardById(id)
   if (!card) notFound()
 
-  const merchant = merchantById(card.merchantId)
+  const merchant = merchantById(card.merchantId)!
   // Percentages are display maths on two minor-unit integers; the amounts
   // themselves stay integers.
   const percent =
@@ -99,15 +114,49 @@ export default async function CardDetailPage({
         <Field label="Reference">
           <span className="font-mono">{card.reference}</span>
         </Field>
-        <Field label="Merchant">{merchant?.name ?? card.merchantId}</Field>
+        <Field label="Merchant">
+          {merchant.name}
+          <span className="ml-2 text-gray-500">{merchant.country}</span>
+        </Field>
         <Field label="Category lock">{categoryLabel(card.category)}</Field>
         <Field label="Spend limit">
           {formatMoney(card.spendLimit, card.currency)}
         </Field>
-        <Field label="Currency">{card.currency}</Field>
-        <Field label="Status">{card.status}</Field>
-        <Field label="Created">{formatDate(card.createdAt)}</Field>
+        <Field label="Currency">
+          {card.currency}
+          <span className="ml-2 text-gray-500">
+            matches {merchant.name}
+          </span>
+        </Field>
+        <Field label="Created (UTC)">
+          <span className="font-mono text-sm">{card.createdAt}</span>
+        </Field>
+        <Field label={`Created (${merchant.timezone})`}>
+          {formatInZone(card.createdAt, merchant.timezone)}
+        </Field>
       </dl>
+
+      <h2 className="mt-10 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        Timeline
+      </h2>
+      <ol className="mt-4 max-w-xl space-y-4">
+        {card.history.map((entry, index) => (
+          <li key={index} className="flex gap-3">
+            <span
+              className={`mt-1.5 size-2 shrink-0 rounded-full ${EVENT_DOTS[entry.kind]}`}
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm text-gray-900 dark:text-gray-50">
+                {EVENT_LABELS[entry.kind]}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatInZone(entry.at, merchant.timezone)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       <p className="mt-8 max-w-xl text-xs text-gray-500">
         The full card number was shown once, when the card was issued. Only the

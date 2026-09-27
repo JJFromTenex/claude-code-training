@@ -5,7 +5,13 @@ import {
 import { canTransition, generateCardNumber, lastFour } from "@/lib/cards"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Card, CardStatus, Currency, MerchantCategory } from "./types"
+import {
+  Card,
+  CardEventKind,
+  CardStatus,
+  Currency,
+  MerchantCategory,
+} from "./types"
 
 /**
  * The one card query builder. Every card list, lookup, issue, and status
@@ -18,12 +24,12 @@ import { Card, CardStatus, Currency, MerchantCategory } from "./types"
 
 // Derived from the display options so the validator and the form can never
 // disagree about what a valid currency or category is.
-export const CARD_CURRENCIES: readonly Currency[] = CARD_CURRENCY_OPTIONS
+const CARD_CURRENCIES: readonly Currency[] = CARD_CURRENCY_OPTIONS
 
-export const CARD_CATEGORIES: readonly MerchantCategory[] =
+const CARD_CATEGORIES: readonly MerchantCategory[] =
   CARD_CATEGORY_OPTIONS.map((option) => option.value)
 
-export const CARD_STATUSES: readonly CardStatus[] = [
+const CARD_STATUSES: readonly CardStatus[] = [
   "active",
   "frozen",
   "cancelled",
@@ -71,7 +77,8 @@ export function parseIssueCardInput(input: unknown): ParseResult<IssueCardInput>
   if (!merchantId) {
     return { ok: false, error: "Merchant is required." }
   }
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return { ok: false, error: "Unknown merchant." }
   }
 
@@ -97,6 +104,15 @@ export function parseIssueCardInput(input: unknown): ParseResult<IssueCardInput>
     return {
       ok: false,
       error: `Currency must be one of ${CARD_CURRENCIES.join(", ")}.`,
+    }
+  }
+  // A card settles against its merchant, and the merchant has exactly one
+  // currency. Issuing in another one produces a card that cannot be
+  // reconciled — the mistake that put the wrong limit on a card last month.
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      error: `${merchant.name} settles in ${merchant.currency}. Issue this card in ${merchant.currency}.`,
     }
   }
 
@@ -141,11 +157,31 @@ function nextCardId(): string {
  * The number is returned exactly once, here. It is deliberately not part of
  * `Card`, so there is nowhere to read it back from.
  */
+/**
+ * Issue keys already honoured, mapped to the card they produced.
+ *
+ * Disabling the submit button stops the common double-click; it does nothing
+ * about a retry, a refresh, or a second tab, each of which would otherwise
+ * mint a second card against the same merchant. The key is minted per form,
+ * so a replay returns the original card instead of issuing another.
+ *
+ * Held on the store so it shares the in-memory lifetime of everything else.
+ */
+export function issuedCardForKey(key: string): Card | null {
+  const cardId = store.issueKeys.get(key)
+  return cardId ? cardById(cardId) : null
+}
+
+export function rememberIssueKey(key: string, cardId: string): void {
+  store.issueKeys.set(key, cardId)
+}
+
 export function issueCard(input: IssueCardInput): {
   card: Card
   number: string
 } {
   const number = generateCardNumber()
+  const issuedAt = new Date().toISOString()
   const card: Card = {
     id: nextCardId(),
     nickname: input.nickname,
@@ -159,10 +195,18 @@ export function issueCard(input: IssueCardInput): {
     currency: input.currency,
     status: "active",
     category: input.category,
-    createdAt: new Date().toISOString(),
+    createdAt: issuedAt,
+    history: [{ kind: "issued", at: issuedAt }],
   }
   store.cards.unshift(card)
   return { card, number }
+}
+
+/** The event a legal transition records. */
+const TRANSITION_EVENT: Record<CardStatus, CardEventKind | null> = {
+  frozen: "frozen",
+  active: "unfrozen",
+  cancelled: "cancelled",
 }
 
 /** Handle a card can be referred to by, unrelated to its number. */
@@ -200,5 +244,7 @@ export function transitionCard(
     }
   }
   card.status = to
+  const kind = TRANSITION_EVENT[to]
+  if (kind) card.history.push({ kind, at: new Date().toISOString() })
   return { ok: true, value: card }
 }

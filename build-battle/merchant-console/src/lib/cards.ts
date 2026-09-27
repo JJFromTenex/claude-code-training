@@ -70,7 +70,7 @@ export function lastFour(cardNumber: string): string {
  * `active ⇄ frozen`, either to `cancelled`, and `cancelled` is terminal.
  * Guarded here so the server decides, not the UI.
  */
-export const CARD_TRANSITIONS: Record<CardStatus, readonly CardStatus[]> = {
+const CARD_TRANSITIONS: Record<CardStatus, readonly CardStatus[]> = {
   active: ["frozen", "cancelled"],
   frozen: ["active", "cancelled"],
   cancelled: [],

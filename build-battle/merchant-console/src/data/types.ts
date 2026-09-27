@@ -80,6 +80,14 @@ export type MerchantCategory =
   | "travel"
   | "any"
 
+export type CardEventKind = "issued" | "frozen" | "unfrozen" | "cancelled"
+
+export interface CardEvent {
+  kind: CardEventKind
+  /** ISO 8601, always UTC. Display converts to the merchant's timezone. */
+  at: string
+}
+
 export interface Card {
   id: string
   nickname: string
@@ -101,6 +109,12 @@ export interface Card {
   category: MerchantCategory
   /** ISO 8601, always UTC. */
   createdAt: string
+  /**
+   * Everything that has happened to this card, oldest first. Ops needs to be
+   * able to answer "what happened to this card last Tuesday" without a Slack
+   * thread — the same job the payment timeline does.
+   */
+  history: CardEvent[]
 }
 
 export interface PaymentFilters {

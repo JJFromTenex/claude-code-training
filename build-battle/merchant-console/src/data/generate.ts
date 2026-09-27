@@ -1,6 +1,7 @@
 import { merchants } from "./merchants"
 import {
   Card,
+  CardEvent,
   Currency,
   Dispute,
   Payment,
@@ -149,7 +150,13 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts, cards: generateCards() }
+  return {
+    payments,
+    refunds,
+    disputes,
+    payouts,
+    cards: generateCards(payments),
+  }
 }
 
 /**
@@ -157,7 +164,7 @@ export function generate() {
  * at boot. Numbers are on the `4242` test BIN like every other card here, and
  * only the last four is ever stored.
  */
-function generateCards(): Card[] {
+function generateCards(payments: Payment[]): Card[] {
   const issued = [
     {
       id: "card_000001",
@@ -166,33 +173,33 @@ function generateCards(): Card[] {
       last4: "4318",
       reference: "cref_seed01",
       spendLimit: 500_000,
-      spend: 431_200,
       currency: "USD" as const,
       status: "active" as const,
       category: "advertising" as const,
       daysAgo: 12,
     },
     {
+      // mch_05 is Berlin and settles in EUR; a card always matches its
+      // merchant's currency.
       id: "card_000002",
       nickname: "Figma + design tools",
-      merchantId: "mch_03",
+      merchantId: "mch_05",
       last4: "9072",
       reference: "cref_seed02",
       spendLimit: 120_000,
-      spend: 42_500,
       currency: "EUR" as const,
       status: "active" as const,
       category: "software" as const,
       daysAgo: 30,
     },
     {
+      // mch_09 is London and settles in GBP.
       id: "card_000003",
       nickname: "Contractor — Nov",
-      merchantId: "mch_05",
+      merchantId: "mch_09",
       last4: "5561",
       reference: "cref_seed03",
       spendLimit: 250_000,
-      spend: 0,
       currency: "GBP" as const,
       status: "frozen" as const,
       category: "contractors" as const,
@@ -200,10 +207,40 @@ function generateCards(): Card[] {
     },
   ]
 
-  return issued.map(({ daysAgo, ...card }) => ({
-    ...card,
-    createdAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
-  }))
+  return issued.map(({ daysAgo, status, ...card }) => {
+    // Anchored to GENERATED_AT like every other collection in this file, so
+    // the seeded cards are identical on every machine and sit in the same
+    // window as the seeded payments.
+    const createdAt = new Date(
+      GENERATED_AT.getTime() - daysAgo * 86_400_000,
+    ).toISOString()
+
+    // Spend is derived from the merchant's real captured payments since the
+    // card was issued, capped at the limit — not a number typed into the
+    // seed. A fabricated spend makes the progress bar lie.
+    const spend = Math.min(
+      card.spendLimit,
+      payments
+        .filter(
+          (payment) =>
+            payment.merchantId === card.merchantId &&
+            payment.status === "captured" &&
+            payment.createdAt >= createdAt,
+        )
+        .reduce((total, payment) => total + payment.amount, 0),
+    )
+
+    const history: CardEvent[] = [{ kind: "issued", at: createdAt }]
+    if (status === "frozen") {
+      // Frozen a day after it was issued, so the timeline has something real
+      // in it rather than a single entry.
+      history.push({
+        kind: "frozen",
+        at: new Date(Date.parse(createdAt) + 86_400_000).toISOString(),
+      })
+    }
+    return { ...card, status, spend, createdAt, history }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

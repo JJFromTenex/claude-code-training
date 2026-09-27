@@ -24,6 +24,7 @@ import {
   CARD_CURRENCY_OPTIONS,
   maskCardNumber,
 } from "@/lib/card-display"
+import type { Currency } from "@/data/types"
 import { parseAmountToMinorUnits } from "@/lib/money"
 import { Check, Copy, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -34,7 +35,7 @@ type Issued = { last4: string; number: string; nickname: string }
 export function IssueCardDrawer({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: { id: string; name: string; currency: Currency }[]
 }) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
@@ -42,6 +43,13 @@ export function IssueCardDrawer({
   const [error, setError] = React.useState<string | null>(null)
   const [issued, setIssued] = React.useState<Issued | null>(null)
   const [copied, setCopied] = React.useState(false)
+  // A card settles against its merchant, so the currency follows the merchant
+  // rather than being a free choice. The server enforces the same rule.
+  const [merchantId, setMerchantId] = React.useState("")
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
+  // One key per opened form. Cleared with the rest of the state on close, so
+  // the next card gets its own.
+  const [issueKey, setIssueKey] = React.useState(() => crypto.randomUUID())
 
   function close() {
     setOpen(false)
@@ -50,6 +58,8 @@ export function IssueCardDrawer({
     setIssued(null)
     setError(null)
     setCopied(false)
+    setMerchantId("")
+    setIssueKey(crypto.randomUUID())
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -79,7 +89,12 @@ export function IssueCardDrawer({
     try {
       const res = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          // Minted once per opened form, so a retry or a second tab replays
+          // onto the same card instead of issuing another.
+          "idempotency-key": issueKey,
+        },
         body: JSON.stringify({
           nickname: String(form.get("nickname") ?? ""),
           merchantId: String(form.get("merchantId") ?? ""),
@@ -209,7 +224,11 @@ export function IssueCardDrawer({
                 >
                   Merchant
                 </label>
-                <Select name="merchantId">
+                <Select
+                  name="merchantId"
+                  value={merchantId}
+                  onValueChange={setMerchantId}
+                >
                   <SelectTrigger id="merchantId" className="mt-2 w-full">
                     <SelectValue placeholder="Select a merchant" />
                   </SelectTrigger>
@@ -217,6 +236,9 @@ export function IssueCardDrawer({
                     {merchants.map((merchant) => (
                       <SelectItem key={merchant.id} value={merchant.id}>
                         {merchant.name}
+                        <span className="ml-2 text-gray-500">
+                          {merchant.currency}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -250,18 +272,20 @@ export function IssueCardDrawer({
                   >
                     Currency
                   </label>
-                  <Select name="currency" defaultValue="USD">
-                    <SelectTrigger id="currency" className="mt-2 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CARD_CURRENCY_OPTIONS.map((currency) => (
-                        <SelectItem key={currency} value={currency}>
-                          {currency}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="currency"
+                    name="currency"
+                    readOnly
+                    value={selectedMerchant?.currency ?? ""}
+                    placeholder="Pick a merchant"
+                    aria-describedby="currency-hint"
+                    className="mt-2"
+                  />
+                  <p id="currency-hint" className="mt-1 text-xs text-gray-500">
+                    {selectedMerchant
+                      ? `${selectedMerchant.name} settles in ${selectedMerchant.currency}.`
+                      : "Set by the merchant you choose."}
+                  </p>
                 </div>
               </div>
 

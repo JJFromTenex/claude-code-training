@@ -22,6 +22,9 @@ export function CardStatusActions({
   const router = useRouter()
   const [pending, setPending] = React.useState<CardStatus | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  // Cancelling is terminal — nothing comes back from it — so it asks first.
+  // Freezing is reversible and does not.
+  const [confirmingCancel, setConfirmingCancel] = React.useState(false)
 
   async function transition(to: CardStatus) {
     setPending(to)
@@ -53,6 +56,33 @@ export function CardStatusActions({
 
   const buttonClass = size === "compact" ? "py-1 text-xs" : "py-1.5"
 
+  if (confirmingCancel) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          Cancel permanently?
+        </span>
+        <Button
+          variant="destructive"
+          className={buttonClass}
+          disabled={pending !== null}
+          isLoading={pending === "cancelled"}
+          onClick={() => transition("cancelled")}
+        >
+          Yes, cancel
+        </Button>
+        <Button
+          variant="secondary"
+          className={buttonClass}
+          disabled={pending !== null}
+          onClick={() => setConfirmingCancel(false)}
+        >
+          Keep
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center justify-end gap-2">
       {error && (
@@ -73,8 +103,7 @@ export function CardStatusActions({
         variant="ghost"
         className={buttonClass}
         disabled={pending !== null}
-        isLoading={pending === "cancelled"}
-        onClick={() => transition("cancelled")}
+        onClick={() => setConfirmingCancel(true)}
       >
         Cancel
       </Button>
