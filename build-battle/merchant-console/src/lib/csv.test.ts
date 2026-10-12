@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  exportLabel,
+  isExportScope,
+  parseExportColumns,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +89,107 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+})
+
+describe("exportFilename with a scope label", () => {
+  const day = new Date("2026-08-13T09:00:00.000Z")
+
+  it("puts the label between the prefix and the UTC date", () => {
+    expect(exportFilename(day, "disputed")).toBe("payments-disputed-2026-08-13.csv")
+    expect(exportFilename(day, "all")).toBe("payments-all-2026-08-13.csv")
+    expect(exportFilename(day, "filtered")).toBe("payments-filtered-2026-08-13.csv")
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("leaves the card last four out", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+  })
+
+  it("keeps every other column, in canonical order", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).toEqual(
+      EXPORT_COLUMNS.filter((column) => column !== "last4"),
+    )
+  })
+})
+
+describe("parseExportColumns", () => {
+  it("falls back to the default set when the param is absent", () => {
+    expect(parseExportColumns(null)).toEqual([...DEFAULT_EXPORT_COLUMNS])
+  })
+
+  it("rejects an empty selection rather than producing an empty file", () => {
+    expect(parseExportColumns("")).toBeNull()
+    expect(parseExportColumns(" , ,")).toBeNull()
+  })
+
+  it("rejects the whole request if any name is not on the allowlist", () => {
+    expect(parseExportColumns("id,nope")).toBeNull()
+    expect(parseExportColumns("id,__proto__")).toBeNull()
+    expect(parseExportColumns('id,amount"; rm -rf')).toBeNull()
+  })
+
+  it("collapses duplicates", () => {
+    expect(parseExportColumns("id,id,amount")).toEqual(["id", "amount"])
+  })
+
+  it("returns canonical order whatever order the client sent", () => {
+    expect(parseExportColumns("currency,amount,id")).toEqual([
+      "id",
+      "amount",
+      "currency",
+    ])
+  })
+
+  it("includes last four only when it is asked for", () => {
+    expect(parseExportColumns("id,last4")).toEqual(["id", "last4"])
+  })
+
+  it("serializes the parsed set with no last four cell", () => {
+    const header = toCsv([payment], parseExportColumns(null)!).split("\n")[0]
+    expect(header.split(",")).not.toContain("last4")
+  })
+})
+
+describe("isExportScope", () => {
+  it("accepts current and all, and nothing else", () => {
+    expect(isExportScope("current")).toBe(true)
+    expect(isExportScope("all")).toBe(true)
+    expect(isExportScope("everything")).toBe(false)
+    expect(isExportScope("")).toBe(false)
+  })
+})
+
+describe("exportLabel", () => {
+  it("is all for the all scope, whatever the filters", () => {
+    expect(exportLabel("all", { status: "disputed", merchantId: "mch_01" })).toBe("all")
+  })
+
+  it("is the status when the current filter has one", () => {
+    expect(exportLabel("current", { status: "disputed" })).toBe("disputed")
+  })
+
+  it("is filtered when only a merchant, search, or date range is set", () => {
+    expect(exportLabel("current", { status: "all", merchantId: "mch_01" })).toBe(
+      "filtered",
+    )
+    expect(exportLabel("current", { status: "all", search: "1180" })).toBe("filtered")
+    expect(exportLabel("current", { from: "2026-08-01T00:00:00.000Z" })).toBe(
+      "filtered",
+    )
+  })
+
+  it("is all when the current filter is empty", () => {
+    expect(exportLabel("current", { status: "all", search: "  " })).toBe("all")
+  })
+
+  it("never lets client text into the filename", () => {
+    const label = exportLabel("current", {
+      status: "all",
+      merchantId: "../../etc/passwd",
+      search: 'x"; filename=evil.exe',
+    })
+    expect(label).toBe("filtered")
   })
 })
