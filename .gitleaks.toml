@@ -1,0 +1,53 @@
+# Gitleaks config for claude-code-config
+#
+# Purpose: suppress working-tree (--no-git) scan noise from .gitignore'd local files.
+# gitleaks does not natively honor .gitignore; this allowlist mirrors it so
+# `gitleaks detect --no-git` returns clean signal on this repo.
+#
+# Real exposure scanning still works for files NOT in this allowlist.
+# ⚠️ Corrected 2026-09-14: path allowlists apply to BOTH the --no-git scan AND
+# the git-history scan (relative paths match the unanchored patterns). Anything
+# listed here is never scanned, in any mode. Keep every entry strictly to paths
+# that are gitignored AND have no tracked exception carved back in.
+#
+# Established 2026-05-25 during /maintain — see memory/maintenance_2026-05-25.md.
+
+title = "claude-code-config — suppress gitignored-path noise"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local-only paths from .gitignore — never committed to repo"
+# Patterns are matched against the full file path. No leading anchor.
+paths = [
+    '''/history\.jsonl$''',
+    '''/stats-cache\.json$''',
+    '''/cache/''',
+    '''/debug/''',
+    '''/file-history/''',
+    '''/image-cache/''',
+    '''/paste-cache/''',
+    '''/plans/''',
+    '''/plugins/''',
+    # '''/projects/''' REMOVED 2026-09-14: it silently exempted all 259 tracked
+    # memory files (projects/-Users-marianasmall/memory/**) from BOTH scans —
+    # .gitignore carves that folder back in, this allowlist never did. In this
+    # repo's working tree projects/ holds nothing else, so no replacement needed.
+    '''/session-env/''',
+    '''/sessions/''',
+    '''/shell-snapshots/''',
+    '''/statsig/''',
+    '''/tasks/''',
+    '''/telemetry/''',
+    '''/todos/''',
+    '''/ide/''',
+    '''/backups/''',
+    '''/channels/''',
+    '''/_backups/''',
+    '''\.backup$''',
+    '''\.bak$''',
+    '''_archived_commands_''',
+    '''/hooks/state/''',
+    '''/agents/_retired/_backups/''',
+]
