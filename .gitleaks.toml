@@ -50,4 +50,7 @@ paths = [
     '''_archived_commands_''',
     '''/hooks/state/''',
     '''/agents/_retired/_backups/''',
+    # Added 2026-11-03: Next.js build output (.next/) is machine-generated and
+    # holds a per-build encryptionKey that trips generic-api-key. Not tracked.
+    '''/\.next/''',
 ]
